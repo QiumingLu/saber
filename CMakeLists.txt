@@ -75,4 +75,5 @@ saber_set_saber_link()
 
 if (NOT CMAKE_BUILD_NO_EXAMPLES)
   add_subdirectory(examples/wars)
+  add_subdirectory(examples/echo)
 endif()

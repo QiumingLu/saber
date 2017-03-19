@@ -52,9 +52,8 @@ $CXX $CXXFLAGS -x c++ -o $CXXOUTPUT 2>/dev/null  <<EOF
     int main() { }
 EOF
   if [ "$?" != 0 ]; then
-    wget https://github.com/QiumingLu/voyager/archive/v1.6.tar.gz
-    tar zxvf v1.6.tar.gz
-    cd voyager-1.6
+    git clone https://github.com/QiumingLu/voyager.git
+    cd voyager
     cmake -DCMAKE_BUILD_TYPE=release \
           -DCMAKE_INSTALL_PREFIX=$INSTALL_PATH \
           -DCMAKE_BUILD_NO_EXAMPLES=0 \
@@ -63,8 +62,7 @@ EOF
     make
     sudo make install
     cd ..
-    rm -rf voyager-1.6
-    rm -rf v1.6.tar.gz
+    rm -rf voyager
   fi
 
 $CXX $CXXFLAGS -x c++ -o $CXXOUTPUT 2>/dev/null  <<EOF

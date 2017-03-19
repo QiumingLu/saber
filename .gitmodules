@@ -1,3 +1,12 @@
 [submodule "third_party/leveldb"]
 	path = third_party/leveldb
 	url = https://github.com/google/leveldb.git
+[submodule "third_party/protobuf"]
+	path = third_party/protobuf
+	url = https://github.com/google/protobuf.git
+[submodule "third_party/skywalker"]
+	path = third_party/skywalker
+	url = https://github.com/QiumingLu/skywalker.git
+[submodule "third_party/voyager"]
+	path = third_party/voyager
+	url = https://github.com/QiumingLu/voyager.git

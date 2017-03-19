@@ -6,11 +6,16 @@ file(GLOB_RECURSE proto_files src/saber/proto/*.proto)
 saber_protobuf_generate_cpp(${proto_gen_folder} proto_SRCS proto_HDRS ${proto_files})
 
 file(GLOB_RECURSE saber_server_SRCS
+  ${proto_SRCS}
   src/saber/util/*.cc
+  src/saber/net/*.cc
+  src/saber/storage/.*cc
+  src/saber/paxos/*.cc
   src/saber/server/*.cc
 )
 
 file(GLOB_RECURSE saber_client_SRCS
+  ${proto_SRCS}
   src/saber/util/*.cc
   src/saber/client/*.cc
 )
@@ -35,3 +40,6 @@ endif()
 
 add_executable(saber_server src/saber/server/saber_server_main.cc ${saber_server_SRCS})
 add_executable(saber_client src/saber/client/saber_client_main.cc ${saber_client_SRCS})
+
+target_link_libraries(saber_server ${Saber_LINKER_LIBS})
+target_link_libraries(saber_client ${Saber_LINKER_LIBS})
