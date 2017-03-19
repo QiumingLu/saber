@@ -1,0 +1,20 @@
+sudo: required
+dist: trusty
+
+language: cpp
+compiler:
+- g++
+- clang
+
+os:
+- linux
+- osx
+
+git:
+  submodules: false
+
+before_script:
+- ./build_travis.sh
+
+script:
+- ./build.sh
