@@ -5,6 +5,8 @@
 #ifndef SABER_UTIL_MUTEXLOCK_H_
 #define SABER_UTIL_MUTEXLOCK_H_
 
+#include "saber/util/mutex.h"
+
 namespace saber {
 
 class MutexLock {

@@ -11,12 +11,16 @@ file(GLOB_RECURSE saber_server_SRCS
   src/saber/net/*.cc
   src/saber/storage/.*cc
   src/saber/paxos/*.cc
+  src/saber/service/*.cc
   src/saber/server/*.cc
 )
 
 file(GLOB_RECURSE saber_client_SRCS
   ${proto_SRCS}
   src/saber/util/*.cc
+  src/saber/net/*.cc
+  src/saber/storage/.*cc
+  src/saber/service/*.cc
   src/saber/client/*.cc
 )
 

@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "saber/client/watched_event.h"
+#include "saber/service/watcher.h"
 
 namespace saber {
 
-WatchedEvent::WatchedEvent() {
+Watcher::Watcher() {
 }
 
-WatchedEvent::~WatchedEvent() {
+Watcher::~Watcher() {
 }
 
 }  // namespace saber

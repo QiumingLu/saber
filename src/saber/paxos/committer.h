@@ -2,22 +2,22 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SABER_CLIENT_WATCHED_EVENT_H_
-#define SABER_CLIENT_WATCHED_EVENT_H_
+#ifndef SABER_PAXOS_COMMITTER_H_
+#define SABER_PAXOS_COMMITTER_H_
 
 namespace saber {
 
-class WatchedEvent {
+class Committer {
  public:
-  WatchedEvent();
-  ~WatchedEvent();
+  Committer();
+  ~Committer();
 
  private:
   // No copying allowed
-  WatchedEvent(const WatchedEvent&);
-  void operator=(const WatchedEvent&);
+  Committer(const Committer&);
+  void operator=(const Committer&);
 };
 
 }  // namespace saber
 
-#endif  // SABER_CLIENT_WATCHED_EVENT_H_
+#endif  // SABER_PAXOS_COMMITTER_H_

@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SABER_CLIENT_WATCHER_H_
-#define SABER_CLIENT_WATCHER_H_
+#ifndef SABER_SERVICE_WATCHER_H_
+#define SABER_SERVICE_WATCHER_H_
 
-#include "saber/client/watched_event.h"
+#include "saber/service/watched_event.h"
 
 namespace saber {
 
@@ -23,4 +23,4 @@ class Watcher {
 
 }  // namespace saber
 
-#endif  // SABER_CLIENT_WATCHER_H_
+#endif  // SABER_SERVICE_WATCHER_H_
