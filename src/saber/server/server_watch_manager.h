@@ -25,11 +25,12 @@ class ServerWatchManager {
   void AddWatch(const std::string& path, Watcher* watcher);
   void RemoveWatch(Watcher* watcher);
 
-  WatcherSetPtr TriggerWatcher(const std::string& path);
+  WatcherSetPtr TriggerWatcher(
+       const std::string& path, const WatchedEvent& event);
 
  private:
-  std::unordered_map<std::string, WatcherSetPtr> watch_table_;
-  std::unordered_map<Watcher*, PathSetPtr> path_table_;
+  std::unordered_map<std::string, WatcherSetPtr> path_to_watches_;
+  std::unordered_map<Watcher*, PathSetPtr> watch_to_paths_;
 
   // No copying allowed
   ServerWatchManager(const ServerWatchManager&);

@@ -14,51 +14,54 @@ ServerWatchManager::~ServerWatchManager() {
 
 void ServerWatchManager::AddWatch(
     const std::string& path, Watcher* watcher) {
-  auto i  = watch_table_.find(path);
-  if (i != watch_table_.end()) {
+  auto i  = path_to_watches_.find(path);
+  if (i != path_to_watches_.end()) {
     i->second->insert(watcher);
   } else {
     WatcherSetPtr watches(new std::set<Watcher*>());
     watches->insert(watcher);
-    watch_table_.insert(std::make_pair(path, std::move(watches)));
+    path_to_watches_.insert(std::make_pair(path, std::move(watches)));
   }
 
-  auto j = path_table_.find(watcher);
-  if (j != path_table_.end()) {
+  auto j = watch_to_paths_.find(watcher);
+  if (j != watch_to_paths_.end()) {
     j->second->insert(path);
   } else {
     PathSetPtr paths(new std::set<std::string>());
     paths->insert(path);
-    path_table_.insert(std::make_pair(watcher, std::move(paths)));
+    watch_to_paths_.insert(std::make_pair(watcher, std::move(paths)));
   }
 }
 
 void ServerWatchManager::RemoveWatch(Watcher* watcher) {
-  auto i = path_table_.find(watcher);
-  if (i != path_table_.end()) {
+  auto i = watch_to_paths_.find(watcher);
+  if (i != watch_to_paths_.end()) {
     for (auto& j : *(i->second)) {
-      auto k =  watch_table_.find(j);
+      auto k =  path_to_watches_.find(j);
       k->second->erase(watcher);
       if (k->second->empty()) {
-        watch_table_.erase(j);
+        path_to_watches_.erase(j);
       }
     }
-    path_table_.erase(i);
+    watch_to_paths_.erase(i);
   }
 }
 
-WatcherSetPtr ServerWatchManager::TriggerWatcher(const std::string& path) {
+WatcherSetPtr ServerWatchManager::TriggerWatcher(
+    const std::string& path, const WatchedEvent& event) {
   WatcherSetPtr watches;
-  auto i = watch_table_.find(path);
-  if (i != watch_table_.end()) {
+  auto i = path_to_watches_.find(path);
+  if (i != path_to_watches_.end()) {
     for (auto& j : *(i->second)) {
-      auto k = path_table_.find(j);
-      if (k != path_table_.end()) {
-        k->second->erase(path);
+      auto k = watch_to_paths_.find(j);
+      k->second->erase(path);
+      if (k->second->empty()) {
+        watch_to_paths_.erase(k);
       }
+      j->Process(event);
     }
     watches.swap(i->second);
-    watch_table_.erase(i);
+    path_to_watches_.erase(i);
   }
   return watches;
 }

@@ -12,7 +12,7 @@ namespace saber {
 class Watcher {
  public:
   Watcher();
-  ~Watcher();
+  virtual ~Watcher();
 
   virtual void Process(const WatchedEvent& event) = 0;
 
