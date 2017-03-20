@@ -22,8 +22,7 @@ bool DataNode::AddChild(const std::string& child) {
 }
 
 bool DataNode::RemoveChild(const std::string& child) {
-  auto it = children_.erase(child);
-  return it;
+  return children_.erase(child);
 }
 
 }  // namespace saber

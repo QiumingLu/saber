@@ -23,10 +23,6 @@ class DataNode {
 
  private:
   std::string data_;
-
-  uint64_t version_;
-  uint64_t acl_;
-
   std::set<std::string> children_;
 
   // No copying allowed

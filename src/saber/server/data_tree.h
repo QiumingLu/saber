@@ -5,7 +5,9 @@
 #ifndef SABER_SERVER_DATA_TREE_H_
 #define SABER_SERVER_DATA_TREE_H_
 
+#include <memory>
 #include <string>
+#include <map>
 
 #include "saber/util/concurrent_map.h"
 #include "saber/server/data_node.h"
@@ -18,11 +20,11 @@ class DataTree {
   DataTree();
   ~DataTree();
 
-  void CreateNode(const std::string& path, const std::string& data);
-  void DeleteNode(const std::string& path);
+  int CreateNode(const std::string& path, const std::string& data);
+  int DeleteNode(const std::string& path);
 
  private:
-  ConcurrentMap<std::string, DataNode*> nodes_;
+  std::map<std::string, std::unique_ptr<DataNode> > nodes_;
   ServerWatchManager data_watches_;
   ServerWatchManager child_watches_;
 

@@ -5,12 +5,17 @@
 #ifndef SABER_SERVER_SERVER_WATCH_MANAGER_H_
 #define SABER_SERVER_SERVER_WATCH_MANAGER_H_
 
+#include <memory>
+#include <string>
 #include <set>
 #include <unordered_map>
 
 #include "saber/service/watcher.h"
 
 namespace saber {
+
+typedef std::unique_ptr<std::set<Watcher*> > WatcherSetPtr;
+typedef std::unique_ptr<std::set<std::string> > PathSetPtr;
 
 class ServerWatchManager {
  public:
@@ -20,10 +25,11 @@ class ServerWatchManager {
   void AddWatch(const std::string& path, Watcher* watcher);
   void RemoveWatch(Watcher* watcher);
 
-  void TriggerWatcher(const std::string& path, std::set<Watcher*>* result);
+  WatcherSetPtr TriggerWatcher(const std::string& path);
 
  private:
-  std::unordered_map<std::string, std::set<Watcher*> > watches_;
+  std::unordered_map<std::string, WatcherSetPtr> watch_table_;
+  std::unordered_map<Watcher*, PathSetPtr> path_table_;
 
   // No copying allowed
   ServerWatchManager(const ServerWatchManager&);
