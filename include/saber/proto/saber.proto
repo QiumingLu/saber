@@ -12,7 +12,7 @@ enum WatchedEventType {
 }
 
 enum SessionState {
-  SYNC_CONNECTED = 0;
+  CONNECTED = 0;
   DISCONNECTED = 1;
   EXPIRED = 2;
   AUTHFAILED = 3;

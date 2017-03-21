@@ -4,6 +4,10 @@ if(POLICY CMP0042)
   cmake_policy(SET CMP0042 NEW)
 endif()
 
+if(POLICY CMP0022)
+  cmake_policy(SET CMP0022 NEW)
+endif()
+
 project (Saber C CXX)
 
 enable_testing()
