@@ -1,0 +1,25 @@
+syntax = "proto3";
+package saber;
+
+enum WatchedEventType {
+  NONE = 0;
+  NODE_CREATED = 1;
+  NODE_DELETED = 2;
+  NODE_DATA_CHANGED = 3;
+  NODE_CHILDREN_CHANGED = 4;
+  DATA_WATCH_REMOVED = 5;
+  CHILD_WATCH_REMOVED = 6;
+}
+
+enum SessionState {
+  SYNC_CONNECTED = 0;
+  DISCONNECTED = 1;
+  EXPIRED = 2;
+  AUTHFAILED = 3;
+}
+
+message WatchedEvent {
+  WatchedEventType type = 1;
+  SessionState state = 2;
+  bytes path = 3;
+}

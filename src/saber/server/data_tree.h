@@ -9,7 +9,6 @@
 #include <string>
 #include <map>
 
-#include "saber/util/concurrent_map.h"
 #include "saber/server/data_node.h"
 #include "saber/server/server_watch_manager.h"
 
@@ -22,6 +21,10 @@ class DataTree {
 
   int CreateNode(const std::string& path, const std::string& data);
   int DeleteNode(const std::string& path);
+
+  bool SetData(const std::string& path, const std::string& data);
+  bool GetData(const std::string& path,
+               Watcher* watcher, std::string* data);
 
  private:
   std::map<std::string, std::unique_ptr<DataNode> > nodes_;

@@ -1,9 +1,0 @@
-syntax = "proto3";
-package saber;
-
-enum WatchEventType {
-}
-
-message WatchEvent {
-  WatchEventType type = 1;
-}

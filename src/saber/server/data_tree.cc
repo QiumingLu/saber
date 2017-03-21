@@ -24,8 +24,11 @@ int DataTree::CreateNode(
   if (it != nodes_.end()) {
     bool res = it->second->AddChild(child);
     if (res) {
-      DataNode* c = new DataNode(data);
-      nodes_.insert(std::make_pair(path, std::unique_ptr<DataNode>(c)));
+      DataNode* node = new DataNode(data);
+      nodes_.insert(std::make_pair(path, std::unique_ptr<DataNode>(node)));
+      WatchedEvent event;
+      data_watches_.TriggerWatcher(path, event);
+      child_watches_.TriggerWatcher(parent.empty() ? "/" : parent, event);
     } else {
       result = -2;
     }
@@ -46,6 +49,10 @@ int DataTree::DeleteNode(const std::string& path) {
     it = nodes_.find(parent);
     if (it != nodes_.end()) {
       it->second->RemoveChild(child);
+      WatchedEvent event;
+      WatcherSetPtr p = data_watches_.TriggerWatcher(path, event);
+      child_watches_.TriggerWatcher(path, event, std::move(p));
+      child_watches_.TriggerWatcher(parent.empty() ? "/" : parent, event);
     } else {
       result = -1;
     }
@@ -53,6 +60,29 @@ int DataTree::DeleteNode(const std::string& path) {
     result = -2;
   }
   return result;
+}
+
+bool DataTree::SetData(const std::string& path, const std::string& data) {
+  auto it  =nodes_.find(path);
+  if (it != nodes_.end()) {
+    WatchedEvent event;
+    data_watches_.TriggerWatcher(path, event);
+    return true;
+  }
+  return false;
+}
+
+bool DataTree::GetData(const std::string& path,
+                       Watcher* watcher, std::string* data) {
+  auto it = nodes_.find(path);
+  if (it != nodes_.end()) {
+    *data = it->second->GetData();
+    if (watcher != nullptr) {
+      data_watches_.AddWatch(path, watcher);
+    }
+    return true;
+  }
+  return false;
 }
 
 }  // namespace saber

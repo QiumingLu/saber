@@ -9,10 +9,10 @@ else()
 endif()
 
 if(PROTOBUF_FOUND)
-  message(STATUS "Found Protobuf (include: ${PROTOBUF_INCLUDE_DIRS}, library: ${PROTOBUF_LIBRARIES})")
+  message(STATUS "Found Protobuf (include: ${PROTOBUF_INCLUDE_DIR}, libraries: ${PROTOBUF_LIBRARIES})")
 endif()
 
-set(proto_gen_folder "${PROJECT_BINARY_DIR}/proto")
+set(proto_gen_folder ${PROJECT_SOURCE_DIR}/include/saber/proto)
 include_directories(${PROJECT_BINARY_DIR})
 
 set(PROTOBUF_GENERATE_CPP_APPEND_PATH TRUE)
@@ -59,7 +59,7 @@ function(saber_protobuf_generate_cpp output_dir srcs_var hdrs_var)
       OUTPUT "${output_dir}/${fil_we}.pb.cc"
              "${output_dir}/${fil_we}.pb.h"
       COMMAND ${CMAKE_COMMAND} -E make_directory "${output_dir}"
-      COMMAND ${PROTOBUF_PROTOC_EXECUTABLE} --cpp_out    ${output_dir} ${_protoc_include} ${abs_fil}
+      COMMAND ${PROTOBUF_PROTOC_EXECUTABLE} --cpp_out ${output_dir} ${_protoc_include} ${abs_fil}
       DEPENDS ${abs_fil}
       COMMENT "Running C++ protobuf protocol buffer compiler on ${fil}" VERBATIM)
   endforeach()

@@ -49,6 +49,11 @@ void ServerWatchManager::RemoveWatch(Watcher* watcher) {
 
 WatcherSetPtr ServerWatchManager::TriggerWatcher(
     const std::string& path, const WatchedEvent& event) {
+  return TriggerWatcher(path, event, nullptr);
+}
+
+WatcherSetPtr ServerWatchManager::TriggerWatcher(
+    const std::string& path, const WatchedEvent& event, WatcherSetPtr p) {
   WatcherSetPtr watches;
   auto i = path_to_watches_.find(path);
   if (i != path_to_watches_.end()) {
@@ -58,12 +63,16 @@ WatcherSetPtr ServerWatchManager::TriggerWatcher(
       if (k->second->empty()) {
         watch_to_paths_.erase(k);
       }
+      if (p && p->find(j) != p->end()) {
+        continue;
+      }
       j->Process(event);
     }
     watches.swap(i->second);
     path_to_watches_.erase(i);
   }
   return watches;
+
 }
 
 }  // namespace saber

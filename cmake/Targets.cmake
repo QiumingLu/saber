@@ -2,7 +2,7 @@ macro(saber_set_saber_link)
   set(Saber_LINK saber)
 endmacro()
 
-file(GLOB_RECURSE proto_files src/saber/proto/*.proto)
+file(GLOB_RECURSE proto_files include/saber/proto/*.proto)
 saber_protobuf_generate_cpp(${proto_gen_folder} proto_SRCS proto_HDRS ${proto_files})
 
 file(GLOB_RECURSE saber_server_SRCS

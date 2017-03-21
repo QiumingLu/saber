@@ -26,7 +26,9 @@ class ServerWatchManager {
   void RemoveWatch(Watcher* watcher);
 
   WatcherSetPtr TriggerWatcher(
-       const std::string& path, const WatchedEvent& event);
+      const std::string& path, const WatchedEvent& event);
+  WatcherSetPtr TriggerWatcher(
+      const std::string& path, const WatchedEvent& event, WatcherSetPtr p);
 
  private:
   std::unordered_map<std::string, WatcherSetPtr> path_to_watches_;

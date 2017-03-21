@@ -5,7 +5,7 @@
 #ifndef SABER_SERVICE_WATCHER_H_
 #define SABER_SERVICE_WATCHER_H_
 
-#include "saber/service/watched_event.h"
+#include "saber/proto/saber.pb.h"
 
 namespace saber {
 

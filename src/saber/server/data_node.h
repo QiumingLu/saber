@@ -17,6 +17,7 @@ class DataNode {
   ~DataNode();
 
   void SetData(const std::string& data) { data_ = data; }
+  const std::string& GetData() const { return data_; }
 
   bool AddChild(const std::string& child);
   bool RemoveChild(const std::string& child);
