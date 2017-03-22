@@ -26,9 +26,9 @@ int DataTree::CreateNode(
     if (res) {
       DataNode* node = new DataNode(data);
       nodes_.insert(std::make_pair(path, std::unique_ptr<DataNode>(node)));
-      WatchedEvent event;
-      data_watches_.TriggerWatcher(path, event);
-      child_watches_.TriggerWatcher(parent.empty() ? "/" : parent, event);
+      data_watches_.TriggerWatcher(path, ET_NODE_CREATED);
+      child_watches_.TriggerWatcher(
+          parent.empty() ? "/" : parent, ET_NODE_CHILDREN_CHANGED);
     } else {
       result = -2;
     }
@@ -49,10 +49,10 @@ int DataTree::DeleteNode(const std::string& path) {
     it = nodes_.find(parent);
     if (it != nodes_.end()) {
       it->second->RemoveChild(child);
-      WatchedEvent event;
-      WatcherSetPtr p = data_watches_.TriggerWatcher(path, event);
-      child_watches_.TriggerWatcher(path, event, std::move(p));
-      child_watches_.TriggerWatcher(parent.empty() ? "/" : parent, event);
+      WatcherSetPtr p = data_watches_.TriggerWatcher(path, ET_NODE_DELETED);
+      child_watches_.TriggerWatcher(path, ET_NODE_DELETED, std::move(p));
+      child_watches_.TriggerWatcher(
+          parent.empty() ? "/" : parent, ET_NODE_CHILDREN_CHANGED);
     } else {
       result = -1;
     }
@@ -65,8 +65,7 @@ int DataTree::DeleteNode(const std::string& path) {
 bool DataTree::SetData(const std::string& path, const std::string& data) {
   auto it  =nodes_.find(path);
   if (it != nodes_.end()) {
-    WatchedEvent event;
-    data_watches_.TriggerWatcher(path, event);
+    data_watches_.TriggerWatcher(path, ET_NODE_DATA_CHANGED);
     return true;
   }
   return false;

@@ -5,17 +5,40 @@
 #ifndef SABER_SERVER_SABER_SERVER_H_
 #define SABER_SERVER_SABER_SERVER_H_
 
+#include <memory>
+#include <voyager/port/atomic_sequence_num.h>
+#include <voyager/core/tcp_server.h>
+#include <skywalker/node.h>
+
+#include "saber/server/data_base.h"
+#include "saber/server/server_connection.h"
+#include "saber/util/concurrent_map.h"
+
 namespace saber {
 
 class SaberServer {
  public:
-  SaberServer();
+  SaberServer(voyager::EventLoop* loop,
+              const voyager::SockAddr& addr,
+              int thread_size = 1);
   ~SaberServer();
 
-  void Start();
+  bool Start(const skywalker::Options& options);
 
  private:
-  
+  void OnConnection(const voyager::TcpConnectionPtr& p);
+  void OnClose(const voyager::TcpConnectionPtr& p);
+  void OnMessage(const voyager::TcpConnectionPtr& p, voyager::Buffer* buf);
+
+  voyager::port::SequenceNumber seq_;
+  voyager::TcpServer server_;
+
+  ConcurrentMap<uint64_t, std::unique_ptr<ServerConnection> > conns_;
+
+  skywalker::Node* node_;
+
+  DataBase db_;
+
   // No copying allowed
   SaberServer(const SaberServer&);
   void operator=(const SaberServer&);

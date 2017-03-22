@@ -5,6 +5,7 @@
 #ifndef SABER_UTIL_CONCURRENT_MAP_H_
 #define SABER_UTIL_CONCURRENT_MAP_H_
 
+#include <utility>
 #include <unordered_map>
 
 #include "saber/util/mutex.h"
@@ -23,6 +24,11 @@ class HashMap {
   void insert(const K& key, const V& value) {
     MutexLock lock(&mu_);
     map_[key] = value;
+  }
+
+  void insert(const K& key, V&& value) {
+    MutexLock lock(&mu_);
+    map_[key] = std::move(value);
   }
 
   void erase(const K& key) {
@@ -52,6 +58,11 @@ class ConcurrentMap {
   void insert(const K& key, const V& value) {
     const size_t h = Hash(key);
     shard_[Shard(h)].insert(key, value);
+  }
+
+  void insert(const K& key, V&& value) {
+    const size_t h = Hash(key);
+    shard_[Shard(h)].insert(key, std::move(value));
   }
 
   void erase(const K& key) {

@@ -1,25 +1,42 @@
 syntax = "proto3";
 package saber;
 
-enum WatchedEventType {
-  NONE = 0;
-  NODE_CREATED = 1;
-  NODE_DELETED = 2;
-  NODE_DATA_CHANGED = 3;
-  NODE_CHILDREN_CHANGED = 4;
-  DATA_WATCH_REMOVED = 5;
-  CHILD_WATCH_REMOVED = 6;
+enum MessageType {
+  MT_NOTIFICATION = 0;
+  MT_CREATE = 1;
+  MT_DELETE = 2;
+  MT_EXISTS = 3;
+  MT_GETDATA = 4;
+  MT_SETDATA = 5;
+  MT_GETACL = 6;
+  MT_SETACL = 7;
+  MT_GETCHILDREN = 8;
 }
 
 enum SessionState {
-  CONNECTED = 0;
-  DISCONNECTED = 1;
-  EXPIRED = 2;
-  AUTHFAILED = 3;
+  SS_CONNECTED = 0;
+  SS_DISCONNECTED = 1;
+  SS_EXPIRED = 2;
+  SS_AUTHFAILED = 3;
+}
+
+enum EventType {
+  ET_NONE = 0;
+  ET_NODE_CREATED = 1;
+  ET_NODE_DELETED = 2;
+  ET_NODE_DATA_CHANGED = 3;
+  ET_NODE_CHILDREN_CHANGED = 4;
+  ET_DATA_WATCH_REMOVED = 5;
+  ET_CHILD_WATCH_REMOVED = 6;
 }
 
 message WatchedEvent {
-  WatchedEventType type = 1;
-  SessionState state = 2;
+  SessionState state = 1;
+  EventType type = 2;
   bytes path = 3;
+}
+
+message SaberMessage {
+  MessageType type = 1;
+  bytes data = 2;
 }

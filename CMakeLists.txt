@@ -13,7 +13,7 @@ project (Saber C CXX)
 enable_testing()
 
 if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE "release")
+  set(CMAKE_BUILD_TYPE "debug")
 endif()
 
 if(NOT CMAKE_BUILD_SHARED_LIBS)
