@@ -1,0 +1,23 @@
+add_executable(saber_server saber_server_main.cc ${saber_server_srcs})
+add_executable(saber_client saber_client_main.cc ${saber_client_srcs})
+
+target_link_libraries(saber_server ${Saber_LINKER_LIBS})
+target_link_libraries(saber_client ${Saber_LINKER_LIBS})
+
+if(CMAKE_BUILD_SHARED_LIBS)
+  add_library(saber SHARED ${saber_client_srcs})
+  add_library(saber_static STATIC ${saber_client_srcs})
+  set_target_properties(saber_static PROPERTIES OUTPUT_NAME "saber")
+  set_target_properties(saber PROPERTIES CLEAN_DIRECT_OUTPUT 1)
+  set_target_properties(saber_static PROPERTIES CLEAN_DIRECT_OUTPUT 1)
+  set_target_properties(saber PROPERTIES VERSION 1.0 SOVERSION 1)
+  target_link_libraries(saber ${Saber_LINKER_LIBS})
+  install(TARGETS saber DESTINATION lib)
+  install(TARGETS saber_static LIBRARY DESTINATION lib ARCHIVE DESTINATION lib)
+else()
+  add_library(saber ${saber_client_srcs})
+  target_link_libraries(saber ${Saber_LINKER_LIBS})
+  install(TARGETS saber DESTINATION lib)
+endif()
+
+install(DIRECTORY ${Saber_INCLUDE_DIRS}/saber DESTINATION include)

@@ -81,6 +81,8 @@ include(cmake/Targets.cmake)
 
 saber_set_saber_link()
 
+add_subdirectory(src/saber)
+
 if (NOT CMAKE_BUILD_NO_EXAMPLES)
   add_subdirectory(examples/wars)
   add_subdirectory(examples/echo)
