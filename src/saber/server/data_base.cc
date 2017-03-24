@@ -9,4 +9,7 @@ namespace saber {
 DataBase::DataBase() {
 }
 
+DataBase::~DataBase() {
+}
+
 }  // namespace saber

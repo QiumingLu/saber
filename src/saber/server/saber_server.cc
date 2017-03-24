@@ -31,10 +31,10 @@ bool SaberServer::Start(const skywalker::Options& options) {
 
   bool res = skywalker::Node::Start(options, &node_);
   if (res) {
+    LOG_INFO("Skywalker start successfully!\n");
     server_.Start();
-    LOG_INFO("SaberServer start successfully!\n");
   } else {
-    LOG_INFO("Skywalker start failed!\n");
+    LOG_ERROR("Skywalker start failed!\n");
   }
   return res;
 }

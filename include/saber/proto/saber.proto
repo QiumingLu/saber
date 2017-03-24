@@ -39,4 +39,5 @@ message WatchedEvent {
 message SaberMessage {
   MessageType type = 1;
   bytes data = 2;
+  bool watch = 3;
 }

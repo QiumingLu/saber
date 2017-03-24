@@ -30,7 +30,10 @@ int main() {
 
   bool res = server.Start(options);
   if (res) {
+    LOG_INFO("SaberServer start successfully!\n");
     loop.Loop();
+  } else {
+    LOG_ERROR("SaberServer start failed!\n");
   }
   return 0;
 }

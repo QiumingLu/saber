@@ -5,18 +5,31 @@
 #ifndef SABER_CLIENT_SABER_CLIENT_H_
 #define SABER_CLIENT_SABER_CLIENT_H_
 
+#include <voyager/core/eventloop.h>
+#include <voyager/core/sockaddr.h>
+#include <voyager/core/tcp_client.h>
+
 #include "saber/client/callbacks.h"
 
 namespace saber {
 
 class SaberClient {
  public:
-  SaberClient();
+  SaberClient(voyager::EventLoop* loop, const std::string& server);
   ~SaberClient();
 
   void Start();
- 
+
  private:
+  void Connect();
+  void OnConnection(const voyager::TcpConnectionPtr& p);
+  void OnFailue();
+  void OnClose(const voyager::TcpConnectionPtr& p);
+  void OnMessage(const voyager::TcpConnectionPtr& p, voyager::Buffer* buf);
+
+  voyager::EventLoop* loop_;
+  std::unique_ptr<voyager::TcpClient> client_;
+
   // No copying allowed
   SaberClient(const SaberClient&);
   void operator=(const SaberClient&);

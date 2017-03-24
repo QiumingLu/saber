@@ -5,12 +5,21 @@
 #ifndef SABER_SERVER_DATA_BASE_H_
 #define SABER_SERVER_DATA_BASE_H_
 
+#include "saber/server/data_tree.h"
+
 namespace saber {
 
 class DataBase {
  public:
   DataBase();
+  ~DataBase();
 
+ private:
+  DataTree tree_;
+
+  // No copying allowed
+  DataBase(const DataBase&);
+  void operator=(const DataBase&);
 };
 
 }  // namespace saber
