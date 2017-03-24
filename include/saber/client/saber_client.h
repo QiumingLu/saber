@@ -10,12 +10,17 @@
 #include <voyager/core/tcp_client.h>
 
 #include "saber/client/callbacks.h"
+#include "saber/client/server_manager.h"
 
 namespace saber {
 
 class SaberClient {
  public:
-  SaberClient(voyager::EventLoop* loop, const std::string& server);
+  SaberClient(
+      voyager::EventLoop* loop, 
+      const std::string& server, 
+      std::unique_ptr<ServerManager> p = std::unique_ptr<ServerManager>());
+
   ~SaberClient();
 
   void Start();
@@ -29,6 +34,8 @@ class SaberClient {
 
   voyager::EventLoop* loop_;
   std::unique_ptr<voyager::TcpClient> client_;
+
+  std::unique_ptr<ServerManager> server_manager_;
 
   // No copying allowed
   SaberClient(const SaberClient&);

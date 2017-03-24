@@ -49,6 +49,10 @@ class Condition {
   void operator=(const Condition&);
 };
 
+typedef pthread_once_t OnceType;
+#define SABER_ONCE_INIT PTHREAD_ONCE_INIT
+extern void InitOnce(OnceType* once, void (*initializer)());
+
 }  // namespace saber
 
 #endif  // SABER_UTIL_MUTEX_H_

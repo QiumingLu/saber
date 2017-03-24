@@ -74,4 +74,8 @@ void Condition::SignalAll() {
   PthreadCall("pthread_cond_broadcast", pthread_cond_broadcast(&cond_));
 }
 
+void InitOnce(OnceType* once, void (*initializer)()) {
+  PthreadCall("pthread_once", pthread_once(once, initializer));
+}
+
 }  // namespace saber

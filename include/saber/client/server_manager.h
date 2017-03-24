@@ -7,36 +7,23 @@
 
 #include <stdint.h>
 #include <string>
-#include <vector>
-
-#include "saber/util/mutex.h"
 
 namespace saber {
 
 class ServerManager {
  public:
-  static ServerManager* Instance() {
-    manager_ = new ServerManager();
-    return manager_;
-  }
-  void UpdateServers(const std::string& servers);
+  ServerManager() { }
+  virtual ~ServerManager() { }
 
-  std::pair<std::string, uint16_t> GetNext();
+  virtual void UpdateServers(const std::string& servers) = 0;
+
+  virtual std::pair<std::string, uint16_t> GetNext() = 0;
 
  private:
-  static ServerManager* manager_;
-
-  Mutex mutex_;
-  size_t next_;
-  std::vector<std::pair<std::string, uint16_t> > servers_;
-
   // No copying allowed
-  ServerManager();
   ServerManager(const ServerManager&);
   void operator=(const ServerManager&);
 };
-
-ServerManager* ServerManager::manager_ = nullptr;
 
 }  // namespace saber
 

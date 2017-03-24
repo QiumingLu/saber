@@ -36,6 +36,12 @@ message WatchedEvent {
   bytes path = 3;
 }
 
+message Stat {
+}
+
+message ACL {
+}
+
 message SaberMessage {
   MessageType type = 1;
   bytes data = 2;

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "saber/client/server_manager.h"
+#include "saber/client/server_manager_impl.h"
 
 #include <assert.h>
 #include <voyager/util/string_util.h>
@@ -11,11 +11,11 @@
 
 namespace saber {
 
-ServerManager::ServerManager()
+ServerManagerImpl::ServerManagerImpl()
     : next_(0) {
 }
 
-void ServerManager::UpdateServers(const std::string& servers) {
+void ServerManagerImpl::UpdateServers(const std::string& servers) {
   MutexLock lock(&mutex_);
   std::vector<std::string> v;
   voyager::SplitStringUsing(servers, ",", &v);
@@ -29,7 +29,7 @@ void ServerManager::UpdateServers(const std::string& servers) {
   next_ = 0;
 }
 
-std::pair<std::string, uint16_t> ServerManager::GetNext() {
+std::pair<std::string, uint16_t> ServerManagerImpl::GetNext() {
   MutexLock lock(&mutex_);
   assert(!servers_.empty());
   if (next_ >= servers_.size()) {
