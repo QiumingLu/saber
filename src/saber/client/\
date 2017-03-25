@@ -108,6 +108,19 @@ bool SaberClient::SetData(const SetDataRequest& request,
   message.set_msg2(request.SerializeAsString());
   bool res = messager_->SendMessage(message);
   if (res) {
+//    set_data_cb_.push(std::make_pair(cb, context));
+  }
+  return res;
+}
+
+bool SaberClient::SetData(const SetDataRequest& request,
+                          void* context, const StatCallback& cb) {
+  SaberMessage message;
+  message.set_type(MT_SETDATA);
+  message.set_msg(HeaderMessage());
+  message.set_msg2(request.SerializeAsString());
+  bool res = messager_->SendMessage(message);
+  if (res) {
     set_data_cb_.push(std::make_pair(cb, context));
   }
   return res;
@@ -126,30 +139,22 @@ bool SaberClient::GetACL(const GetACLRequest& request,
   return res;
 }
 
-bool SaberClient::SetACL(const SetACLRequest& request,
+void SaberClient::SetACL(const SetACLRequest& request,
                          void* context, const StatCallback& cb) {
   SaberMessage message;
-  message.set_type(MT_SETACL);
+  message.set_type(MT_GETACL);
   message.set_msg(HeaderMessage());
   message.set_msg2(request.SerializeAsString());
   bool res = messager_->SendMessage(message);
   if (res) {
-    set_acl_cb_.push(std::make_pair(cb, context));
+    get_acl_cb_.push(std::make_pair(cb, context));
   }
   return res;
+
 }
 
-bool SaberClient::GetChildren(const GetChildrenRequest& request, Watcher* watcher,
+void SaberClient::GetChildren(const std::string& path, Watcher* watcher,
                               void* context, const ChildrenCallback& cb) {
-  SaberMessage message;
-  message.set_type(MT_GETCHILDREN);
-  message.set_msg(HeaderMessage());
-  message.set_msg2(request.SerializeAsString());
-  bool res = messager_->SendMessage(message);
-  if (res) {
-    children_cb_.push(std::make_pair(cb, context));
-  }
-  return res;
 }
 
 std::string SaberClient::HeaderMessage(NodeType type) {

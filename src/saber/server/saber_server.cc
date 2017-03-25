@@ -24,10 +24,6 @@ bool SaberServer::Start(const skywalker::Options& options) {
   server_.SetCloseCallback([this](const voyager::TcpConnectionPtr& p) {
     OnClose(p);
   });
-  server_.SetMessageCallback(
-      [this](const voyager::TcpConnectionPtr& p, voyager::Buffer* buf) {
-    OnMessage(p, buf);
-  });
 
   bool res = skywalker::Node::Start(options, &node_);
   if (res) {
@@ -40,7 +36,14 @@ bool SaberServer::Start(const skywalker::Options& options) {
 }
 
 void SaberServer::OnConnection(const voyager::TcpConnectionPtr& p) {
-  ServerConnection* conn = new ServerConnection(p, &db_);
+  Messager* messager = new Messager();
+  messager->SetTcpConnection(p);
+  p->SetMessageCallback(
+      [messager](const voyager::TcpConnectionPtr& ptr, voyager::Buffer* buf) {
+    messager->OnMessage(ptr, buf);
+  });
+
+  ServerConnection* conn = new ServerConnection(std::unique_ptr<Messager>(messager), &db_);
   conn->SetSessionId(seq_.GetNext());
   p->SetContext(conn);
   conns_.insert(conn->SessionId(), std::unique_ptr<ServerConnection>(conn));
@@ -50,13 +53,6 @@ void SaberServer::OnClose(const voyager::TcpConnectionPtr& p) {
   ServerConnection* conn =
       reinterpret_cast<ServerConnection*>(p->Context());
   conns_.erase(conn->SessionId());
-}
-
-void SaberServer::OnMessage(
-    const voyager::TcpConnectionPtr& p, voyager::Buffer* buf) {
-  ServerConnection* conn =
-      reinterpret_cast<ServerConnection*>(p->Context());
-  conn->OnMessage(buf);
 }
 
 }  // namespace saber

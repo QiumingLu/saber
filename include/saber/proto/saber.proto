@@ -1,18 +1,6 @@
 syntax = "proto3";
 package saber;
 
-enum MessageType {
-  MT_NOTIFICATION = 0;
-  MT_CREATE = 1;
-  MT_DELETE = 2;
-  MT_EXISTS = 3;
-  MT_GETDATA = 4;
-  MT_SETDATA = 5;
-  MT_GETACL = 6;
-  MT_SETACL = 7;
-  MT_GETCHILDREN = 8;
-}
-
 enum SessionState {
   SS_CONNECTED = 0;
   SS_DISCONNECTED = 1;
@@ -37,13 +25,135 @@ message WatchedEvent {
 }
 
 message Stat {
+  int64 created_id = 1;
+  int64 modified_id = 2;
+  int64 created_time = 3;
+  int64 modified_time = 4;
+  int32 version = 5;
+  int32 children_version = 6;
+  int32 acl_version = 7;
+  int64 ephemeral_id = 8;
+  int32 data_len = 9;
+  int32 children_num = 10;
+  int64 children_id = 11;
+}
+
+message Id {
+  string scheme = 1;
+  string id = 2;
 }
 
 message ACL {
+  int32 perms = 1;
+  Id id = 2;
+}
+
+enum NodeType {
+  PERSISTENT = 0;
+  PERSISTENT_SEQUENTIAL = 1;
+  EPHEMERAL = 2;
+  EPHEMERAL_SEQUENTIAL = 3;
+}
+
+message RequestHeader {
+}
+
+message ResponseHeader {
+}
+
+message ConnectRequest {
+}
+
+message ConnectResponse {
+}
+
+message CreateRequest {
+  string path = 1;
+  bytes data = 2;
+  repeated ACL acl = 3;
+  int32 flags =4;
+}
+
+message CreateResponse {
+  string path = 1;
+}
+
+message DeleteRequest {
+  string path = 1;
+  int32 version = 2;
+}
+
+message ExistsRequest {
+  string path = 1;
+  bool watch = 2;
+}
+
+message ExistsResponse {
+  Stat stat = 1;
+}
+
+message GetDataRequest {
+  string path = 1;
+  bool watch = 2;
+}
+
+message GetDataResponse {
+  bytes data = 1;
+  Stat stat = 2;
+}
+
+message SetDataRequest {
+  string path = 1;
+  bytes data = 2;
+  int32 version = 3;
+}
+
+message SetDataResponse {
+  Stat stat = 1;
+}
+
+message GetACLRequest {
+  string path = 1;
+}
+
+message GetACLResponse {
+  repeated ACL acl = 1;
+  Stat stat = 2;
+}
+
+message SetACLRequest {
+  string path = 1;
+  repeated ACL acl = 2;
+  int32 version = 3;
+}
+
+message SetACLResponse {
+  Stat stat = 1;
+}
+
+message GetChildrenRequest {
+  string path = 1;
+  bool watch = 2;
+}
+
+message GetChildrenResponse {
+  repeated string children = 1;
+}
+
+enum MessageType {
+  MT_NOTIFICATION = 0;
+  MT_CREATE = 1;
+  MT_DELETE = 2;
+  MT_EXISTS = 3;
+  MT_GETDATA = 4;
+  MT_SETDATA = 5;
+  MT_GETACL = 6;
+  MT_SETACL = 7;
+  MT_GETCHILDREN = 8;
 }
 
 message SaberMessage {
   MessageType type = 1;
-  bytes data = 2;
-  bool watch = 3;
+  bytes msg = 2;
+  bytes msg2 = 3;
 }

@@ -3,55 +3,27 @@
 
 namespace saber {
 
-ServerConnection::ServerConnection(const voyager::TcpConnectionPtr& p,
+ServerConnection::ServerConnection(std::unique_ptr<Messager> p,
                                    DataBase* db)
-    : conn_ptr_(p),
-      loop_(conn_ptr_->OwnerEventLoop()),
+    : messager_(std::move(p)),
       db_(db) {
+  messager_->SetMessageCallback([this](std::unique_ptr<SaberMessage> message) {
+    OnMessage(std::move(message));
+  });
 }
 
 ServerConnection::~ServerConnection() {
 }
 
 void ServerConnection::Process(const WatchedEvent& event) {
-  loop_->RunInLoop([this, event]() {
-    std::string s;
-    char buf[kHeaderSize];
-    memset(buf, 0, kHeaderSize);
-    s.append(buf, kHeaderSize);
-    bool res = event.AppendToString(&s);
-    if (res) {
-      int size = static_cast<int>(s.size());
-      memcpy(buf, &size, kHeaderSize);
-      s.replace(s.begin(), s.begin() + kHeaderSize, buf, kHeaderSize);
-      conn_ptr_->SendMessage(s);
-    } else {
-      LOG_ERROR("WatchedEvent serialize to string failed.\n");
-    }
-  });
+  SaberMessage message;
+  message.set_type(MT_NOTIFICATION);
+  message.set_msg(event.SerializeAsString());
+  messager_->SendMessage(message);
 }
 
-void ServerConnection::OnMessage(voyager::Buffer* buf) {
-  while (true) {
-    if (buf->ReadableSize() >= kHeaderSize) {
-      int size;
-      memcpy(&size, buf->Peek(), kHeaderSize);
-      if (buf->ReadableSize() >= static_cast<size_t>(size)) {
-        SaberMessage msg;
-        msg.ParseFromArray(buf->Peek() + kHeaderSize, size - kHeaderSize);
-        HandleMessage(msg);
-        buf->Retrieve(size);
-      } else {
-        break;
-      }
-    } else {
-      break;
-    }
-  }
-}
-
-void ServerConnection::HandleMessage(const SaberMessage& msg) {
-  switch (msg.type()) {
+void ServerConnection::OnMessage(std::unique_ptr<SaberMessage> message) {
+  switch (message->type()) {
     case MT_NOTIFICATION:
       break;
     case MT_CREATE:

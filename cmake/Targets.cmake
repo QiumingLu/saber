@@ -5,15 +5,13 @@ endmacro()
 file(GLOB_RECURSE proto_files include/saber/proto/*.proto)
 saber_protobuf_generate_cpp(${proto_gen_folder} proto_srcs proto_hdrs ${proto_files})
 
+set_source_files_properties(${proto_hdrs} ${proto_srcs} PROPERTIES COMPILE_FLAGS "-Wno-conversion -fPIC")
 add_library(proto STATIC ${proto_hdrs} ${proto_srcs})
 target_link_libraries(proto PUBLIC ${PROTOBUF_LIBRARIES})
 target_include_directories(proto PUBLIC ${PROTOBUF_INCLUDE_DIR})
-
 install(FILES ${proto_hdrs} DESTINATION include/saber/proto)
 
-
 list(INSERT Saber_LINKER_LIBS 0 PUBLIC proto)
-
 
 file(GLOB_RECURSE saber_server_srcs
   src/saber/util/*.cc

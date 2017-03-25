@@ -11,12 +11,13 @@
 #include "saber/server/data_base.h"
 #include "saber/service/watcher.h"
 #include "saber/proto/saber.pb.h"
+#include "saber/net/messager.h"
 
 namespace saber {
 
 class ServerConnection : public Watcher {
  public:
-  ServerConnection(const voyager::TcpConnectionPtr& p, DataBase* db);
+  ServerConnection(std::unique_ptr<Messager> p, DataBase* db);
   virtual ~ServerConnection();
 
   virtual void Process(const WatchedEvent& event);
@@ -24,16 +25,13 @@ class ServerConnection : public Watcher {
   void SetSessionId(uint64_t id) { session_id_ = id; }
   uint64_t SessionId() const { return session_id_; }
 
-  void OnMessage(voyager::Buffer* buf);
-
  private:
   static const int kHeaderSize = 4;
 
-  void HandleMessage(const SaberMessage& msg);
+  void OnMessage(std::unique_ptr<SaberMessage> message);
 
   uint64_t session_id_;
-  voyager::TcpConnectionPtr conn_ptr_;
-  voyager::EventLoop* loop_;
+  std::unique_ptr<Messager> messager_;
 
   DataBase* db_;
 

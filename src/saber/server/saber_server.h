@@ -28,7 +28,6 @@ class SaberServer {
  private:
   void OnConnection(const voyager::TcpConnectionPtr& p);
   void OnClose(const voyager::TcpConnectionPtr& p);
-  void OnMessage(const voyager::TcpConnectionPtr& p, voyager::Buffer* buf);
 
   voyager::port::SequenceNumber seq_;
   voyager::TcpServer server_;
