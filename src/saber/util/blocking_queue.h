@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SABER_UTIL_BLOCKINGQUEUE_H_
-#define SABER_UTIL_BLOCKINGQUEUE_H_
+#ifndef SABER_UTIL_BLOCKING_QUEUE_H_
+#define SABER_UTIL_BLOCKING_QUEUE_H_
 
 #include <assert.h>
 #include <queue>
@@ -20,10 +20,14 @@ class BlockingQueue {
 
   void push(const T& t) {
     MutexLock lock(&mutex_);
-    if (queue_.empty()) {
-      cond_.Signal();
-    }
     queue_.push(t);
+    cond_.Signal();
+  }
+  
+  void push(T&& t) {
+    MutexLock lock(&mutex_);
+    queue_.push(std::move(t));
+    cond_.Signal(); 
   }
 
   void pop() {

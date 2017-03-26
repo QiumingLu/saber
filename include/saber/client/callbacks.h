@@ -14,32 +14,29 @@
 
 namespace saber {
 
-typedef std::function<void (int rc, const std::string& path, void* context, 
-    const Stat& stat)> StatCallback;
-
-typedef std::function<void (int rc, const std::string& path, void* context, 
-    const std::string& data, const Stat& stat)> DataCallback;
-
 typedef std::function<void (int rc, const std::string& path, void* context,
-    const std::vector<std::unique_ptr<ACL> >& v, const Stat& stat)> ACLCallback;
-
-typedef std::function<void (int rc, const std::string& path, void* context,
-    const std::vector<std::string>& children)> ChildrenCallback;
-
-typedef std::function<void (int rc, const std::string& path, void* context,
-    const std::vector<std::string>& children, const Stat& stat)> Children2Callback;
-
-typedef std::function<void (int rc, const std::string& path, void* context,
-    const std::string& name, const Stat& stat)> Create2Callback;
-
-typedef std::function<void (int rc, const std::string& path, void* context,
-    const std::string& name)> StringCallback;
+    const CreateResponse&)> CreateCallback;
 
 typedef std::function<void (int rc, const std::string& path, void* context
-    )> VoidCallback;
+    )> DeleteCallback;
+
+typedef std::function<void (int rc, const std::string& path, void* context, 
+    const ExistsResponse&)> ExistsCallback;
+
+typedef std::function<void (int rc, const std::string& path, void* context, 
+    const GetDataResponse&)> GetDataCallback;
+
+typedef std::function<void (int rc, const std::string& path, void* context, 
+    const SetDataResponse&)> SetDataCallback;
 
 typedef std::function<void (int rc, const std::string& path, void* context,
-    const std::vector<std::string>& op)> MultiCallback;
+    const GetACLResponse&)> GetACLCallback;
+
+typedef std::function<void (int rc, const std::string& path, void* context,
+    const SetACLResponse&)> SetACLCallback;
+
+typedef std::function<void (int rc, const std::string& path, void* context,
+    const GetChildrenResponse&)> ChildrenCallback;
 
 }
 

@@ -15,9 +15,51 @@
 #include "saber/service/create_mode.h"
 #include "saber/service/watcher.h"
 #include "saber/net/messager.h"
-#include "saber/util/blockingqueue.h"
+#include "saber/util/blocking_queue.h"
 
 namespace saber {
+
+template<typename T>
+class Request {
+ public:
+  std::string path_;
+  void* context_;
+  Watcher* watcher_;
+  T cb_;
+
+  Request(const std::string& p, void* context, Watcher* watcher, const T& cb)
+      : path_(p), context_(context), watcher_(watcher), cb_(cb) {
+  }
+
+  Request(const std::string& p, void* context, Watcher* watcher, T&& cb)
+      : path_(p), context_(context), watcher_(watcher), cb_(std::move(cb)) {
+  }
+
+  Request(const Request& r) {
+    path_ = r.path_;
+    context_ = r.context_;
+    watcher_ = r.watcher_;
+    cb_ = r.cb_;
+  }
+  Request(Request&& r) {
+    path_ = std::move(r.path_);
+    context_ = r.context_;
+    watcher_ = r.watcher_;
+    cb_ = std::move(r.cb_);
+  }
+  void operator=(const Request& r) {
+    path_ = r.path_;
+    context_ = r.context_;
+    watcher_ = r.watcher_;
+    cb_ = r.cb_;
+ }
+  void operator=(Request&& r) {
+    path_ = std::move(r.path_);
+    context_ = r.context_;
+    watcher_ = r.watcher_;
+    cb_ = std::move(r.cb_);
+  }
+};
 
 class SaberClient : public std::enable_shared_from_this<SaberClient> {
  public:
@@ -32,32 +74,30 @@ class SaberClient : public std::enable_shared_from_this<SaberClient> {
   void Stop();
 
   bool Create(const CreateRequest& request, NodeType type,
-              void* context, const StringCallback& cb);
+              void* context, const CreateCallback& cb);
 
   bool Delete(const DeleteRequest& request,
-              void* context, const VoidCallback& cb);
+              void* context, const DeleteCallback& cb);
 
   bool Exists(const ExistsRequest& request, Watcher* watcher,
-              void* context, const StatCallback& cb);
+              void* context, const ExistsCallback& cb);
 
   bool GetData(const GetDataRequest& request, Watcher* watcher,
-               void* context, const DataCallback& cb);
+               void* context, const GetDataCallback& cb);
 
   bool SetData(const SetDataRequest& request,
-               void* context, const StatCallback& cb);
+               void* context, const SetDataCallback& cb);
 
   bool GetACL(const GetACLRequest& request,
-              void* context, const ACLCallback& cb);
+              void* context, const GetACLCallback& cb);
 
   bool SetACL(const SetACLRequest& request,
-              void* context, const StatCallback& cb);
+              void* context, const SetACLCallback& cb);
 
   bool GetChildren(const GetChildrenRequest& request, Watcher* watcher,
                    void* context, const ChildrenCallback& cb);
 
  private:
-  std::string HeaderMessage(NodeType type = PERSISTENT);
-
   void Connect();
   void Close();
   void OnConnection(const voyager::TcpConnectionPtr& p);
@@ -72,14 +112,14 @@ class SaberClient : public std::enable_shared_from_this<SaberClient> {
 
   std::atomic<bool> has_started_;
 
-  BlockingQueue<std::pair<StringCallback, void*> > create_cb_;
-  BlockingQueue<std::pair<VoidCallback, void*> > delete_cb_;
-  BlockingQueue<std::pair<StatCallback, void*> > exists_cb_;
-  BlockingQueue<std::pair<DataCallback, void*> > get_data_cb_;
-  BlockingQueue<std::pair<StatCallback, void*> > set_data_cb_;
-  BlockingQueue<std::pair<ACLCallback, void*> > get_acl_cb_;
-  BlockingQueue<std::pair<StatCallback, void*> > set_acl_cb_;
-  BlockingQueue<std::pair<ChildrenCallback, void*> > children_cb_;
+  BlockingQueue<Request<CreateCallback> > create_cb_;
+  BlockingQueue<Request<DeleteCallback> > delete_cb_;
+  BlockingQueue<Request<ExistsCallback> > exists_cb_;
+  BlockingQueue<Request<GetDataCallback> > get_data_cb_;
+  BlockingQueue<Request<SetDataCallback> > set_data_cb_;
+  BlockingQueue<Request<GetACLCallback> > get_acl_cb_;
+  BlockingQueue<Request<SetACLCallback> > set_acl_cb_;
+  BlockingQueue<Request<ChildrenCallback> > children_cb_;
 
   // No copying allowed
   SaberClient(const SaberClient&);

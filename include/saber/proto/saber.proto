@@ -55,12 +55,6 @@ enum NodeType {
   EPHEMERAL_SEQUENTIAL = 3;
 }
 
-message RequestHeader {
-}
-
-message ResponseHeader {
-}
-
 message ConnectRequest {
 }
 
@@ -71,7 +65,7 @@ message CreateRequest {
   string path = 1;
   bytes data = 2;
   repeated ACL acl = 3;
-  int32 flags =4;
+  NodeType type =4;
 }
 
 message CreateResponse {
@@ -154,6 +148,5 @@ enum MessageType {
 
 message SaberMessage {
   MessageType type = 1;
-  bytes msg = 2;
-  bytes msg2 = 3;
+  bytes data = 2;
 }

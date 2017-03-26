@@ -18,33 +18,61 @@ ServerConnection::~ServerConnection() {
 void ServerConnection::Process(const WatchedEvent& event) {
   SaberMessage message;
   message.set_type(MT_NOTIFICATION);
-  message.set_msg(event.SerializeAsString());
+  message.set_data(event.SerializeAsString());
   messager_->SendMessage(message);
 }
 
 void ServerConnection::OnMessage(std::unique_ptr<SaberMessage> message) {
   switch (message->type()) {
-    case MT_NOTIFICATION:
+    case MT_NOTIFICATION: {
+      WatchedEvent event;
+      event.ParseFromString(message->data());
       break;
-    case MT_CREATE:
+    }
+    case MT_CREATE: {
+      CreateRequest request;
+      request.ParseFromString(message->data());
       break;
-    case MT_DELETE:
+    }
+    case MT_DELETE: {
+      DeleteRequest request;
+      request.ParseFromString(message->data());
       break;
-    case MT_EXISTS:
+    }
+    case MT_EXISTS: {
+      ExistsRequest request;
+      request.ParseFromString(message->data());
       break;
-    case MT_GETDATA:
+    }
+    case MT_GETDATA: {
+      GetDataRequest request;
+      request.ParseFromString(message->data());
       break;
-    case MT_SETDATA:
+    }
+    case MT_SETDATA: {
+      SetDataRequest request;
+      request.ParseFromString(message->data());
       break;
-    case MT_GETACL:
+    }
+    case MT_GETACL: {
+      GetACLRequest request;
+      request.ParseFromString(message->data());
       break;
-    case MT_SETACL:
+    }
+    case MT_SETACL: {
+      SetACLRequest request;
+      request.ParseFromString(message->data());
       break;
-    case MT_GETCHILDREN:
+    }
+    case MT_GETCHILDREN: {
+      GetChildrenRequest request;
+      request.ParseFromString(message->data());
       break;
-    default:
+    }
+    default: {
       LOG_ERROR("Invalid message type.\n");
       break;
+    }
   }
 }
 

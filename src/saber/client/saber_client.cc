@@ -49,92 +49,92 @@ void SaberClient::Stop() {
 }
 
 bool SaberClient::Create(const CreateRequest& request, NodeType type,
-                         void* context, const StringCallback& cb) {
+                         void* context, const CreateCallback& cb) {
   SaberMessage message;
   message.set_type(MT_CREATE);
-  message.set_msg(HeaderMessage(type));
-  message.set_msg2(request.SerializeAsString());
+  message.set_data(request.SerializeAsString());
   bool res = messager_->SendMessage(message);
   if (res) {
-    create_cb_.push(std::make_pair(cb, context));
+    create_cb_.push(
+        Request<CreateCallback>(request.path(), context, nullptr, cb));
   }
   return res;
 }
 
 bool SaberClient::Delete(const DeleteRequest& request,
-                         void* context, const VoidCallback& cb) {
+                         void* context, const DeleteCallback& cb) {
   SaberMessage message;
   message.set_type(MT_DELETE);
-  message.set_msg(HeaderMessage());
-  message.set_msg2(request.SerializeAsString());
+  message.set_data(request.SerializeAsString());
   bool res = messager_->SendMessage(message);
   if (res) {
-    delete_cb_.push(std::make_pair(cb, context));
+    delete_cb_.push(
+        Request<DeleteCallback>(request.path(), context, nullptr, cb));
   }
   return res;
 }
 
 bool SaberClient::Exists(const ExistsRequest& request, Watcher* watcher,
-                         void* context, const StatCallback& cb) {
+                         void* context, const ExistsCallback& cb) {
   SaberMessage message;
   message.set_type(MT_EXISTS);
-  message.set_msg(HeaderMessage());
-  message.set_msg2(request.SerializeAsString());
+  message.set_data(request.SerializeAsString());
   bool res = messager_->SendMessage(message);
   if (res) {
-    exists_cb_.push(std::make_pair(cb, context));
+    exists_cb_.push(
+        Request<ExistsCallback>(request.path(), context, watcher, cb));
   }
   return res;
 }
 
 bool SaberClient::GetData(const GetDataRequest& request, Watcher* watcher,
-                          void* context, const DataCallback& cb) {
+                          void* context, const GetDataCallback& cb) {
   SaberMessage message;
   message.set_type(MT_GETDATA);
-  message.set_msg(HeaderMessage());
-  message.set_msg2(request.SerializeAsString());
+  message.set_data(request.SerializeAsString());
   bool res = messager_->SendMessage(message);
   if (res) {
-    get_data_cb_.push(std::make_pair(cb, context));
+    get_data_cb_.push(
+        Request<GetDataCallback>(request.path(), context, watcher, cb));
   }
   return res;
 }
 
 bool SaberClient::SetData(const SetDataRequest& request,
-                          void* context, const StatCallback& cb) {
+                          void* context, const SetDataCallback& cb) {
   SaberMessage message;
   message.set_type(MT_SETDATA);
-  message.set_msg(HeaderMessage());
-  message.set_msg2(request.SerializeAsString());
+  message.set_data(request.SerializeAsString());
   bool res = messager_->SendMessage(message);
   if (res) {
-    set_data_cb_.push(std::make_pair(cb, context));
+    set_data_cb_.push(
+        Request<SetDataCallback>(request.path(), context, nullptr, cb));
   }
   return res;
 }
 
 bool SaberClient::GetACL(const GetACLRequest& request,
-                         void* context, const ACLCallback& cb) {
+                         void* context, const GetACLCallback& cb) {
   SaberMessage message;
   message.set_type(MT_GETACL);
-  message.set_msg(HeaderMessage());
-  message.set_msg2(request.SerializeAsString());
+  message.set_data(request.SerializeAsString());
   bool res = messager_->SendMessage(message);
   if (res) {
-    get_acl_cb_.push(std::make_pair(cb, context));
+    get_acl_cb_.push(
+        Request<GetACLCallback>(request.path(), context, nullptr, cb));
   }
   return res;
 }
 
 bool SaberClient::SetACL(const SetACLRequest& request,
-                         void* context, const StatCallback& cb) {
+                         void* context, const SetACLCallback& cb) {
   SaberMessage message;
   message.set_type(MT_SETACL);
-  message.set_msg(HeaderMessage());
-  message.set_msg2(request.SerializeAsString());
+  message.set_data(request.SerializeAsString());
   bool res = messager_->SendMessage(message);
   if (res) {
-    set_acl_cb_.push(std::make_pair(cb, context));
+    set_acl_cb_.push
+        (Request<SetACLCallback>(request.path(), context, nullptr, cb));
   }
   return res;
 }
@@ -143,18 +143,13 @@ bool SaberClient::GetChildren(const GetChildrenRequest& request, Watcher* watche
                               void* context, const ChildrenCallback& cb) {
   SaberMessage message;
   message.set_type(MT_GETCHILDREN);
-  message.set_msg(HeaderMessage());
-  message.set_msg2(request.SerializeAsString());
+  message.set_data(request.SerializeAsString());
   bool res = messager_->SendMessage(message);
   if (res) {
-    children_cb_.push(std::make_pair(cb, context));
+    children_cb_.push(
+        Request<ChildrenCallback>(request.path(), context, watcher, cb));
   }
   return res;
-}
-
-std::string SaberClient::HeaderMessage(NodeType type) {
-  RequestHeader header;
-  return header.SerializeAsString();
 }
 
 void SaberClient::Connect() {
@@ -208,26 +203,69 @@ void SaberClient::OnClose(const voyager::TcpConnectionPtr& p) {
 void SaberClient::OnMessage(std::unique_ptr<SaberMessage> message) {
   assert(message);
   switch (message->type()) {
-    case MT_NOTIFICATION:
+    case MT_NOTIFICATION: {
+      WatchedEvent event;
+      event.ParseFromString(message->data());
       break;
-    case MT_CREATE:
+    }
+    case MT_CREATE: {
+      CreateResponse response;
+      response.ParseFromString(message->data());
+      Request<CreateCallback> r(create_cb_.take());
+      r.cb_(0, r.path_, r.context_, response);
       break;
-    case MT_DELETE:
+    }
+    case MT_DELETE: {
+      Request<DeleteCallback> r(delete_cb_.take());
+      r.cb_(0, r.path_, r.context_);
       break;
-    case MT_EXISTS:
+    }
+    case MT_EXISTS: {
+      ExistsResponse response;
+      response.ParseFromString(message->data());
+      Request<ExistsCallback> r(exists_cb_.take());
+      r.cb_(0, r.path_, r.context_, response);
       break;
-    case MT_GETDATA:
+    }
+    case MT_GETDATA: {
+      GetDataResponse response;
+      response.ParseFromString(message->data());
+      Request<GetDataCallback> r(get_data_cb_.take());
+      r.cb_(0, r.path_, r.context_, response);
       break;
-    case MT_SETDATA:
+    }
+    case MT_SETDATA: {
+      SetDataResponse response;
+      response.ParseFromString(message->data());
+      Request<SetDataCallback> r(set_data_cb_.take());
+      r.cb_(0, r.path_, r.context_, response);
       break;
-    case MT_GETACL:
+    }
+    case MT_GETACL: {
+      GetACLResponse response;
+      response.ParseFromString(message->data());
+      Request<GetACLCallback> r(get_acl_cb_.take());
+      r.cb_(0, r.path_, r.context_, response);
       break;
-    case MT_SETACL:
+    }
+    case MT_SETACL: {
+      SetACLResponse response;
+      response.ParseFromString(message->data());
+      Request<SetACLCallback> r(set_acl_cb_.take());
+      r.cb_(0, r.path_, r.context_, response);
       break;
-    case MT_GETCHILDREN:
+    }
+    case MT_GETCHILDREN: {
+      GetChildrenResponse response;
+      response.ParseFromString(message->data());
+      Request<ChildrenCallback> r(children_cb_.take());
+      r.cb_(0, r.path_, r.context_, response);
       break;
-    default:
+    }
+    default: {
+      LOG_ERROR("Invalid message type.\n");
       break;
+    }
   }
 }
 
