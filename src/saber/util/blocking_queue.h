@@ -20,14 +20,14 @@ class BlockingQueue {
 
   void push(const T& t) {
     MutexLock lock(&mutex_);
-    queue_.push(t);
+    queue_.push_back(t);
     cond_.Signal();
   }
-  
+
   void push(T&& t) {
     MutexLock lock(&mutex_);
-    queue_.push(std::move(t));
-    cond_.Signal(); 
+    queue_.push_back(std::move(t));
+    cond_.Signal();
   }
 
   void pop() {
@@ -36,7 +36,7 @@ class BlockingQueue {
       cond_.Wait();
     }
     assert(!queue_.empty());
-    queue_.pop();
+    queue_.pop_front();
   }
 
   T take() {
@@ -45,8 +45,8 @@ class BlockingQueue {
       cond_.Wait();
     }
     assert(!queue_.empty());
-    T t(queue_.front());
-    queue_.pop();
+    T t(std::move(queue_.front()));
+    queue_.pop_front();
     return t;
   }
 
@@ -63,7 +63,7 @@ class BlockingQueue {
  private:
   mutable Mutex mutex_;
   Condition cond_;
-  std::queue<T> queue_;
+  std::deque<T> queue_;
 
   // No copying allowed
   BlockingQueue(const BlockingQueue&);

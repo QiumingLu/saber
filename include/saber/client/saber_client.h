@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <voyager/core/eventloop.h>
+#include <voyager/core/bg_eventloop.h>
 #include <voyager/core/sockaddr.h>
 #include <voyager/core/tcp_client.h>
 
@@ -61,10 +62,9 @@ class Request {
   }
 };
 
-class SaberClient : public std::enable_shared_from_this<SaberClient> {
+class SaberClient {
  public:
   SaberClient(
-      voyager::EventLoop* loop,
       const std::string& server,
       std::unique_ptr<ServerManager> p = std::unique_ptr<ServerManager>());
 
@@ -73,60 +73,62 @@ class SaberClient : public std::enable_shared_from_this<SaberClient> {
   void Start();
   void Stop();
 
-  bool Create(const CreateRequest& request, NodeType type,
+  void Create(const CreateRequest& request,
               void* context, const CreateCallback& cb);
 
-  bool Delete(const DeleteRequest& request,
+  void Delete(const DeleteRequest& request,
               void* context, const DeleteCallback& cb);
 
-  bool Exists(const ExistsRequest& request, Watcher* watcher,
+  void Exists(const ExistsRequest& request, Watcher* watcher,
               void* context, const ExistsCallback& cb);
 
-  bool GetData(const GetDataRequest& request, Watcher* watcher,
+  void GetData(const GetDataRequest& request, Watcher* watcher,
                void* context, const GetDataCallback& cb);
 
-  bool SetData(const SetDataRequest& request,
+  void SetData(const SetDataRequest& request,
                void* context, const SetDataCallback& cb);
 
-  bool GetACL(const GetACLRequest& request,
+  void GetACL(const GetACLRequest& request,
               void* context, const GetACLCallback& cb);
 
-  bool SetACL(const SetACLRequest& request,
+  void SetACL(const SetACLRequest& request,
               void* context, const SetACLCallback& cb);
 
-  bool GetChildren(const GetChildrenRequest& request, Watcher* watcher,
+  void GetChildren(const GetChildrenRequest& request, Watcher* watcher,
                    void* context, const ChildrenCallback& cb);
 
  private:
   void Connect();
   void Close();
+  void TrySendInLoop();
   void OnConnection(const voyager::TcpConnectionPtr& p);
   void OnFailue();
   void OnClose(const voyager::TcpConnectionPtr& p);
   void OnMessage(std::unique_ptr<SaberMessage> message);
 
+  voyager::BGEventLoop thread_;
   voyager::EventLoop* loop_;
   std::unique_ptr<voyager::TcpClient> client_;
   std::unique_ptr<ServerManager> server_manager_;
   std::unique_ptr<Messager> messager_;
 
   std::atomic<bool> has_started_;
+  bool has_cb_;
 
-  BlockingQueue<Request<CreateCallback> > create_cb_;
-  BlockingQueue<Request<DeleteCallback> > delete_cb_;
-  BlockingQueue<Request<ExistsCallback> > exists_cb_;
-  BlockingQueue<Request<GetDataCallback> > get_data_cb_;
-  BlockingQueue<Request<SetDataCallback> > set_data_cb_;
-  BlockingQueue<Request<GetACLCallback> > get_acl_cb_;
-  BlockingQueue<Request<SetACLCallback> > set_acl_cb_;
-  BlockingQueue<Request<ChildrenCallback> > children_cb_;
+  std::queue<std::unique_ptr<Request<CreateCallback> > > create_queue_;
+  std::queue<std::unique_ptr<Request<DeleteCallback> > > delete_queue_;
+  std::queue<std::unique_ptr<Request<ExistsCallback> > > exists_queue_;
+  std::queue<std::unique_ptr<Request<GetDataCallback> > > get_data_queue_;
+  std::queue<std::unique_ptr<Request<SetDataCallback> > > set_data_queue_;
+  std::queue<std::unique_ptr<Request<GetACLCallback> > > get_acl_queue_;
+  std::queue<std::unique_ptr<Request<SetACLCallback> > > set_acl_queue_;
+  std::queue<std::unique_ptr<Request<ChildrenCallback> > > children_queue_;
+  std::queue<std::unique_ptr<SaberMessage> > outgoing_queue_;
 
   // No copying allowed
   SaberClient(const SaberClient&);
   void operator=(const SaberClient&);
 };
-
-typedef std::shared_ptr<SaberClient> SaberClientPtr;
 
 }  // namespace saber
 

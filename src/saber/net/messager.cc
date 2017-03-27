@@ -36,7 +36,8 @@ bool Messager::SendMessage(const SaberMessage& message) {
   return res;
 }
 
-void Messager::OnMessage(const voyager::TcpConnectionPtr& p, voyager::Buffer* buf) {
+void Messager::OnMessage(const voyager::TcpConnectionPtr& p,
+                         voyager::Buffer* buf) {
   assert(conn_wp_.lock() == p);
 
   while (true) {
