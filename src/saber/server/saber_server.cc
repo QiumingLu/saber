@@ -15,6 +15,7 @@ SaberServer::SaberServer(voyager::EventLoop* loop,
 }
 
 SaberServer::~SaberServer() {
+  delete node_;
 }
 
 bool SaberServer::Start(const skywalker::Options& options) {
@@ -43,7 +44,8 @@ void SaberServer::OnConnection(const voyager::TcpConnectionPtr& p) {
     messager->OnMessage(ptr, buf);
   });
 
-  ServerConnection* conn = new ServerConnection(std::unique_ptr<Messager>(messager), &db_);
+  ServerConnection* conn =
+      new ServerConnection(std::unique_ptr<Messager>(messager), &db_);
   conn->SetSessionId(seq_.GetNext());
   p->SetContext(conn);
   conns_.insert(conn->SessionId(), std::unique_ptr<ServerConnection>(conn));

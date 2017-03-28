@@ -7,7 +7,8 @@ ServerConnection::ServerConnection(std::unique_ptr<Messager> p,
                                    DataBase* db)
     : messager_(std::move(p)),
       db_(db) {
-  messager_->SetMessageCallback([this](std::unique_ptr<SaberMessage> message) {
+  messager_->SetMessageCallback(
+      [this](std::unique_ptr<SaberMessage> message) {
     OnMessage(std::move(message));
   });
 }

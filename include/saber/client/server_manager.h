@@ -7,6 +7,7 @@
 
 #include <stdint.h>
 #include <string>
+#include <voyager/core/sockaddr.h>
 
 namespace saber {
 
@@ -17,7 +18,11 @@ class ServerManager {
 
   virtual void UpdateServers(const std::string& servers) = 0;
 
-  virtual std::pair<std::string, uint16_t> GetNext() = 0;
+  virtual size_t GetSize() const = 0;
+
+  virtual voyager::SockAddr GetNext() = 0;
+
+  virtual void OnConnection() = 0;
 
  private:
   // No copying allowed

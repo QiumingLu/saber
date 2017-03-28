@@ -18,12 +18,16 @@ class ServerManagerImpl : public ServerManager {
 
   virtual void UpdateServers(const std::string& servers);
 
-  virtual std::pair<std::string, uint16_t> GetNext();
+  virtual size_t GetSize() const;
+
+  virtual voyager::SockAddr GetNext();
+
+  virtual void OnConnection();
 
  private:
-  Mutex mutex_;
+  mutable Mutex mutex_;
   size_t next_;
-  std::vector<std::pair<std::string, uint16_t> > servers_;
+  std::vector<voyager::SockAddr> servers_;
 
   // No copying allowed
   ServerManagerImpl(const ServerManagerImpl&);
