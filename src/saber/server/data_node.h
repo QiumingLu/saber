@@ -8,6 +8,8 @@
 #include <set>
 #include <string>
 
+#include "saber/proto/saber.pb.h"
+
 namespace saber {
 
 class DataNode {
@@ -16,6 +18,8 @@ class DataNode {
   DataNode(const std::string& data);
   ~DataNode();
 
+  void CopyStat(Stat* stat) { }
+
   void SetData(const std::string& data) { data_ = data; }
   const std::string& GetData() const { return data_; }
 
@@ -23,6 +27,7 @@ class DataNode {
   bool RemoveChild(const std::string& child);
 
  private:
+  Stat stat_;
   std::string data_;
   std::set<std::string> children_;
 

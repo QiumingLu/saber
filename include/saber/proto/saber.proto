@@ -24,6 +24,13 @@ message WatchedEvent {
   bytes path = 3;
 }
 
+enum NodeType {
+  NT_PERSISTENT = 0;
+  NT_PERSISTENT_SEQUENTIAL = 1;
+  NT_EPHEMERAL = 2;
+  NT_EPHEMERAL_SEQUENTIAL = 3;
+}
+
 message Stat {
   int64 created_id = 1;
   int64 modified_id = 2;
@@ -46,13 +53,6 @@ message Id {
 message ACL {
   int32 perms = 1;
   Id id = 2;
-}
-
-enum NodeType {
-  PERSISTENT = 0;
-  PERSISTENT_SEQUENTIAL = 1;
-  EPHEMERAL = 2;
-  EPHEMERAL_SEQUENTIAL = 3;
 }
 
 message ConnectRequest {

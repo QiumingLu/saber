@@ -46,7 +46,8 @@ void Messager::OnMessage(const voyager::TcpConnectionPtr& p,
       memcpy(&size, buf->Peek(), kHeaderSize);
       if (buf->ReadableSize() >= static_cast<size_t>(size)) {
         SaberMessage* message(new SaberMessage());
-        message->ParseFromArray(buf->Peek() + kHeaderSize, size - kHeaderSize);
+        message->ParseFromArray(buf->Peek() + kHeaderSize,
+                                size - kHeaderSize);
         cb_(std::unique_ptr<SaberMessage>(message));
         buf->Retrieve(size);
       } else {

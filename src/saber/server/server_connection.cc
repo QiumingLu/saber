@@ -6,6 +6,7 @@ namespace saber {
 ServerConnection::ServerConnection(std::unique_ptr<Messager> p,
                                    DataBase* db)
     : messager_(std::move(p)),
+      loop_(messager_->GetTcpConnection()->OwnerEventLoop()),
       db_(db) {
   messager_->SetMessageCallback(
       [this](std::unique_ptr<SaberMessage> message) {
@@ -47,7 +48,10 @@ void ServerConnection::OnMessage(std::unique_ptr<SaberMessage> message) {
     }
     case MT_GETDATA: {
       GetDataRequest request;
+      GetDataResponse response;
       request.ParseFromString(message->data());
+      Watcher* watcher = request.watch() ? this : nullptr;
+      db_->GetData(request.path(), watcher, &response);
       break;
     }
     case MT_SETDATA: {

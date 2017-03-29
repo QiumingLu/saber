@@ -7,10 +7,11 @@
 
 #include <memory>
 #include <string>
-#include <map>
+#include <unordered_map>
 
 #include "saber/server/data_node.h"
 #include "saber/server/server_watch_manager.h"
+#include "saber/util/mutex.h"
 
 namespace saber {
 
@@ -19,17 +20,20 @@ class DataTree {
   DataTree();
   ~DataTree();
 
-  int CreateNode(const std::string& path, const std::string& data);
+  int CreateNode(const std::string& path, const std::string& data,
+                 CreateResponse* response);
   int DeleteNode(const std::string& path);
 
-  bool SetData(const std::string& path, const std::string& data);
-  bool GetData(const std::string& path,
-               Watcher* watcher, std::string* data);
+  bool SetData(const std::string& path, const std::string& data,
+               SetDataResponse* response);
+  bool GetData(const std::string& path, Watcher* watcher,
+               GetDataResponse* response);
 
  private:
-  std::map<std::string, std::unique_ptr<DataNode> > nodes_;
+  Mutex mutex_;
   ServerWatchManager data_watches_;
   ServerWatchManager child_watches_;
+  std::unordered_map<std::string, std::unique_ptr<DataNode> > nodes_;
 
   // No copying allowed
   DataTree(const DataTree&);

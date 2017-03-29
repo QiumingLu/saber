@@ -12,4 +12,9 @@ DataBase::DataBase() {
 DataBase::~DataBase() {
 }
 
+void DataBase::GetData(const std::string& path, Watcher* watcher,
+                       GetDataResponse* response) {
+  tree_.GetData(path, watcher, response);
+}
+
 }  // namespace saber

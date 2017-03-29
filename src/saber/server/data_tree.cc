@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "saber/server/data_tree.h"
+#include "saber/util/mutexlock.h"
 
 namespace saber {
 
@@ -14,12 +15,13 @@ DataTree::DataTree() {
 DataTree::~DataTree() {
 }
 
-int DataTree::CreateNode(
-    const std::string& path, const std::string& data) {
+int DataTree::CreateNode(const std::string& path, const std::string& data,
+                         CreateResponse* response) {
   int result = 0;
   size_t found = path.find_last_of('/');
   std::string parent = path.substr(0, found);
   std::string child = path.substr(found + 1);
+  MutexLock lock(&mutex_);
   auto it = nodes_.find(parent);
   if (it != nodes_.end()) {
     bool res = it->second->AddChild(child);
@@ -43,6 +45,7 @@ int DataTree::DeleteNode(const std::string& path) {
   size_t found = path.find_last_of('/');
   std::string parent = path.substr(0, found);
   std::string child = path.substr(found + 1);
+  MutexLock lock(&mutex_);
   auto it =  nodes_.find(path);
   if (it != nodes_.end()) {
     nodes_.erase(it);
@@ -62,20 +65,30 @@ int DataTree::DeleteNode(const std::string& path) {
   return result;
 }
 
-bool DataTree::SetData(const std::string& path, const std::string& data) {
+bool DataTree::SetData(const std::string& path, const std::string& data,
+                       SetDataResponse* response) {
+  MutexLock lock(&mutex_);
   auto it  =nodes_.find(path);
   if (it != nodes_.end()) {
+    Stat* stat = new Stat();
+    it->second->SetData(data);
+    it->second->CopyStat(stat);
+    response->set_allocated_stat(stat);
     data_watches_.TriggerWatcher(path, ET_NODE_DATA_CHANGED);
     return true;
   }
   return false;
 }
 
-bool DataTree::GetData(const std::string& path,
-                       Watcher* watcher, std::string* data) {
+bool DataTree::GetData(const std::string& path, Watcher* watcher,
+                       GetDataResponse* response) {
+  MutexLock lock(&mutex_);
   auto it = nodes_.find(path);
   if (it != nodes_.end()) {
-    *data = it->second->GetData();
+    Stat* stat = new Stat();
+    it->second->CopyStat(stat);
+    response->set_data(it->second->GetData());
+    response->set_allocated_stat(stat);
     if (watcher != nullptr) {
       data_watches_.AddWatch(path, watcher);
     }

@@ -32,6 +32,7 @@ class ServerConnection : public Watcher {
 
   uint64_t session_id_;
   std::unique_ptr<Messager> messager_;
+  voyager::EventLoop* loop_;
 
   DataBase* db_;
 

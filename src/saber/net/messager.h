@@ -14,12 +14,18 @@ namespace saber {
 
 class Messager {
  public:
-  typedef std::function<void (std::unique_ptr<SaberMessage>) > MessageCallback;
+  typedef std::function<
+      void (std::unique_ptr<SaberMessage>) > MessageCallback;
 
   Messager();
   ~Messager();
 
-  void SetTcpConnection(const voyager::TcpConnectionPtr& p) { conn_wp_ = p; }
+  void SetTcpConnection(const voyager::TcpConnectionPtr& p) {
+    conn_wp_ = p;
+  }
+  voyager::TcpConnectionPtr GetTcpConnection() const {
+    return conn_wp_.lock();
+  }
   void SetMessageCallback(const MessageCallback& cb) { cb_ = cb; }
   void SetMessageCallback(MessageCallback&& cb) { cb_ = std::move(cb); }
 

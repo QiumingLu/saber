@@ -14,6 +14,9 @@ class DataBase {
   DataBase();
   ~DataBase();
 
+  void GetData(const std::string& path, Watcher* watcher,
+               GetDataResponse* response);
+
  private:
   DataTree tree_;
 

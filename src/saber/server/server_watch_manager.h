@@ -14,9 +14,6 @@
 
 namespace saber {
 
-typedef std::unique_ptr<std::set<Watcher*> > WatcherSetPtr;
-typedef std::unique_ptr<std::set<std::string> > PathSetPtr;
-
 class ServerWatchManager {
  public:
   ServerWatchManager();

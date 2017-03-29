@@ -5,6 +5,9 @@
 #ifndef SABER_SERVICE_WATCHER_H_
 #define SABER_SERVICE_WATCHER_H_
 
+#include <memory>
+#include <set>
+#include <string>
 #include "saber/proto/saber.pb.h"
 
 namespace saber {
@@ -17,9 +20,13 @@ class Watcher {
   virtual void Process(const WatchedEvent& event) = 0;
 
  private:
+  // No copying allowed
   Watcher(const Watcher&);
   void operator=(const Watcher&);
 };
+
+typedef std::unique_ptr<std::set<Watcher*> > WatcherSetPtr;
+typedef std::unique_ptr<std::set<std::string> > PathSetPtr;
 
 }  // namespace saber
 

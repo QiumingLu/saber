@@ -5,6 +5,11 @@
 #ifndef SABER_CLIENT_CLIENT_WATCH_MANAGER_H_
 #define SABER_CLIENT_CLIENT_WATCH_MANAGER_H_
 
+#include <set>
+#include <unordered_map>
+
+#include "saber/service/watcher.h"
+
 namespace saber {
 
 class ClientWatchManager {
@@ -12,7 +17,18 @@ class ClientWatchManager {
   ClientWatchManager();
   ~ClientWatchManager();
 
+  void AddDataWatch(const std::string& path, Watcher* watcher);
+  void AddExistWatch(const std::string& path, Watcher* watcher);
+  void AddChildWatch(const std::string& path, Watcher* watcher);
+  void RemoveDataWatch(const std::string& path, Watcher* watcher);
+  void RemoveExistWatch(const std::string& path, Watcher* watcher);
+  void RemoveChildWatch(const std::string& path, Watcher* watcher);
+
  private:
+  std::unordered_map<std::string, WatcherSetPtr> data_watches_;
+  std::unordered_map<std::string, WatcherSetPtr> exist_watches_;
+  std::unordered_map<std::string, WatcherSetPtr> child_watches_;
+
   // No copying allowed
   ClientWatchManager(const ClientWatchManager&);
   void operator=(const ClientWatchManager&);
