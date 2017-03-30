@@ -15,7 +15,9 @@
 #include "saber/client/callbacks.h"
 #include "saber/client/server_manager.h"
 #include "saber/client/request.h"
+#include "saber/client/options.h"
 #include "saber/service/watcher.h"
+#include "saber/util/runloop_thread.h"
 
 namespace saber {
 
@@ -25,6 +27,7 @@ class ClientWatchManager;
 class SaberClient {
  public:
   SaberClient(
+      const Options& options,
       const std::string& server,
       std::unique_ptr<ServerManager> p = std::unique_ptr<ServerManager>());
 
@@ -66,8 +69,14 @@ class SaberClient {
   void OnClose(const voyager::TcpConnectionPtr& p);
   void OnMessage(std::unique_ptr<SaberMessage> message);
 
-  voyager::BGEventLoop thread_;
-  voyager::EventLoop* loop_;
+  Options options_;
+
+  voyager::BGEventLoop send_thread_;
+  voyager::EventLoop* send_loop_;
+
+  RunLoopThread event_thread_;
+  RunLoop* event_loop_;
+
   std::unique_ptr<voyager::TcpClient> client_;
   std::unique_ptr<ServerManager> server_manager_;
   std::unique_ptr<Messager> messager_;

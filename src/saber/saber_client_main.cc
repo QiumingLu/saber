@@ -28,7 +28,8 @@ class DefaultWatcher : public saber::Watcher {
 
 int main() {
   DefaultWatcher watcher;
-  saber::SaberClient client("127.0.0.1:8888,127.0.0.1:8889");
+  saber::Options options;
+  saber::SaberClient client(options, "127.0.0.1:8888,127.0.0.1:8889");
   saber::CreateRequest r1;
   client.Create(r1, nullptr, &CreateCallback);
   client.Start();

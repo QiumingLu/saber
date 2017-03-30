@@ -3,10 +3,12 @@
 // found in the LICENSE file.
 
 #include "saber/client/client_watch_manager.h"
+#include "saber/util/logging.h"
 
 namespace saber {
 
-ClientWatchManager::ClientWatchManager() {
+ClientWatchManager::ClientWatchManager(bool auto_watch_reset)
+    : auto_watch_reset_(auto_watch_reset) {
 }
 
 ClientWatchManager::~ClientWatchManager() {
@@ -48,35 +50,25 @@ void ClientWatchManager::AddChildWatch(
   }
 }
 
-void ClientWatchManager::RemoveDataWatch(
-    const std::string& path, Watcher* watcher) {
-  auto it = data_watches_.find(path);
-  if (it != data_watches_.end()) {
-    it->second->erase(watcher);
-  }
-}
-
-void ClientWatchManager::RemoveExistWatch(
-    const std::string& path, Watcher* watcher) {
-  auto it = exist_watches_.find(path);
-  if (it != exist_watches_.end()) {
-    it->second->erase(watcher);
-  }
-}
-
-WatcherSetPtr ClientWatchManager::RemoveChildWatch(
-    const std::string& path) {
-  auto it  = child_watches_.find(path);
-  WatcherSetPtr result;
-  result.swap(it->second);
-  child_watches_.erase(it);
-  return result;
-}
-
 WatcherSetPtr ClientWatchManager::Trigger(const WatchedEvent& event) {
   WatcherSetPtr result;
   switch(event.type()) {
     case ET_NONE: {
+      result.reset(new std::set<Watcher*>());
+      for (auto& i : data_watches_) {
+        result->insert(i.second->begin(), i.second->end());
+      }
+      for (auto& i : exist_watches_) {
+        result->insert(i.second->begin(), i.second->end());
+      }
+      for (auto& i : child_watches_) {
+        result->insert(i.second->begin(), i.second->end());
+      }
+      if (event.state() != SS_CONNECTED && !auto_watch_reset_) {
+        data_watches_.clear();
+        exist_watches_.clear();
+        child_watches_.clear();
+      }
       break;
     }
     case ET_NODE_CREATED:
@@ -122,12 +114,16 @@ WatcherSetPtr ClientWatchManager::Trigger(const WatchedEvent& event) {
       }
       break;
     }
-    case ET_DATA_WATCH_REMOVED:
+    case ET_DATA_WATCH_REMOVED: {
       break;
-    case ET_CHILD_WATCH_REMOVED:
+    }
+    case ET_CHILD_WATCH_REMOVED: {
       break;
-    default:
+    }
+    default: {
+      LOG_ERROR("Invalid watched event type.\n");
       break;
+    }
   }
   return result;
 }

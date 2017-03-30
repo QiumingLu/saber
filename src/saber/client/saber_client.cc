@@ -10,12 +10,15 @@
 
 namespace saber {
 
-SaberClient::SaberClient(const std::string& servers,
+SaberClient::SaberClient(const Options& options,
+                         const std::string& servers,
                          std::unique_ptr<ServerManager> manager)
-    : loop_(thread_.Loop()),
+    : options_(options),
+      send_loop_(send_thread_.Loop()),
+      event_loop_(event_thread_.Loop()),
       server_manager_(std::move(manager)),
       messager_(new Messager()),
-      watch_manager_(new ClientWatchManager()),
+      watch_manager_(new ClientWatchManager(options.auto_watch_reset)),
       has_started_(false) {
   if (!server_manager_) {
     server_manager_.reset(new ServerManagerImpl());
@@ -59,7 +62,7 @@ void SaberClient::Create(const CreateRequest& request,
   Request<CreateCallback>* r = new Request<CreateCallback>(
       std::move(client_path), std::move(server_path), context, nullptr, cb);
 
-  loop_->RunInLoop([this, message, r]() {
+  send_loop_->RunInLoop([this, message, r]() {
     create_queue_.push(std::unique_ptr<Request<CreateCallback> >(r));
     TrySendInLoop(message);
   });
@@ -76,7 +79,7 @@ void SaberClient::Delete(const DeleteRequest& request,
   Request<DeleteCallback>* r = new Request<DeleteCallback>(
       std::move(client_path), std::move(server_path), context, nullptr, cb);
 
-  loop_->RunInLoop([this, message, r]() {
+  send_loop_->RunInLoop([this, message, r]() {
     delete_queue_.push(std::unique_ptr<Request<DeleteCallback> >(r));
     TrySendInLoop(message);
   });
@@ -93,7 +96,7 @@ void SaberClient::Exists(const ExistsRequest& request, Watcher* watcher,
   Request<ExistsCallback>* r = new Request<ExistsCallback>(
       std::move(client_path), std::move(server_path), context, nullptr, cb);
 
-  loop_->RunInLoop([this, message, r]() {
+  send_loop_->RunInLoop([this, message, r]() {
     exists_queue_.push(std::unique_ptr<Request<ExistsCallback> >(r));
     TrySendInLoop(message);
   });
@@ -110,7 +113,7 @@ void SaberClient::GetData(const GetDataRequest& request, Watcher* watcher,
   Request<GetDataCallback>* r = new Request<GetDataCallback>(
       std::move(client_path), std::move(server_path), context, nullptr, cb);
 
-  loop_->RunInLoop([this, message, r]() {
+  send_loop_->RunInLoop([this, message, r]() {
     get_data_queue_.push(std::unique_ptr<Request<GetDataCallback> >(r));
     TrySendInLoop(message);
   });
@@ -127,7 +130,7 @@ void SaberClient::SetData(const SetDataRequest& request,
   Request<SetDataCallback>* r = new Request<SetDataCallback>(
       std::move(client_path), std::move(server_path), context, nullptr, cb);
 
-  loop_->RunInLoop([this, message, r]() {
+  send_loop_->RunInLoop([this, message, r]() {
     set_data_queue_.push(std::unique_ptr<Request<SetDataCallback> >(r));
     TrySendInLoop(message);
   });
@@ -144,7 +147,7 @@ void SaberClient::GetACL(const GetACLRequest& request,
   Request<GetACLCallback>* r = new Request<GetACLCallback>(
       std::move(client_path), std::move(server_path), context, nullptr, cb);
 
-  loop_->RunInLoop([this, message, r]() {
+  send_loop_->RunInLoop([this, message, r]() {
     get_acl_queue_.push(std::unique_ptr<Request<GetACLCallback> >(r));
     TrySendInLoop(message);
   });
@@ -161,7 +164,7 @@ void SaberClient::SetACL(const SetACLRequest& request,
   Request<SetACLCallback>* r = new Request<SetACLCallback>(
       std::move(client_path), std::move(server_path), context, nullptr, cb);
 
-  loop_->RunInLoop([this, message, r]() {
+  send_loop_->RunInLoop([this, message, r]() {
     set_acl_queue_.push(std::unique_ptr<Request<SetACLCallback> >(r));
     TrySendInLoop(message);
   });
@@ -179,14 +182,14 @@ void SaberClient::GetChildren(const GetChildrenRequest& request,
   Request<ChildrenCallback>* r = new Request<ChildrenCallback>(
       std::move(client_path), std::move(server_path), context, watcher, cb);
 
-  loop_->RunInLoop([this, message, r]() {
+  send_loop_->RunInLoop([this, message, r]() {
     children_queue_.push(std::unique_ptr<Request<ChildrenCallback> >(r));
     TrySendInLoop(message);
   });
 }
 
 void SaberClient::Connect() {
-  client_.reset(new voyager::TcpClient(loop_, server_manager_->GetNext()));
+  client_.reset(new voyager::TcpClient(send_loop_, server_manager_->GetNext()));
   client_->SetConnectionCallback(
       [this](const voyager::TcpConnectionPtr& p) {
     OnConnection(p);
@@ -206,7 +209,7 @@ void SaberClient::Connect() {
 }
 
 void SaberClient::Close() {
-  loop_->RunInLoop([this]() {
+  send_loop_->RunInLoop([this]() {
     assert(client_);
     client_->Close();
   });
@@ -242,85 +245,136 @@ void SaberClient::OnMessage(std::unique_ptr<SaberMessage> message) {
   outgoing_queue_.pop_front();
   switch (message->type()) {
     case MT_NOTIFICATION: {
-      WatchedEvent event;
-      event.ParseFromString(message->data());
+      WatchedEvent* event = new WatchedEvent();
+      event->ParseFromString(message->data());
+      WatcherSetPtr result = watch_manager_->Trigger(*event);
+      std::set<Watcher*>* watchers = result.release();
+      event_loop_->RunInLoop([watchers, event]() {
+        if (watchers) {
+          for (auto& it : *watchers) {
+            it->Process(*event);
+          }
+        }
+        delete watchers;
+        delete event;
+      });
       break;
     }
     case MT_CREATE: {
-      CreateResponse response;
-      response.ParseFromString(message->data());
+      CreateResponse* response = new CreateResponse();
+      response->ParseFromString(message->data());
       auto& r = create_queue_.front();
-      r->callback(r->client_path, r->context, response);
+      Request<CreateCallback>* request = r.release();
       create_queue_.pop();
+      event_loop_->RunInLoop([request, response]() {
+        request->callback(request->client_path, request->context, *response);
+        delete request;
+        delete response;
+      });
       break;
     }
     case MT_DELETE: {
+      DeleteResponse* response = new DeleteResponse();
+      response->ParseFromString(message->data());
       auto& r = delete_queue_.front();
-      DeleteResponse response;
-      response.ParseFromString(message->data());
-      r->callback(r->client_path, r->context, response);
+      Request<DeleteCallback>* request = r.release();
       delete_queue_.pop();
+      event_loop_->RunInLoop([request, response]() {
+        request->callback(request->client_path, request->context, *response);
+        delete request;
+        delete response;
+      });
       break;
     }
     case MT_EXISTS: {
-      ExistsResponse response;
-      response.ParseFromString(message->data());
+      ExistsResponse* response = new ExistsResponse();
+      response->ParseFromString(message->data());
       auto& r = exists_queue_.front();
       if (r->watcher) {
-        if (response.code() == RC_OK) {
+        if (response->code() == RC_OK) {
           watch_manager_->AddDataWatch(r->client_path, r->watcher);
         } else {
           watch_manager_->AddExistWatch(r->client_path, r->watcher);
         }
       }
-      r->callback(r->client_path, r->context, response);
+      Request<ExistsCallback>* request = r.release();
       exists_queue_.pop();
-      break;
+      event_loop_->RunInLoop([request, response]() {
+        request->callback(request->client_path, request->context, *response);
+        delete request;
+        delete response;
+      });
+     break;
     }
     case MT_GETDATA: {
-      GetDataResponse response;
-      response.ParseFromString(message->data());
+      GetDataResponse* response = new GetDataResponse();
+      response->ParseFromString(message->data());
       auto& r = get_data_queue_.front();
-      if (r->watcher && response.code() == RC_OK) {
+      if (r->watcher && response->code() == RC_OK) {
         watch_manager_->AddDataWatch(r->client_path, r->watcher);
       }
-      r->callback(r->client_path, r->context, response);
+      Request<GetDataCallback>* request = r.release();
       get_data_queue_.pop();
+      event_loop_->RunInLoop([request, response]() {
+        request->callback(request->client_path, request->context, *response);
+        delete request;
+        delete response;
+      });
       break;
     }
     case MT_SETDATA: {
-      SetDataResponse response;
-      response.ParseFromString(message->data());
+      SetDataResponse* response = new SetDataResponse();
+      response->ParseFromString(message->data());
       auto& r = set_data_queue_.front();
-      r->callback(r->client_path, r->context, response);
+      Request<SetDataCallback>* request = r.release();
       set_data_queue_.pop();
+      event_loop_->RunInLoop([request, response]() {
+        request->callback(request->client_path, request->context, *response);
+        delete request;
+        delete response;
+      });
       break;
     }
     case MT_GETACL: {
-      GetACLResponse response;
-      response.ParseFromString(message->data());
+      GetACLResponse* response = new GetACLResponse();
+      response->ParseFromString(message->data());
       auto& r = get_acl_queue_.front();
-      r->callback(r->client_path, r->context, response);
+      Request<GetACLCallback>* request = r.release();
       get_acl_queue_.pop();
+      event_loop_->RunInLoop([request, response]() {
+        request->callback(request->client_path, request->context, *response);
+        delete request;
+        delete response;
+      });
       break;
     }
     case MT_SETACL: {
-      SetACLResponse response;
-      response.ParseFromString(message->data());
+      SetACLResponse* response = new SetACLResponse();
+      response->ParseFromString(message->data());
       auto& r = set_acl_queue_.front();
-      r->callback(r->client_path, r->context, response);
+      Request<SetACLCallback>* request = r.release();
       set_acl_queue_.pop();
+      event_loop_->RunInLoop([request, response]() {
+        request->callback(request->client_path, request->context, *response);
+        delete request;
+        delete response;
+      });
       break;
     }
     case MT_GETCHILDREN: {
-      GetChildrenResponse response;
-      response.ParseFromString(message->data());
+      GetChildrenResponse* response = new GetChildrenResponse();
+      response->ParseFromString(message->data());
       auto& r = children_queue_.front();
-      if (r->watcher && response.code() == RC_OK) {
+      if (r->watcher && response->code() == RC_OK) {
         watch_manager_->AddChildWatch(r->client_path, r->watcher);
       }
-      r->callback(r->client_path, r->context, response);
+      Request<ChildrenCallback>* request = r.release();
       children_queue_.pop();
+      event_loop_->RunInLoop([request, response]() {
+        request->callback(request->client_path, request->context, *response);
+        delete request;
+        delete response;
+      });
       break;
     }
     default: {

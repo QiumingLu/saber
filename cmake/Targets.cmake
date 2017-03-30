@@ -2,7 +2,10 @@ macro(saber_set_saber_link)
   set(Saber_LINK saber)
 endmacro()
 
-file(GLOB_RECURSE proto_files include/saber/proto/*.proto)
+file(GLOB_RECURSE proto_files
+  include/saber/proto/*.proto
+  src/saber/proto/proposal.proto
+)
 saber_protobuf_generate_cpp(${proto_gen_folder} proto_srcs proto_hdrs ${proto_files})
 
 set_source_files_properties(${proto_hdrs} ${proto_srcs} PROPERTIES COMPILE_FLAGS "-Wno-conversion -fPIC")

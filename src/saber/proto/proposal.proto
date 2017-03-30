@@ -1,0 +1,6 @@
+syntax = "proto3";
+package saber;
+
+message proposal {
+  int32 id = 1;
+}
