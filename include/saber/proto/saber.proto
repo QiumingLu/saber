@@ -31,6 +31,13 @@ enum NodeType {
   NT_EPHEMERAL_SEQUENTIAL = 3;
 }
 
+enum ResponseCode {
+  RC_OK = 0;
+  RC_NO_NODE = 1;
+  RC_NO_PARENT = 2;
+  RC_NODE_EXISTS =3;
+}
+
 message Stat {
   int64 created_id = 1;
   int64 modified_id = 2;
@@ -69,12 +76,17 @@ message CreateRequest {
 }
 
 message CreateResponse {
-  string path = 1;
+  ResponseCode code = 1;
+  string path = 2;
 }
 
 message DeleteRequest {
   string path = 1;
   int32 version = 2;
+}
+
+message DeleteResponse {
+  ResponseCode code = 1;
 }
 
 message ExistsRequest {
@@ -83,7 +95,8 @@ message ExistsRequest {
 }
 
 message ExistsResponse {
-  Stat stat = 1;
+  ResponseCode code = 1;
+  Stat stat = 2;
 }
 
 message GetDataRequest {
@@ -92,8 +105,9 @@ message GetDataRequest {
 }
 
 message GetDataResponse {
-  bytes data = 1;
-  Stat stat = 2;
+  ResponseCode code = 1;
+  bytes data = 2;
+  Stat stat = 3;
 }
 
 message SetDataRequest {
@@ -103,7 +117,8 @@ message SetDataRequest {
 }
 
 message SetDataResponse {
-  Stat stat = 1;
+  ResponseCode code = 1;
+  Stat stat = 2;
 }
 
 message GetACLRequest {
@@ -111,8 +126,9 @@ message GetACLRequest {
 }
 
 message GetACLResponse {
-  repeated ACL acl = 1;
-  Stat stat = 2;
+  ResponseCode code = 1;
+  repeated ACL acl = 2;
+  Stat stat = 3;
 }
 
 message SetACLRequest {
@@ -122,7 +138,8 @@ message SetACLRequest {
 }
 
 message SetACLResponse {
-  Stat stat = 1;
+  ResponseCode code = 1;
+  Stat stat = 2;
 }
 
 message GetChildrenRequest {
@@ -131,7 +148,8 @@ message GetChildrenRequest {
 }
 
 message GetChildrenResponse {
-  repeated string children = 1;
+  ResponseCode code = 1;
+  repeated string children = 2;
 }
 
 enum MessageType {

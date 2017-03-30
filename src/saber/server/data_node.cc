@@ -16,6 +16,10 @@ DataNode::DataNode(const std::string& data)
 DataNode::~DataNode() {
 }
 
+void DataNode::CopyStat(Stat* stat) const {
+  *stat = stat_;
+}
+
 bool DataNode::AddChild(const std::string& child) {
   auto it = children_.insert(child);
   return it.second;

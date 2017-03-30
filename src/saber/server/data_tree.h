@@ -20,13 +20,13 @@ class DataTree {
   DataTree();
   ~DataTree();
 
-  int CreateNode(const std::string& path, const std::string& data,
-                 CreateResponse* response);
-  int DeleteNode(const std::string& path);
-
-  bool SetData(const std::string& path, const std::string& data,
+  void CreateNode(const std::string& path, const std::string& data,
+                  CreateResponse* response);
+  void DeleteNode(const std::string& path,
+                  DeleteResponse* response);
+  void SetData(const std::string& path, const std::string& data,
                SetDataResponse* response);
-  bool GetData(const std::string& path, Watcher* watcher,
+  void GetData(const std::string& path, Watcher* watcher,
                GetDataResponse* response);
 
  private:

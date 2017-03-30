@@ -64,12 +64,72 @@ void ClientWatchManager::RemoveExistWatch(
   }
 }
 
-void ClientWatchManager::RemoveChildWatch(
-    const std::string& path, Watcher* watcher) {
+WatcherSetPtr ClientWatchManager::RemoveChildWatch(
+    const std::string& path) {
   auto it  = child_watches_.find(path);
-  if (it != child_watches_.end()) {
-    it->second->erase(watcher);
+  WatcherSetPtr result;
+  result.swap(it->second);
+  child_watches_.erase(it);
+  return result;
+}
+
+WatcherSetPtr ClientWatchManager::Trigger(const WatchedEvent& event) {
+  WatcherSetPtr result;
+  switch(event.type()) {
+    case ET_NONE: {
+      break;
+    }
+    case ET_NODE_CREATED:
+    case ET_NODE_DATA_CHANGED: {
+      auto i = data_watches_.find(event.path());
+      if (i != data_watches_.end()) {
+        result.swap(i->second);
+        data_watches_.erase(i);
+      }
+      auto j = exist_watches_.find(event.path());
+      if (j != exist_watches_.end()) {
+        if (result) {
+          result->insert(j->second->begin(), j->second->end());
+        } else {
+          result.swap(j->second);
+        }
+        exist_watches_.erase(j);
+      }
+      break;
+    }
+    case ET_NODE_DELETED: {
+      auto i = data_watches_.find(event.path());
+      if (i != data_watches_.end()) {
+        result.swap(i->second);
+        data_watches_.erase(i);
+      }
+      auto j = child_watches_.find(event.path());
+      if (j != child_watches_.end()) {
+        if (result) {
+          result->insert(j->second->begin(), j->second->end());
+        } else {
+          result.swap(j->second);
+        }
+        child_watches_.erase(j);
+      }
+      break;
+    }
+    case ET_NODE_CHILDREN_CHANGED: {
+      auto i = child_watches_.find(event.path());
+      if (i != child_watches_.end()) {
+        result.swap(i->second);
+        child_watches_.erase(i);
+      }
+      break;
+    }
+    case ET_DATA_WATCH_REMOVED:
+      break;
+    case ET_CHILD_WATCH_REMOVED:
+      break;
+    default:
+      break;
   }
+  return result;
 }
 
 }  // namespace saber

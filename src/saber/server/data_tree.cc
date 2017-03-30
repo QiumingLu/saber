@@ -15,12 +15,24 @@ DataTree::DataTree() {
 DataTree::~DataTree() {
 }
 
-int DataTree::CreateNode(const std::string& path, const std::string& data,
-                         CreateResponse* response) {
-  int result = 0;
+void DataTree::CreateNode(const std::string& path, const std::string& data,
+                          CreateResponse* response) {
   size_t found = path.find_last_of('/');
   std::string parent = path.substr(0, found);
   std::string child = path.substr(found + 1);
+/*
+  Stat stat;
+  stat.set_create_id();
+  stat.set_modified_id();
+  stat.set_created_time();
+  stat.set_version();
+  stat.set_children_version();
+  stat.set_acl_version();
+  stat.set_ephemeral_id();
+  stat.set_data_len();
+  stat.set_children_num();
+  stat.set_children_id();
+*/
   MutexLock lock(&mutex_);
   auto it = nodes_.find(parent);
   if (it != nodes_.end()) {
@@ -32,16 +44,15 @@ int DataTree::CreateNode(const std::string& path, const std::string& data,
       child_watches_.TriggerWatcher(
           parent.empty() ? "/" : parent, ET_NODE_CHILDREN_CHANGED);
     } else {
-      result = -2;
+      response->set_code(RC_NODE_EXISTS);
     }
   } else {
-    result = -1;
+    response->set_code(RC_NO_PARENT);
   }
-  return result;
 }
 
-int DataTree::DeleteNode(const std::string& path) {
-  int result = 0;
+void DataTree::DeleteNode(const std::string& path,
+                          DeleteResponse* response) {
   size_t found = path.find_last_of('/');
   std::string parent = path.substr(0, found);
   std::string child = path.substr(found + 1);
@@ -57,44 +68,43 @@ int DataTree::DeleteNode(const std::string& path) {
       child_watches_.TriggerWatcher(
           parent.empty() ? "/" : parent, ET_NODE_CHILDREN_CHANGED);
     } else {
-      result = -1;
+      response->set_code(RC_NO_PARENT);
     }
   } else {
-    result = -2;
+    response->set_code(RC_NO_NODE);
   }
-  return result;
 }
 
-bool DataTree::SetData(const std::string& path, const std::string& data,
+void DataTree::SetData(const std::string& path, const std::string& data,
                        SetDataResponse* response) {
   MutexLock lock(&mutex_);
   auto it  =nodes_.find(path);
   if (it != nodes_.end()) {
     Stat* stat = new Stat();
-    it->second->SetData(data);
+    it->second->set_data(data);
     it->second->CopyStat(stat);
     response->set_allocated_stat(stat);
     data_watches_.TriggerWatcher(path, ET_NODE_DATA_CHANGED);
-    return true;
+  } else {
+    response->set_code(RC_NO_NODE);
   }
-  return false;
 }
 
-bool DataTree::GetData(const std::string& path, Watcher* watcher,
+void DataTree::GetData(const std::string& path, Watcher* watcher,
                        GetDataResponse* response) {
   MutexLock lock(&mutex_);
   auto it = nodes_.find(path);
   if (it != nodes_.end()) {
     Stat* stat = new Stat();
     it->second->CopyStat(stat);
-    response->set_data(it->second->GetData());
+    response->set_data(it->second->data());
     response->set_allocated_stat(stat);
     if (watcher != nullptr) {
       data_watches_.AddWatch(path, watcher);
     }
-    return true;
+  } else {
+    response->set_code(RC_NO_NODE);
   }
-  return false;
 }
 
 }  // namespace saber

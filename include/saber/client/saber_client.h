@@ -20,6 +20,7 @@
 namespace saber {
 
 class Messager;
+class ClientWatchManager;
 
 class SaberClient {
  public:
@@ -70,6 +71,7 @@ class SaberClient {
   std::unique_ptr<voyager::TcpClient> client_;
   std::unique_ptr<ServerManager> server_manager_;
   std::unique_ptr<Messager> messager_;
+  std::unique_ptr<ClientWatchManager> watch_manager_;
 
   std::atomic<bool> has_started_;
 

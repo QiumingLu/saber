@@ -2,18 +2,20 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <iostream>
 #include <saber/client/saber_client.h>
 
-void CreateCallback(int rc, const std::string& path, void* ctx,
+void CreateCallback(const std::string& path, void* ctx,
                     const saber::CreateResponse& response) {
 
 }
 
-void GetDataCallback(int rc, const std::string& path, void* context,
+void GetDataCallback(const std::string& path, void* context,
                      const saber::GetDataResponse& response) {
+  std::cout << "response:" << response.SerializeAsString() << std::endl;
 }
 
-void SetDataCallback(int rc, const std::string& path, void* context,
+void SetDataCallback(const std::string& path, void* context,
                      const saber::SetDataResponse& response) {
 }
 

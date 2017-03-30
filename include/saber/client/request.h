@@ -12,44 +12,57 @@ namespace saber {
 template<typename T>
 class Request {
  public:
-  std::string client_path_;
-  std::string server_path_;
-  std::string path_;
-  void* context_;
-  Watcher* watcher_;
-  T cb_;
+  std::string client_path;
+  std::string server_path;
+  void* context;
+  Watcher* watcher;
+  T callback;
 
-  Request(const std::string& p, void* context, Watcher* watcher, const T& cb)
-      : path_(p), context_(context), watcher_(watcher), cb_(cb) {
+  Request(std::string&& c, std::string&& s,
+          void* ctx, Watcher* w, const T& cb)
+      : client_path(std::move(c)),
+        server_path(std::move(s)),
+        context(ctx),
+        watcher(w),
+        callback(cb) {
   }
 
-  Request(const std::string& p, void* context, Watcher* watcher, T&& cb)
-      : path_(p), context_(context), watcher_(watcher), cb_(std::move(cb)) {
+  Request(std::string&& c, std::string&& s,
+          void* ctx, Watcher* w, T&& cb)
+      : client_path(std::move(c)),
+        server_path(std::move(s)),
+        context(ctx),
+        watcher(w),
+        callback(std::move(cb)) {
   }
 
   Request(const Request& r) {
-    path_ = r.path_;
-    context_ = r.context_;
-    watcher_ = r.watcher_;
-    cb_ = r.cb_;
+    client_path = r.client_path;
+    server_path = r.server_path;
+    context = r.context;
+    watcher = r.watcher;
+    callback = r.callback;
   }
   Request(Request&& r) {
-    path_ = std::move(r.path_);
-    context_ = r.context_;
-    watcher_ = r.watcher_;
-    cb_ = std::move(r.cb_);
+    client_path = std::move(r.client_path);
+    server_path = std::move(r.server_path);
+    context = r.context;
+    watcher = r.watcher;
+    callback = std::move(r.callback);
   }
   void operator=(const Request& r) {
-    path_ = r.path_;
-    context_ = r.context_;
-    watcher_ = r.watcher_;
-    cb_ = r.cb_;
+    client_path = r.client_path;
+    server_path = r.server_path;
+    context = r.context;
+    watcher = r.watcher;
+    callback = r.callback;
   }
   void operator=(Request&& r) {
-    path_ = std::move(r.path_);
-    context_ = r.context_;
-    watcher_ = r.watcher_;
-    cb_ = std::move(r.cb_);
+    client_path = std::move(r.client_path);
+    server_path = std::move(r.server_path);
+    context = r.context;
+    watcher = r.watcher;
+    callback = std::move(r.callback);
   }
 };
 

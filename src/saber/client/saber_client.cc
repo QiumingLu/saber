@@ -4,6 +4,7 @@
 
 #include "saber/client/saber_client.h"
 #include "saber/client/server_manager_impl.h"
+#include "saber/client/client_watch_manager.h"
 #include "saber/net/messager.h"
 #include "saber/util/logging.h"
 
@@ -14,6 +15,7 @@ SaberClient::SaberClient(const std::string& servers,
     : loop_(thread_.Loop()),
       server_manager_(std::move(manager)),
       messager_(new Messager()),
+      watch_manager_(new ClientWatchManager()),
       has_started_(false) {
   if (!server_manager_) {
     server_manager_.reset(new ServerManagerImpl());
@@ -51,8 +53,12 @@ void SaberClient::Create(const CreateRequest& request,
   SaberMessage* message = new SaberMessage();
   message->set_type(MT_CREATE);
   message->set_data(request.SerializeAsString());
-  Request<CreateCallback>* r =
-      new Request<CreateCallback>(request.path(), context, nullptr, cb);
+
+  std::string client_path = request.path();
+  std::string server_path = client_path;
+  Request<CreateCallback>* r = new Request<CreateCallback>(
+      std::move(client_path), std::move(server_path), context, nullptr, cb);
+
   loop_->RunInLoop([this, message, r]() {
     create_queue_.push(std::unique_ptr<Request<CreateCallback> >(r));
     TrySendInLoop(message);
@@ -64,8 +70,12 @@ void SaberClient::Delete(const DeleteRequest& request,
   SaberMessage* message = new SaberMessage();
   message->set_type(MT_DELETE);
   message->set_data(request.SerializeAsString());
-  Request<DeleteCallback>* r =
-      new Request<DeleteCallback>(request.path(), context, nullptr, cb);
+
+  std::string client_path = request.path();
+  std::string server_path = client_path;
+  Request<DeleteCallback>* r = new Request<DeleteCallback>(
+      std::move(client_path), std::move(server_path), context, nullptr, cb);
+
   loop_->RunInLoop([this, message, r]() {
     delete_queue_.push(std::unique_ptr<Request<DeleteCallback> >(r));
     TrySendInLoop(message);
@@ -77,8 +87,12 @@ void SaberClient::Exists(const ExistsRequest& request, Watcher* watcher,
   SaberMessage* message = new SaberMessage();
   message->set_type(MT_EXISTS);
   message->set_data(request.SerializeAsString());
-  Request<ExistsCallback>* r =
-      new Request<ExistsCallback>(request.path(), context, nullptr, cb);
+
+  std::string client_path = request.path();
+  std::string server_path = client_path;
+  Request<ExistsCallback>* r = new Request<ExistsCallback>(
+      std::move(client_path), std::move(server_path), context, nullptr, cb);
+
   loop_->RunInLoop([this, message, r]() {
     exists_queue_.push(std::unique_ptr<Request<ExistsCallback> >(r));
     TrySendInLoop(message);
@@ -90,8 +104,12 @@ void SaberClient::GetData(const GetDataRequest& request, Watcher* watcher,
   SaberMessage* message = new SaberMessage();
   message->set_type(MT_GETDATA);
   message->set_data(request.SerializeAsString());
-  Request<GetDataCallback>* r =
-      new Request<GetDataCallback>(request.path(), context, nullptr, cb);
+
+  std::string client_path = request.path();
+  std::string server_path = client_path;
+  Request<GetDataCallback>* r = new Request<GetDataCallback>(
+      std::move(client_path), std::move(server_path), context, nullptr, cb);
+
   loop_->RunInLoop([this, message, r]() {
     get_data_queue_.push(std::unique_ptr<Request<GetDataCallback> >(r));
     TrySendInLoop(message);
@@ -103,8 +121,12 @@ void SaberClient::SetData(const SetDataRequest& request,
   SaberMessage* message = new SaberMessage();
   message->set_type(MT_SETDATA);
   message->set_data(request.SerializeAsString());
-  Request<SetDataCallback>* r =
-      new Request<SetDataCallback>(request.path(), context, nullptr, cb);
+
+  std::string client_path = request.path();
+  std::string server_path = client_path;
+  Request<SetDataCallback>* r = new Request<SetDataCallback>(
+      std::move(client_path), std::move(server_path), context, nullptr, cb);
+
   loop_->RunInLoop([this, message, r]() {
     set_data_queue_.push(std::unique_ptr<Request<SetDataCallback> >(r));
     TrySendInLoop(message);
@@ -116,8 +138,12 @@ void SaberClient::GetACL(const GetACLRequest& request,
   SaberMessage* message = new SaberMessage();
   message->set_type(MT_GETACL);
   message->set_data(request.SerializeAsString());
-  Request<GetACLCallback>* r =
-      new Request<GetACLCallback>(request.path(), context, nullptr, cb);
+
+  std::string client_path = request.path();
+  std::string server_path = client_path;
+  Request<GetACLCallback>* r = new Request<GetACLCallback>(
+      std::move(client_path), std::move(server_path), context, nullptr, cb);
+
   loop_->RunInLoop([this, message, r]() {
     get_acl_queue_.push(std::unique_ptr<Request<GetACLCallback> >(r));
     TrySendInLoop(message);
@@ -129,8 +155,12 @@ void SaberClient::SetACL(const SetACLRequest& request,
   SaberMessage* message = new SaberMessage();
   message->set_type(MT_SETACL);
   message->set_data(request.SerializeAsString());
-  Request<SetACLCallback>* r =
-      new Request<SetACLCallback>(request.path(), context, nullptr, cb);
+
+  std::string client_path = request.path();
+  std::string server_path = client_path;
+  Request<SetACLCallback>* r = new Request<SetACLCallback>(
+      std::move(client_path), std::move(server_path), context, nullptr, cb);
+
   loop_->RunInLoop([this, message, r]() {
     set_acl_queue_.push(std::unique_ptr<Request<SetACLCallback> >(r));
     TrySendInLoop(message);
@@ -143,8 +173,12 @@ void SaberClient::GetChildren(const GetChildrenRequest& request,
   SaberMessage* message = new SaberMessage();
   message->set_type(MT_GETCHILDREN);
   message->set_data(request.SerializeAsString());
-  Request<ChildrenCallback>* r =
-      new Request<ChildrenCallback>(request.path(), context, watcher, cb);
+
+  std::string client_path = request.path();
+  std::string server_path = client_path;
+  Request<ChildrenCallback>* r = new Request<ChildrenCallback>(
+      std::move(client_path), std::move(server_path), context, watcher, cb);
+
   loop_->RunInLoop([this, message, r]() {
     children_queue_.push(std::unique_ptr<Request<ChildrenCallback> >(r));
     TrySendInLoop(message);
@@ -216,13 +250,15 @@ void SaberClient::OnMessage(std::unique_ptr<SaberMessage> message) {
       CreateResponse response;
       response.ParseFromString(message->data());
       auto& r = create_queue_.front();
-      r->cb_(0, r->path_, r->context_, response);
+      r->callback(r->client_path, r->context, response);
       create_queue_.pop();
       break;
     }
     case MT_DELETE: {
       auto& r = delete_queue_.front();
-      r->cb_(0, r->path_, r->context_);
+      DeleteResponse response;
+      response.ParseFromString(message->data());
+      r->callback(r->client_path, r->context, response);
       delete_queue_.pop();
       break;
     }
@@ -230,7 +266,14 @@ void SaberClient::OnMessage(std::unique_ptr<SaberMessage> message) {
       ExistsResponse response;
       response.ParseFromString(message->data());
       auto& r = exists_queue_.front();
-      r->cb_(0, r->path_, r->context_, response);
+      if (r->watcher) {
+        if (response.code() == RC_OK) {
+          watch_manager_->AddDataWatch(r->client_path, r->watcher);
+        } else {
+          watch_manager_->AddExistWatch(r->client_path, r->watcher);
+        }
+      }
+      r->callback(r->client_path, r->context, response);
       exists_queue_.pop();
       break;
     }
@@ -238,7 +281,10 @@ void SaberClient::OnMessage(std::unique_ptr<SaberMessage> message) {
       GetDataResponse response;
       response.ParseFromString(message->data());
       auto& r = get_data_queue_.front();
-      r->cb_(0, r->path_, r->context_, response);
+      if (r->watcher && response.code() == RC_OK) {
+        watch_manager_->AddDataWatch(r->client_path, r->watcher);
+      }
+      r->callback(r->client_path, r->context, response);
       get_data_queue_.pop();
       break;
     }
@@ -246,7 +292,7 @@ void SaberClient::OnMessage(std::unique_ptr<SaberMessage> message) {
       SetDataResponse response;
       response.ParseFromString(message->data());
       auto& r = set_data_queue_.front();
-      r->cb_(0, r->path_, r->context_, response);
+      r->callback(r->client_path, r->context, response);
       set_data_queue_.pop();
       break;
     }
@@ -254,7 +300,7 @@ void SaberClient::OnMessage(std::unique_ptr<SaberMessage> message) {
       GetACLResponse response;
       response.ParseFromString(message->data());
       auto& r = get_acl_queue_.front();
-      r->cb_(0, r->path_, r->context_, response);
+      r->callback(r->client_path, r->context, response);
       get_acl_queue_.pop();
       break;
     }
@@ -262,7 +308,7 @@ void SaberClient::OnMessage(std::unique_ptr<SaberMessage> message) {
       SetACLResponse response;
       response.ParseFromString(message->data());
       auto& r = set_acl_queue_.front();
-      r->cb_(0, r->path_, r->context_, response);
+      r->callback(r->client_path, r->context, response);
       set_acl_queue_.pop();
       break;
     }
@@ -270,7 +316,10 @@ void SaberClient::OnMessage(std::unique_ptr<SaberMessage> message) {
       GetChildrenResponse response;
       response.ParseFromString(message->data());
       auto& r = children_queue_.front();
-      r->cb_(0, r->path_, r->context_, response);
+      if (r->watcher && response.code() == RC_OK) {
+        watch_manager_->AddChildWatch(r->client_path, r->watcher);
+      }
+      r->callback(r->client_path, r->context, response);
       children_queue_.pop();
       break;
     }

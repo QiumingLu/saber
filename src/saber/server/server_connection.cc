@@ -25,6 +25,7 @@ void ServerConnection::Process(const WatchedEvent& event) {
 }
 
 void ServerConnection::OnMessage(std::unique_ptr<SaberMessage> message) {
+  SaberMessage reply_message;
   switch (message->type()) {
     case MT_NOTIFICATION: {
       WatchedEvent event;
@@ -52,6 +53,8 @@ void ServerConnection::OnMessage(std::unique_ptr<SaberMessage> message) {
       request.ParseFromString(message->data());
       Watcher* watcher = request.watch() ? this : nullptr;
       db_->GetData(request.path(), watcher, &response);
+      reply_message.set_type(MT_GETDATA);
+      reply_message.set_data(response.SerializeAsString());
       break;
     }
     case MT_SETDATA: {
@@ -79,6 +82,7 @@ void ServerConnection::OnMessage(std::unique_ptr<SaberMessage> message) {
       break;
     }
   }
+  messager_->SendMessage(reply_message);
 }
 
 }  // namespace saber

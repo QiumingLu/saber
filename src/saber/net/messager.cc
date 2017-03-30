@@ -30,8 +30,6 @@ bool Messager::SendMessage(const SaberMessage& message) {
     } else {
       LOG_ERROR("SaberMessage serialize to string failed.\n");
     }
-  } else {
-    LOG_ERROR("The connection has closed!\n");
   }
   return res;
 }

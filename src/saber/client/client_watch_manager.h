@@ -22,7 +22,9 @@ class ClientWatchManager {
   void AddChildWatch(const std::string& path, Watcher* watcher);
   void RemoveDataWatch(const std::string& path, Watcher* watcher);
   void RemoveExistWatch(const std::string& path, Watcher* watcher);
-  void RemoveChildWatch(const std::string& path, Watcher* watcher);
+  WatcherSetPtr RemoveChildWatch(const std::string& path);
+
+  WatcherSetPtr Trigger(const WatchedEvent& event);
 
  private:
   std::unordered_map<std::string, WatcherSetPtr> data_watches_;
