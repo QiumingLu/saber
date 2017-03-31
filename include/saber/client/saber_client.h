@@ -61,7 +61,7 @@ class SaberClient {
                    void* context, const ChildrenCallback& cb);
 
  private:
-  void Connect();
+  void Connect(const voyager::SockAddr& addr);
   void Close();
   void TrySendInLoop(SaberMessage* message);
   void OnConnection(const voyager::TcpConnectionPtr& p);
@@ -70,19 +70,12 @@ class SaberClient {
   void OnMessage(std::unique_ptr<SaberMessage> message);
 
   Options options_;
-
-  voyager::BGEventLoop send_thread_;
-  voyager::EventLoop* send_loop_;
-
-  RunLoopThread event_thread_;
-  RunLoop* event_loop_;
+  std::atomic<bool> has_started_;
 
   std::unique_ptr<voyager::TcpClient> client_;
   std::unique_ptr<ServerManager> server_manager_;
   std::unique_ptr<Messager> messager_;
   std::unique_ptr<ClientWatchManager> watch_manager_;
-
-  std::atomic<bool> has_started_;
 
   std::queue<std::unique_ptr<Request<CreateCallback> > > create_queue_;
   std::queue<std::unique_ptr<Request<DeleteCallback> > > delete_queue_;
@@ -94,6 +87,15 @@ class SaberClient {
   std::queue<std::unique_ptr<Request<ChildrenCallback> > > children_queue_;
 
   std::deque<std::unique_ptr<SaberMessage> > outgoing_queue_;
+
+  std::string master_ip_;
+  uint16_t master_port_;
+
+  RunLoop* event_loop_;
+  voyager::EventLoop* send_loop_;
+
+  voyager::BGEventLoop send_thread_;
+  RunLoopThread event_thread_;
 
   // No copying allowed
   SaberClient(const SaberClient&);

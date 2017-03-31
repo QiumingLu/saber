@@ -14,13 +14,11 @@ SaberClient::SaberClient(const Options& options,
                          const std::string& servers,
                          std::unique_ptr<ServerManager> manager)
     : options_(options),
-      send_loop_(send_thread_.Loop()),
-      event_loop_(event_thread_.Loop()),
+      has_started_(false),
       server_manager_(std::move(manager)),
       messager_(new Messager()),
-      watch_manager_(new ClientWatchManager(options.auto_watch_reset)),
-      has_started_(false) {
-  if (!server_manager_) {
+      watch_manager_(new ClientWatchManager(options.auto_watch_reset)) {
+ if (!server_manager_) {
     server_manager_.reset(new ServerManagerImpl());
   }
   server_manager_->UpdateServers(servers);
@@ -28,15 +26,20 @@ SaberClient::SaberClient(const Options& options,
       [this](std::unique_ptr<SaberMessage> message) {
     OnMessage(std::move(message));
   });
+  send_loop_ = send_thread_.Loop();
+  event_loop_ = event_thread_.Loop();
 }
 
 SaberClient::~SaberClient() {
+  if (has_started_) {
+    Stop();
+  }
 }
 
 void SaberClient::Start() {
   bool expected = false;
   if (has_started_.compare_exchange_strong(expected, true)) {
-    Connect();
+    Connect(server_manager_->GetNext());
   } else {
     LOG_WARN("SaberClient has started, don't call it again!\n");
   }
@@ -188,8 +191,8 @@ void SaberClient::GetChildren(const GetChildrenRequest& request,
   });
 }
 
-void SaberClient::Connect() {
-  client_.reset(new voyager::TcpClient(send_loop_, server_manager_->GetNext()));
+void SaberClient::Connect(const voyager::SockAddr& addr) {
+  client_.reset( new voyager::TcpClient(send_loop_, addr));
   client_->SetConnectionCallback(
       [this](const voyager::TcpConnectionPtr& p) {
     OnConnection(p);
@@ -232,12 +235,21 @@ void SaberClient::OnConnection(const voyager::TcpConnectionPtr& p) {
 void SaberClient::OnFailue() {
   LOG_DEBUG("SaberClient::OnFailue - connect failed!\n");
   if (has_started_) {
-    Connect();
+    Connect(server_manager_->GetNext());
   }
 }
 
 void SaberClient::OnClose(const voyager::TcpConnectionPtr& p) {
   LOG_DEBUG("SaberClient::OnClose - connect close!\n");
+  if (has_started_) {
+    if (!master_ip_.empty()) {
+      voyager::SockAddr addr(master_ip_, master_port_);
+      Connect(addr);
+      master_ip_.clear();
+    } else {
+      Connect(server_manager_->GetNext());
+    }
+  }
 }
 
 void SaberClient::OnMessage(std::unique_ptr<SaberMessage> message) {
@@ -248,14 +260,17 @@ void SaberClient::OnMessage(std::unique_ptr<SaberMessage> message) {
       WatchedEvent* event = new WatchedEvent();
       event->ParseFromString(message->data());
       WatcherSetPtr result = watch_manager_->Trigger(*event);
+      // FIXME
+      // Use std::shared_ptr to replace native pointer, which can avoid
+      // memory leaks occur?
       std::set<Watcher*>* watchers = result.release();
       event_loop_->RunInLoop([watchers, event]() {
         if (watchers) {
           for (auto& it : *watchers) {
             it->Process(*event);
           }
+          delete watchers;
         }
-        delete watchers;
         delete event;
       });
       break;

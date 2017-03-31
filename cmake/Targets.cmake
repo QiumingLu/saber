@@ -12,7 +12,7 @@ set_source_files_properties(${proto_hdrs} ${proto_srcs} PROPERTIES COMPILE_FLAGS
 add_library(proto STATIC ${proto_hdrs} ${proto_srcs})
 target_link_libraries(proto PUBLIC ${PROTOBUF_LIBRARIES})
 target_include_directories(proto PUBLIC ${PROTOBUF_INCLUDE_DIR})
-install(FILES ${proto_hdrs} DESTINATION include/saber/proto)
+install(FILES ${proto_gen_folder}/saber.pb.h DESTINATION include/saber/proto)
 
 list(INSERT Saber_LINKER_LIBS 0 PUBLIC proto)
 
