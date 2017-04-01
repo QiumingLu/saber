@@ -36,6 +36,7 @@ enum ResponseCode {
   RC_NO_NODE = 1;
   RC_NO_PARENT = 2;
   RC_NODE_EXISTS =3;
+  RC_NO_AUTH = 4;
 }
 
 message Stat {

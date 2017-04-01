@@ -11,23 +11,18 @@
 namespace saber {
 
 SaberClient::SaberClient(const Options& options,
-                         const std::string& servers,
-                         std::unique_ptr<ServerManager> manager)
-    : options_(options),
-      has_started_(false),
-      server_manager_(std::move(manager)),
+                         voyager::EventLoop* send_loop,
+                         RunLoop* event_loop)
+    : has_started_(false),
+      server_manager_(options.server_manager),
+      send_loop_(send_loop),
+      event_loop_(event_loop),
       messager_(new Messager()),
       watch_manager_(new ClientWatchManager(options.auto_watch_reset)) {
- if (!server_manager_) {
-    server_manager_.reset(new ServerManagerImpl());
-  }
-  server_manager_->UpdateServers(servers);
   messager_->SetMessageCallback(
       [this](std::unique_ptr<SaberMessage> message) {
     OnMessage(std::move(message));
   });
-  send_loop_ = send_thread_.Loop();
-  event_loop_ = event_thread_.Loop();
 }
 
 SaberClient::~SaberClient() {

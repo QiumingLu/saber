@@ -2,5 +2,10 @@ syntax = "proto3";
 package saber;
 
 message proposal {
-  int32 id = 1;
+  int64 session_id = 1;
+  int64 client_id = 2;
+  int64 proposal_id = 3;
+  int64 time = 4;
+  int32 type = 5;
+  bytes data = 6;
 }

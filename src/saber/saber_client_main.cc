@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 #include <iostream>
-#include <saber/client/saber_client.h>
+#include <saber/client/saber.h>
 
 void CreateCallback(const std::string& path, void* ctx,
                     const saber::CreateResponse& response) {
@@ -29,10 +29,13 @@ class DefaultWatcher : public saber::Watcher {
 int main() {
   DefaultWatcher watcher;
   saber::Options options;
-  saber::SaberClient client(options, "127.0.0.1:8888,127.0.0.1:8889");
+  options.group_size = 3;
+  options.servers = "127.0.0.1:8888,127.0.0.1:8889";
+  saber::Saber client(options);
+  client.Start();
   saber::CreateRequest r1;
   client.Create(r1, nullptr, &CreateCallback);
-  client.Start();
+  client.Connect();
   saber::GetDataRequest r2;
   client.GetData(r2, &watcher, nullptr, &GetDataCallback);
   saber::SetDataRequest r3;

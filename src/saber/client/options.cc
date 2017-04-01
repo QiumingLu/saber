@@ -6,8 +6,11 @@
 
 namespace saber {
 
-Options::Options() 
-    : auto_watch_reset(true) {
+Options::Options()
+    : auto_watch_reset(true),
+      group_size(1),
+      servers(),
+      server_manager(nullptr) {
 }
 
 }  // namespace saber

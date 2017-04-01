@@ -26,11 +26,9 @@ class ClientWatchManager;
 
 class SaberClient {
  public:
-  SaberClient(
-      const Options& options,
-      const std::string& server,
-      std::unique_ptr<ServerManager> p = std::unique_ptr<ServerManager>());
-
+  SaberClient(const Options& options,
+              voyager::EventLoop* send_loop,
+              RunLoop* event_loop);
   ~SaberClient();
 
   void Start();
@@ -69,11 +67,13 @@ class SaberClient {
   void OnClose(const voyager::TcpConnectionPtr& p);
   void OnMessage(std::unique_ptr<SaberMessage> message);
 
-  Options options_;
   std::atomic<bool> has_started_;
 
+  ServerManager* server_manager_;
+  voyager::EventLoop* send_loop_;
+  RunLoop* event_loop_;
+
   std::unique_ptr<voyager::TcpClient> client_;
-  std::unique_ptr<ServerManager> server_manager_;
   std::unique_ptr<Messager> messager_;
   std::unique_ptr<ClientWatchManager> watch_manager_;
 
@@ -90,12 +90,6 @@ class SaberClient {
 
   std::string master_ip_;
   uint16_t master_port_;
-
-  RunLoop* event_loop_;
-  voyager::EventLoop* send_loop_;
-
-  voyager::BGEventLoop send_thread_;
-  RunLoopThread event_thread_;
 
   // No copying allowed
   SaberClient(const SaberClient&);
