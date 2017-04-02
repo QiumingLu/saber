@@ -11,14 +11,20 @@ namespace saber {
 
 class SaberDB {
  public:
-  SaberDB();
+  SaberDB(uint32_t group_size);
   ~SaberDB();
 
-  void GetData(const std::string& path, Watcher* watcher,
-               GetDataResponse* response);
+  void CreateNode(uint32_t group_id, const std::string& path, 
+                  const std::string& data, CreateResponse* response);
+  void DeleteNode(uint32_t group_id, const std::string& path,
+                  DeleteResponse* response);
+  void SetData(uint32_t group_id, const std::string& path, 
+               const std::string& data, SetDataResponse* response);
+  void GetData(uint32_t group_id, const std::string& path, 
+               Watcher* watcher, GetDataResponse* response);
 
  private:
-  DataTree tree_;
+  std::vector<std::unique_ptr<DataTree> > trees_;
 
   // No copying allowed
   SaberDB(const SaberDB&);

@@ -26,7 +26,7 @@ int main() {
 
   voyager::EventLoop loop;
   voyager::SockAddr addr("127.0.0.1", 8888);
-  saber::SaberServer server(&loop, addr);
+  saber::SaberServer server(&loop, addr, 4);
 
   bool res = server.Start(options);
   if (res) {

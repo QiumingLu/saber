@@ -61,7 +61,7 @@ void Committer::Commit(const SaberMessage& message, uint32_t group_id) {
       GetDataResponse response;
       request.ParseFromString(message.data());
       Watcher* watcher = request.watch() ? conn_ : nullptr;
-      db_->GetData(request.path(), watcher, &response);
+      db_->GetData(group_id, request.path(), watcher, &response);
       reply_message->set_type(MT_GETDATA);
       reply_message->set_data(response.SerializeAsString());
       break;
@@ -121,6 +121,7 @@ bool Committer::Execute(uint32_t group_id,
       CreateRequest request;
       CreateResponse response;
       request.ParseFromString(message.data());
+      db_->CreateNode(group_id, request.path(), request.data(), &response);
       reply_message->set_type(MT_CREATE);
       reply_message->set_data(response.SerializeAsString());
       break;
@@ -129,6 +130,7 @@ bool Committer::Execute(uint32_t group_id,
       DeleteRequest request;
       DeleteResponse response;
       request.ParseFromString(message.data());
+      db_->DeleteNode(group_id, request.path(), &response);
       reply_message->set_type(MT_DELETE);
       reply_message->set_data(response.SerializeAsString());
       break;
@@ -137,6 +139,7 @@ bool Committer::Execute(uint32_t group_id,
       SetDataRequest request;
       SetDataResponse response;
       request.ParseFromString(message.data());
+      db_->SetData(group_id, request.path(), request.data(), &response); 
       reply_message->set_type(MT_SETDATA);
       reply_message->set_data(response.SerializeAsString());
       break;

@@ -31,7 +31,7 @@ class SaberServer {
 
   skywalker::Node* node_;
 
-  SaberDB db_;
+  SaberDB* db_;
   
   voyager::port::SequenceNumber seq_;
   ConcurrentMap<uint64_t, std::unique_ptr<ServerConnection> > conns_;

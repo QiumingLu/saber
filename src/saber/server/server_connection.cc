@@ -30,7 +30,7 @@ ServerConnection::~ServerConnection() {
 }
 
 void ServerConnection::Process(const WatchedEvent& event) {
-  loop_->RunInLoop([this, event]() {
+  loop_->QueueInLoop([this, event]() {
     SaberMessage message;
     message.set_type(MT_NOTIFICATION);
     message.set_data(event.SerializeAsString());
