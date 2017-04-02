@@ -18,7 +18,7 @@ int main() {
   options.log_storage_path = std::string(path);
   options.log_sync = true;
   options.sync_interval = 3;
-  options.group_size = 1;
+  options.group_size = 3;
   options.use_master = true;
   skywalker::IpPort i("127.0.0.1", 8887);
   options.ipport = i;

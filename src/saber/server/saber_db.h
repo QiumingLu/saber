@@ -2,17 +2,17 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SABER_SERVER_DATA_BASE_H_
-#define SABER_SERVER_DATA_BASE_H_
+#ifndef SABER_SERVER_SABER_DB_H_
+#define SABER_SERVER_SABER_DB_H_
 
 #include "saber/server/data_tree.h"
 
 namespace saber {
 
-class DataBase {
+class SaberDB {
  public:
-  DataBase();
-  ~DataBase();
+  SaberDB();
+  ~SaberDB();
 
   void GetData(const std::string& path, Watcher* watcher,
                GetDataResponse* response);
@@ -21,10 +21,10 @@ class DataBase {
   DataTree tree_;
 
   // No copying allowed
-  DataBase(const DataBase&);
-  void operator=(const DataBase&);
+  SaberDB(const SaberDB&);
+  void operator=(const SaberDB&);
 };
 
 }  // namespace saber
 
-#endif  // SABER_SERVER_DATA_BASE_H_
+#endif  // SABER_SERVER_SABER_DB_H_

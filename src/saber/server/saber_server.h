@@ -10,7 +10,7 @@
 #include <voyager/core/tcp_server.h>
 #include <skywalker/node.h>
 
-#include "saber/server/data_base.h"
+#include "saber/server/saber_db.h"
 #include "saber/server/server_connection.h"
 #include "saber/util/concurrent_map.h"
 
@@ -29,14 +29,13 @@ class SaberServer {
   void OnConnection(const voyager::TcpConnectionPtr& p);
   void OnClose(const voyager::TcpConnectionPtr& p);
 
-  voyager::port::SequenceNumber seq_;
-  voyager::TcpServer server_;
-
-  ConcurrentMap<uint64_t, std::unique_ptr<ServerConnection> > conns_;
-
   skywalker::Node* node_;
 
-  DataBase db_;
+  SaberDB db_;
+  
+  voyager::port::SequenceNumber seq_;
+  ConcurrentMap<uint64_t, std::unique_ptr<ServerConnection> > conns_;
+  voyager::TcpServer server_;
 
   // No copying allowed
   SaberServer(const SaberServer&);

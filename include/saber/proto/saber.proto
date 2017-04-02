@@ -167,5 +167,6 @@ enum MessageType {
 
 message SaberMessage {
   MessageType type = 1;
-  bytes data = 2;
+  string root_path = 2;
+  bytes data = 3;
 }

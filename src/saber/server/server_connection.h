@@ -5,19 +5,25 @@
 #ifndef SABER_SERVER_SERVER_CONNECTION_H_
 #define SABER_SERVER_SERVER_CONNECTION_H_
 
+#include <deque>
 #include <voyager/core/eventloop.h>
 #include <voyager/core/tcp_connection.h>
 
-#include "saber/server/data_base.h"
+#include "saber/server/saber_db.h"
+#include "saber/server/committer.h"
 #include "saber/service/watcher.h"
 #include "saber/proto/saber.pb.h"
 #include "saber/net/messager.h"
+#include "saber/util/blocking_queue.h"
 
 namespace saber {
 
 class ServerConnection : public Watcher {
  public:
-  ServerConnection(std::unique_ptr<Messager> p, DataBase* db);
+  ServerConnection(std::unique_ptr<Messager> p, 
+                   SaberDB* db,
+                   voyager::EventLoop* loop,
+                   skywalker::Node* node);
   virtual ~ServerConnection();
 
   virtual void Process(const WatchedEvent& event);
@@ -26,15 +32,15 @@ class ServerConnection : public Watcher {
   uint64_t SessionId() const { return session_id_; }
 
  private:
-  static const int kHeaderSize = 4;
-
   void OnMessage(std::unique_ptr<SaberMessage> message);
+  void OnCommitComplete(std::unique_ptr<SaberMessage> message); 
 
+  bool finished_;
   uint64_t session_id_;
+  std::deque<std::unique_ptr<SaberMessage> > pending_messages_; 
   std::unique_ptr<Messager> messager_;
   voyager::EventLoop* loop_;
-
-  DataBase* db_;
+  Committer committer_;
 
   // No copying allowed
   ServerConnection(const ServerConnection&);

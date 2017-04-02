@@ -1,16 +1,28 @@
+// Copyright (c) 2017 Mirants Lu. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
 #include "saber/server/server_connection.h"
 #include "saber/util/logging.h"
 
 namespace saber {
 
 ServerConnection::ServerConnection(std::unique_ptr<Messager> p,
-                                   DataBase* db)
-    : messager_(std::move(p)),
-      loop_(messager_->GetTcpConnection()->OwnerEventLoop()),
-      db_(db) {
+                                   SaberDB* db,
+                                   voyager::EventLoop* loop,
+                                   skywalker::Node* node)
+    : finished_(true),
+      messager_(std::move(p)),
+      loop_(loop),
+      committer_(this, db, loop_, node) {
+  assert(messager_);
   messager_->SetMessageCallback(
       [this](std::unique_ptr<SaberMessage> message) {
     OnMessage(std::move(message));
+  });
+  committer_.SetCommitCompleteCallback(
+      [this](std::unique_ptr<SaberMessage> message) {
+    OnCommitComplete(std::move(message));
   });
 }
 
@@ -18,71 +30,32 @@ ServerConnection::~ServerConnection() {
 }
 
 void ServerConnection::Process(const WatchedEvent& event) {
-  SaberMessage message;
-  message.set_type(MT_NOTIFICATION);
-  message.set_data(event.SerializeAsString());
-  messager_->SendMessage(message);
+  loop_->RunInLoop([this, event]() {
+    SaberMessage message;
+    message.set_type(MT_NOTIFICATION);
+    message.set_data(event.SerializeAsString());
+    messager_->SendMessage(message);
+  });
 }
 
 void ServerConnection::OnMessage(std::unique_ptr<SaberMessage> message) {
-  SaberMessage reply_message;
-  switch (message->type()) {
-    case MT_NOTIFICATION: {
-      WatchedEvent event;
-      event.ParseFromString(message->data());
-      break;
-    }
-    case MT_CREATE: {
-      CreateRequest request;
-      request.ParseFromString(message->data());
-      break;
-    }
-    case MT_DELETE: {
-      DeleteRequest request;
-      request.ParseFromString(message->data());
-      break;
-    }
-    case MT_EXISTS: {
-      ExistsRequest request;
-      request.ParseFromString(message->data());
-      break;
-    }
-    case MT_GETDATA: {
-      GetDataRequest request;
-      GetDataResponse response;
-      request.ParseFromString(message->data());
-      Watcher* watcher = request.watch() ? this : nullptr;
-      db_->GetData(request.path(), watcher, &response);
-      reply_message.set_type(MT_GETDATA);
-      reply_message.set_data(response.SerializeAsString());
-      break;
-    }
-    case MT_SETDATA: {
-      SetDataRequest request;
-      request.ParseFromString(message->data());
-      break;
-    }
-    case MT_GETACL: {
-      GetACLRequest request;
-      request.ParseFromString(message->data());
-      break;
-    }
-    case MT_SETACL: {
-      SetACLRequest request;
-      request.ParseFromString(message->data());
-      break;
-    }
-    case MT_GETCHILDREN: {
-      GetChildrenRequest request;
-      request.ParseFromString(message->data());
-      break;
-    }
-    default: {
-      LOG_ERROR("Invalid message type.\n");
-      break;
-    }
+  pending_messages_.push_back(std::move(message));
+  if (finished_) {
+    finished_ = false;
+    committer_.Commit(*(pending_messages_.front().get()));
   }
-  messager_->SendMessage(reply_message);
+}
+
+void ServerConnection::OnCommitComplete(
+    std::unique_ptr<SaberMessage> message) {
+  pending_messages_.pop_front();
+  messager_->SendMessage(*(message.get()));
+  if (!pending_messages_.empty()) {
+    assert(!finished_);
+    committer_.Commit(*(pending_messages_.front().get()));
+  } else {
+   finished_ = true;
+  }
 }
 
 }  // namespace saber

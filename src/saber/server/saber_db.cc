@@ -2,17 +2,17 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "saber/server/data_base.h"
+#include "saber/server/saber_db.h"
 
 namespace saber {
 
-DataBase::DataBase() {
+SaberDB::SaberDB() {
 }
 
-DataBase::~DataBase() {
+SaberDB::~SaberDB() {
 }
 
-void DataBase::GetData(const std::string& path, Watcher* watcher,
+void SaberDB::GetData(const std::string& path, Watcher* watcher,
                        GetDataResponse* response) {
   tree_.GetData(path, watcher, response);
 }
