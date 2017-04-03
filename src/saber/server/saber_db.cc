@@ -15,24 +15,44 @@ SaberDB::SaberDB(uint32_t group_size) {
 SaberDB::~SaberDB() {
 }
 
-void SaberDB::CreateNode(uint32_t group_id, const std::string& path, 
-                         const std::string& data, CreateResponse* response) {
-  trees_[group_id]->CreateNode(path, data, response);
+void SaberDB::Create(uint32_t group_id, const CreateRequest& request,
+                    CreateResponse* response) {
+  trees_[group_id]->Create(request, response);
 }
   
-void SaberDB::DeleteNode(uint32_t group_id, const std::string& path,
-                         DeleteResponse* response) {
-  trees_[group_id]->DeleteNode(path, response);
-}
-  
-void SaberDB::SetData(uint32_t group_id, const std::string& path, 
-                      const std::string& data, SetDataResponse* response) {
-  trees_[group_id]->SetData(path, data, response);
+void SaberDB::Delete(uint32_t group_id, const DeleteRequest& request,
+                     DeleteResponse* response) {
+  trees_[group_id]->Delete(request, response);
 }
  
-void SaberDB::GetData(uint32_t group_id, const std::string& path, 
+void SaberDB::Exists(uint32_t group_id, const ExistsRequest& request,
+                     Watcher* watcher, ExistsResponse* response) {
+  trees_[group_id]->Exists(request, watcher, response);
+}
+  
+void SaberDB::GetData(uint32_t group_id, const GetDataRequest& request, 
                       Watcher* watcher, GetDataResponse* response) {
-  trees_[group_id]->GetData(path, watcher, response);
+  trees_[group_id]->GetData(request, watcher, response);
 }
 
+void SaberDB::SetData(uint32_t group_id, const SetDataRequest& request,
+                      SetDataResponse* response) {
+  trees_[group_id]->SetData(request, response);
+}
+ 
+void SaberDB::GetACL(uint32_t group_id, const GetACLRequest& request,
+                     GetACLResponse* response) {
+  trees_[group_id]->GetACL(request, response);
+}
+ 
+void SaberDB::SetACL(uint32_t group_id, const SetACLRequest& request, 
+                     SetACLResponse* response) {
+  trees_[group_id]->SetACL(request, response);
+}
+  
+void SaberDB::GetChildren(uint32_t group_id, const GetChildrenRequest& request,
+                          Watcher* watcher, GetChildrenResponse* response) {
+  trees_[group_id]->GetChildren(request, watcher, response);
+}
+ 
 }  // namespace saber

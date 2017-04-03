@@ -33,10 +33,11 @@ enum NodeType {
 
 enum ResponseCode {
   RC_OK = 0;
-  RC_NO_NODE = 1;
-  RC_NO_PARENT = 2;
-  RC_NODE_EXISTS =3;
-  RC_NO_AUTH = 4;
+  RC_FAILED = 1;
+  RC_NO_NODE = 2;
+  RC_NO_PARENT = 3;
+  RC_NODE_EXISTS =4;
+  RC_NO_AUTH = 5;
 }
 
 message Stat {
@@ -150,7 +151,13 @@ message GetChildrenRequest {
 
 message GetChildrenResponse {
   ResponseCode code = 1;
-  repeated string children = 2;
+  Stat stat = 2;
+  repeated string children = 3;
+}
+
+message Master {
+  string ip = 1;
+  int32  port = 2;
 }
 
 enum MessageType {
@@ -163,10 +170,12 @@ enum MessageType {
   MT_GETACL = 6;
   MT_SETACL = 7;
   MT_GETCHILDREN = 8;
+  MT_MASTER = 9;
+  MT_PING = 10;
 }
 
 message SaberMessage {
   MessageType type = 1;
-  string root_path = 2;
-  bytes data = 3;
+  bytes data = 2;
+  bytes extra_data = 3;
 }

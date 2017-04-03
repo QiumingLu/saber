@@ -27,12 +27,21 @@ class DataNode {
   void set_data(const std::string& data) { data_ = data; }
   const std::string& data() const { return data_; }
 
+  void set_acl(const std::vector<ACL>& acl) { acl_ = acl; }
+  void set_acl(std::vector<ACL>&& acl) { acl_ = std::move(acl); }
+  const std::vector<ACL>& acl() const { return acl_; }
+
+  const std::set<std::string>& children() const {
+    return children_;
+  }
+
   bool AddChild(const std::string& child);
   bool RemoveChild(const std::string& child);
 
  private:
   Stat stat_;
   std::string data_;
+  std::vector<ACL> acl_;
   std::set<std::string> children_;
 
   // No copying allowed

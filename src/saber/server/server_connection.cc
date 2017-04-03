@@ -39,10 +39,13 @@ void ServerConnection::Process(const WatchedEvent& event) {
 }
 
 void ServerConnection::OnMessage(std::unique_ptr<SaberMessage> message) {
-  pending_messages_.push_back(std::move(message));
-  if (finished_) {
-    finished_ = false;
-    committer_.Commit(*(pending_messages_.front().get()));
+  if (message->type() == MT_PING) {
+  } else {
+    pending_messages_.push_back(std::move(message));
+    if (finished_) {
+      finished_ = false;
+      committer_.Commit(*(pending_messages_.front().get()));
+    }  
   }
 }
 

@@ -18,41 +18,44 @@ Committer::Committer(ServerConnection* conn,
       loop_(loop),
       node_(node),
       context_(new skywalker::MachineContext(GetMachineId())) {
+  node_->AddMachine(this);
 }
 
 Committer::~Committer() {
+  node_->RemoveMachine(this);
   delete context_;
 }
 
 void Committer::Commit(const SaberMessage& message) {
-  uint32_t group_id = Shard(message.root_path());
+  uint32_t group_id = Shard(message.extra_data());
   if (node_->IsMaster(group_id)) {
     Commit(message, group_id);
   } else {
+    assert(cb_);
+    skywalker::IpPort i;
+    uint64_t version;
+    node_->GetMaster(group_id, &i, &version); 
+    Master master;
+    master.set_ip(i.ip);
+    master.set_port(static_cast<int>(i.port));
     SaberMessage* reply_message = new SaberMessage();
+    reply_message->set_type(MT_MASTER);
+    reply_message->set_data(master.SerializeAsString());
     cb_(std::unique_ptr<SaberMessage>(reply_message));
   } 
-}
-
-uint32_t Committer::Shard(const std::string& s) {
-  if (node_->group_size() == 1) {
-    return 0;
-  } else {
-    uint32_t h;
-    MurmurHash3_x86_32(s.c_str(), static_cast<int>(s.size()), 0, &h);
-    return (h % node_->group_size());
-  }
 }
 
 void Committer::Commit(const SaberMessage& message, uint32_t group_id) {
   bool wait = false;
   SaberMessage* reply_message = new SaberMessage();
+  reply_message->set_type(message.type());
   switch (message.type()) {
     case MT_EXISTS: {
       ExistsRequest request;
       ExistsResponse response;
       request.ParseFromString(message.data());
-      reply_message->set_type(MT_EXISTS);
+      Watcher* watcher = request.watch() ? conn_ : nullptr;
+      db_->Exists(group_id, request, watcher, &response);
       reply_message->set_data(response.SerializeAsString());
       break;
     }
@@ -61,8 +64,7 @@ void Committer::Commit(const SaberMessage& message, uint32_t group_id) {
       GetDataResponse response;
       request.ParseFromString(message.data());
       Watcher* watcher = request.watch() ? conn_ : nullptr;
-      db_->GetData(group_id, request.path(), watcher, &response);
-      reply_message->set_type(MT_GETDATA);
+      db_->GetData(group_id, request, watcher, &response);
       reply_message->set_data(response.SerializeAsString());
       break;
     }
@@ -70,7 +72,7 @@ void Committer::Commit(const SaberMessage& message, uint32_t group_id) {
       GetACLRequest request;
       GetACLResponse response;
       request.ParseFromString(message.data());
-      reply_message->set_type(MT_GETACL);
+      db_->GetACL(group_id, request, &response);
       reply_message->set_data(response.SerializeAsString());
       break;
     }
@@ -78,7 +80,8 @@ void Committer::Commit(const SaberMessage& message, uint32_t group_id) {
       GetChildrenRequest request;
       GetChildrenResponse response;
       request.ParseFromString(message.data());
-      reply_message->set_type(MT_GETCHILDREN);
+      Watcher* watcher = request.watch() ? conn_ : nullptr;
+      db_->GetChildren(group_id, request, watcher, & response);
       reply_message->set_data(response.SerializeAsString());
       break;
     }
@@ -98,6 +101,7 @@ void Committer::Commit(const SaberMessage& message, uint32_t group_id) {
       break; 
     }
     default: {
+      assert(false);
       LOG_ERROR("Invalid message type.\n");
       break;
     }
@@ -113,46 +117,56 @@ bool Committer::Execute(uint32_t group_id,
                         const std::string& value,
                         skywalker::MachineContext* context) {
   SaberMessage message;
-  SaberMessage* reply_message = 
-      reinterpret_cast<SaberMessage*>(context->user_data);
   message.ParseFromString(value);
+  SaberMessage* reply_message = nullptr;
+  if (context) { 
+    reply_message = reinterpret_cast<SaberMessage*>(context->user_data);
+    assert(GetMachineId() == context->machine_id);
+    assert(message.type() == reply_message->type());
+  }
   switch (message.type()) {
     case MT_CREATE: {
       CreateRequest request;
       CreateResponse response;
       request.ParseFromString(message.data());
-      db_->CreateNode(group_id, request.path(), request.data(), &response);
-      reply_message->set_type(MT_CREATE);
-      reply_message->set_data(response.SerializeAsString());
+      db_->Create(group_id, request, &response);
+      if (reply_message) {
+        reply_message->set_data(response.SerializeAsString());
+      }
       break;
     }
     case MT_DELETE: {
       DeleteRequest request;
       DeleteResponse response;
       request.ParseFromString(message.data());
-      db_->DeleteNode(group_id, request.path(), &response);
-      reply_message->set_type(MT_DELETE);
-      reply_message->set_data(response.SerializeAsString());
+      db_->Delete(group_id, request, &response);
+      if (reply_message) {
+        reply_message->set_data(response.SerializeAsString());
+      }
       break;
     }
     case MT_SETDATA: {
       SetDataRequest request;
       SetDataResponse response;
       request.ParseFromString(message.data());
-      db_->SetData(group_id, request.path(), request.data(), &response); 
-      reply_message->set_type(MT_SETDATA);
-      reply_message->set_data(response.SerializeAsString());
+      db_->SetData(group_id, request, &response); 
+      if (reply_message) {
+        reply_message->set_data(response.SerializeAsString());
+      }
       break;
     }
     case MT_SETACL: {
       SetACLRequest request;
       SetACLResponse response;
       request.ParseFromString(message.data());
-      reply_message->set_type(MT_SETACL);
-      reply_message->set_data(response.SerializeAsString());
+      db_->SetACL(group_id, request, &response);
+      if (reply_message) {
+        reply_message->set_data(response.SerializeAsString());
+      }
       break;
     }
     default: {
+      assert(false);
       LOG_ERROR("Invalid message type.\n");
       break;
     }
@@ -163,12 +177,60 @@ bool Committer::Execute(uint32_t group_id,
 void Committer::OnProposeComplete(skywalker::MachineContext* context, 
                                   const skywalker::Status& s, 
                                   uint64_t instance_id) {
+  assert(context);
+  assert(GetMachineId() == context->machine_id);
   SaberMessage* reply_message = 
       reinterpret_cast<SaberMessage*>(context->user_data);
-  loop_->RunInLoop([this, reply_message]() {
+  assert(reply_message);
+  if (!s.ok()) {
+    switch(reply_message->type()) {
+      case MT_CREATE: {
+        CreateResponse response;
+        response.set_code(RC_FAILED);
+        reply_message->set_data(response.SerializeAsString());
+        break;
+      }
+      case MT_DELETE: { 
+        DeleteResponse response;
+        response.set_code(RC_FAILED);
+        reply_message->set_data(response.SerializeAsString());
+        break;
+      }
+      case MT_SETDATA: {
+        SetDataResponse response;
+        response.set_code(RC_FAILED);
+        reply_message->set_data(response.SerializeAsString());
+        break;
+      }
+      case MT_SETACL: {
+        SetACLResponse response;
+        response.set_code(RC_FAILED);
+        reply_message->set_data(response.SerializeAsString());
+        break;
+      }
+      default: {
+        assert(false);
+        LOG_ERROR("Invalid message type.\n");
+        break; 
+      }
+    }
+  } else {
+    LOG_INFO("Committer::OnProposeComplete - %s\n", s.ToString().c_str());
+  }
+  loop_->QueueInLoop([this, reply_message]() {
     assert(cb_);
     cb_(std::unique_ptr<SaberMessage>(reply_message));
   });
+}
+
+uint32_t Committer::Shard(const std::string& s) {
+  if (node_->group_size() == 1) {
+    return 0;
+  } else {
+    uint32_t h;
+    MurmurHash3_x86_32(s.c_str(), static_cast<int>(s.size()), 0, &h);
+    return (h % node_->group_size());
+  }
 }
 
 }  // namespace saber

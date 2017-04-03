@@ -14,15 +14,30 @@ class SaberDB {
   SaberDB(uint32_t group_size);
   ~SaberDB();
 
-  void CreateNode(uint32_t group_id, const std::string& path, 
-                  const std::string& data, CreateResponse* response);
-  void DeleteNode(uint32_t group_id, const std::string& path,
-                  DeleteResponse* response);
-  void SetData(uint32_t group_id, const std::string& path, 
-               const std::string& data, SetDataResponse* response);
-  void GetData(uint32_t group_id, const std::string& path, 
+  void Create(uint32_t group_id, const CreateRequest& request, 
+              CreateResponse* response);
+
+  void Delete(uint32_t group_id, const DeleteRequest& request,
+              DeleteResponse* response);
+
+  void Exists(uint32_t group_id, const ExistsRequest& request,
+                Watcher* watcher, ExistsResponse* response);
+ 
+  void GetData(uint32_t group_id, const GetDataRequest& request, 
                Watcher* watcher, GetDataResponse* response);
 
+  void SetData(uint32_t group_id, const SetDataRequest& request,
+               SetDataResponse* response);
+
+  void GetACL(uint32_t group_id, const GetACLRequest& request,
+              GetACLResponse* response);
+
+  void SetACL(uint32_t group_id, const SetACLRequest& request, 
+              SetACLResponse* response); 
+
+  void GetChildren(uint32_t group_id, const GetChildrenRequest& request,
+                   Watcher* watcher, GetChildrenResponse* response);
+  
  private:
   std::vector<std::unique_ptr<DataTree> > trees_;
 

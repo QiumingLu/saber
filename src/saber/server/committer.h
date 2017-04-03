@@ -42,11 +42,11 @@ class Committer : public skywalker::StateMachine {
                        skywalker::MachineContext* context);
 
  private:
-  uint32_t Shard(const std::string& s);
   void Commit(const SaberMessage& message, uint32_t group_id);
   void OnProposeComplete(skywalker::MachineContext* context,
                          const skywalker::Status& s,
                          uint64_t instance_id);
+  uint32_t Shard(const std::string& s);
 
   ServerConnection* conn_;
   SaberDB* db_;

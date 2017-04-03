@@ -14,7 +14,6 @@
 #include "saber/service/watcher.h"
 #include "saber/proto/saber.pb.h"
 #include "saber/net/messager.h"
-#include "saber/util/blocking_queue.h"
 
 namespace saber {
 
@@ -28,8 +27,8 @@ class ServerConnection : public Watcher {
 
   virtual void Process(const WatchedEvent& event);
 
-  void SetSessionId(uint64_t id) { session_id_ = id; }
-  uint64_t SessionId() const { return session_id_; }
+  void set_session_id(uint64_t id) { session_id_ = id; }
+  uint64_t session_id() const { return session_id_; }
 
  private:
   void OnMessage(std::unique_ptr<SaberMessage> message);

@@ -20,15 +20,29 @@ class DataTree {
   DataTree();
   ~DataTree();
 
-  void CreateNode(const std::string& path, const std::string& data,
-                  CreateResponse* response);
-  void DeleteNode(const std::string& path,
-                  DeleteResponse* response);
-  void SetData(const std::string& path, const std::string& data,
-               SetDataResponse* response);
-  void GetData(const std::string& path, Watcher* watcher,
+  void Create(const CreateRequest& request,
+              CreateResponse* response);
+ 
+  void Delete(const DeleteRequest& request,
+              DeleteResponse* response);
+
+  void Exists(const ExistsRequest& request, Watcher* watcher,
+              ExistsResponse* response);
+ 
+  void GetData(const GetDataRequest& request, Watcher* watcher,
                GetDataResponse* response);
 
+  void SetData(const SetDataRequest& request,
+               SetDataResponse* response);
+ 
+  void GetACL(const GetACLRequest& request,
+              GetACLResponse* response);
+ 
+ void SetACL(const SetACLRequest& request, 
+              SetACLResponse* response); 
+
+  void GetChildren(const GetChildrenRequest& request, Watcher* watcher,
+                   GetChildrenResponse* response);
  private:
   Mutex mutex_;
   ServerWatchManager data_watches_;
