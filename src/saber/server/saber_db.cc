@@ -16,13 +16,13 @@ SaberDB::~SaberDB() {
 }
 
 void SaberDB::Create(uint32_t group_id, const CreateRequest& request,
-                    CreateResponse* response) {
-  trees_[group_id]->Create(request, response);
+                     const Transaction& txn, CreateResponse* response) {
+  trees_[group_id]->Create(request, txn, response);
 }
   
 void SaberDB::Delete(uint32_t group_id, const DeleteRequest& request,
-                     DeleteResponse* response) {
-  trees_[group_id]->Delete(request, response);
+                     const Transaction& txn, DeleteResponse* response) {
+  trees_[group_id]->Delete(request, txn, response);
 }
  
 void SaberDB::Exists(uint32_t group_id, const ExistsRequest& request,
@@ -36,8 +36,8 @@ void SaberDB::GetData(uint32_t group_id, const GetDataRequest& request,
 }
 
 void SaberDB::SetData(uint32_t group_id, const SetDataRequest& request,
-                      SetDataResponse* response) {
-  trees_[group_id]->SetData(request, response);
+                      const Transaction& txn, SetDataResponse* response) {
+  trees_[group_id]->SetData(request, txn, response);
 }
  
 void SaberDB::GetACL(uint32_t group_id, const GetACLRequest& request,
@@ -46,8 +46,8 @@ void SaberDB::GetACL(uint32_t group_id, const GetACLRequest& request,
 }
  
 void SaberDB::SetACL(uint32_t group_id, const SetACLRequest& request, 
-                     SetACLResponse* response) {
-  trees_[group_id]->SetACL(request, response);
+                     const Transaction& txn, SetACLResponse* response) {
+  trees_[group_id]->SetACL(request, txn, response);
 }
   
 void SaberDB::GetChildren(uint32_t group_id, const GetChildrenRequest& request,

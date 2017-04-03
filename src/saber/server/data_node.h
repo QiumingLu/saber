@@ -5,6 +5,7 @@
 #ifndef SABER_SERVER_DATA_NODE_H_
 #define SABER_SERVER_DATA_NODE_H_
 
+#include <vector>
 #include <set>
 #include <string>
 
@@ -15,16 +16,18 @@ namespace saber {
 class DataNode {
  public:
   DataNode();
-  DataNode(const std::string& data);
+  DataNode(const Stat& stat, const std::string& data,
+           const std::vector<ACL>& acl);
+  DataNode(const Stat& stat, const std::string& data, 
+           std::vector<ACL>&& acl);
   ~DataNode();
-
-  void CopyStat(Stat* stat) const;
 
   void set_stat(const Stat& stat) { stat_ = stat; }
   const Stat& stat() const { return stat_; }
   Stat* mutable_stat() { return &stat_; }
 
   void set_data(const std::string& data) { data_ = data; }
+  void set_data(std::string&& data) { data_ = std::move(data); }
   const std::string& data() const { return data_; }
 
   void set_acl(const std::vector<ACL>& acl) { acl_ = acl; }

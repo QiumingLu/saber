@@ -4,7 +4,7 @@ endmacro()
 
 file(GLOB_RECURSE proto_files
   include/saber/proto/*.proto
-  src/saber/proto/proposal.proto
+  src/saber/proto/*.proto
 )
 saber_protobuf_generate_cpp(${proto_gen_folder} proto_srcs proto_hdrs ${proto_files})
 

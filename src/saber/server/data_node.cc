@@ -9,15 +9,21 @@ namespace saber {
 DataNode::DataNode() {
 }
 
-DataNode::DataNode(const std::string& data)
-    : data_(data) {
+DataNode::DataNode(
+    const Stat& stat, const std::string& data, const std::vector<ACL>& acl)
+    : stat_(stat),
+      data_(data),
+      acl_(acl) {
+}
+
+DataNode::DataNode(
+    const Stat& stat, const std::string& data, std::vector<ACL>&& acl)
+    : stat_(stat),
+      data_(data),
+      acl_(std::move(acl)) {
 }
 
 DataNode::~DataNode() {
-}
-
-void DataNode::CopyStat(Stat* stat) const {
-  *stat = stat_;
 }
 
 bool DataNode::AddChild(const std::string& child) {

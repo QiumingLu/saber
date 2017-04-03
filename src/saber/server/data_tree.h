@@ -12,6 +12,7 @@
 #include "saber/server/data_node.h"
 #include "saber/server/server_watch_manager.h"
 #include "saber/util/mutex.h"
+#include "saber/proto/server.pb.h"
 
 namespace saber {
 
@@ -20,10 +21,10 @@ class DataTree {
   DataTree();
   ~DataTree();
 
-  void Create(const CreateRequest& request,
+  void Create(const CreateRequest& request, const Transaction& txn,
               CreateResponse* response);
  
-  void Delete(const DeleteRequest& request,
+  void Delete(const DeleteRequest& request, const Transaction& txn,
               DeleteResponse* response);
 
   void Exists(const ExistsRequest& request, Watcher* watcher,
@@ -32,13 +33,13 @@ class DataTree {
   void GetData(const GetDataRequest& request, Watcher* watcher,
                GetDataResponse* response);
 
-  void SetData(const SetDataRequest& request,
+  void SetData(const SetDataRequest& request, const Transaction& txn,
                SetDataResponse* response);
  
   void GetACL(const GetACLRequest& request,
               GetACLResponse* response);
  
- void SetACL(const SetACLRequest& request, 
+ void SetACL(const SetACLRequest& request, const Transaction& txn, 
               SetACLResponse* response); 
 
   void GetChildren(const GetChildrenRequest& request, Watcher* watcher,

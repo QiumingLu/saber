@@ -6,10 +6,12 @@
 #include "saber/server/server_connection.h"
 #include "saber/util/logging.h"
 #include "saber/util/murmurhash3.h"
+#include "saber/util/timerlist.h"
+#include "saber/proto/server.pb.h"
 
 namespace saber {
 
-Committer::Committer(ServerConnection* conn, 
+Committer::Committer(ServerConnection* conn,
                      SaberDB* db,
                      voyager::EventLoop* loop,
                      skywalker::Node* node)
@@ -26,15 +28,15 @@ Committer::~Committer() {
   delete context_;
 }
 
-void Committer::Commit(const SaberMessage& message) {
-  uint32_t group_id = Shard(message.extra_data());
+void Committer::Commit(SaberMessage* message) {
+  uint32_t group_id = Shard(message->extra_data());
   if (node_->IsMaster(group_id)) {
     Commit(message, group_id);
   } else {
     assert(cb_);
     skywalker::IpPort i;
     uint64_t version;
-    node_->GetMaster(group_id, &i, &version); 
+    node_->GetMaster(group_id, &i, &version);
     Master master;
     master.set_ip(i.ip);
     master.set_port(static_cast<int>(i.port));
@@ -42,18 +44,18 @@ void Committer::Commit(const SaberMessage& message) {
     reply_message->set_type(MT_MASTER);
     reply_message->set_data(master.SerializeAsString());
     cb_(std::unique_ptr<SaberMessage>(reply_message));
-  } 
+  }
 }
 
-void Committer::Commit(const SaberMessage& message, uint32_t group_id) {
+void Committer::Commit(SaberMessage* message, uint32_t group_id) {
   bool wait = false;
   SaberMessage* reply_message = new SaberMessage();
-  reply_message->set_type(message.type());
-  switch (message.type()) {
+  reply_message->set_type(message->type());
+  switch (message->type()) {
     case MT_EXISTS: {
       ExistsRequest request;
       ExistsResponse response;
-      request.ParseFromString(message.data());
+      request.ParseFromString(message->data());
       Watcher* watcher = request.watch() ? conn_ : nullptr;
       db_->Exists(group_id, request, watcher, &response);
       reply_message->set_data(response.SerializeAsString());
@@ -62,7 +64,7 @@ void Committer::Commit(const SaberMessage& message, uint32_t group_id) {
     case MT_GETDATA: {
       GetDataRequest request;
       GetDataResponse response;
-      request.ParseFromString(message.data());
+      request.ParseFromString(message->data());
       Watcher* watcher = request.watch() ? conn_ : nullptr;
       db_->GetData(group_id, request, watcher, &response);
       reply_message->set_data(response.SerializeAsString());
@@ -71,7 +73,7 @@ void Committer::Commit(const SaberMessage& message, uint32_t group_id) {
     case MT_GETACL: {
       GetACLRequest request;
       GetACLResponse response;
-      request.ParseFromString(message.data());
+      request.ParseFromString(message->data());
       db_->GetACL(group_id, request, &response);
       reply_message->set_data(response.SerializeAsString());
       break;
@@ -79,26 +81,32 @@ void Committer::Commit(const SaberMessage& message, uint32_t group_id) {
     case MT_GETCHILDREN: {
       GetChildrenRequest request;
       GetChildrenResponse response;
-      request.ParseFromString(message.data());
+      request.ParseFromString(message->data());
       Watcher* watcher = request.watch() ? conn_ : nullptr;
       db_->GetChildren(group_id, request, watcher, & response);
       reply_message->set_data(response.SerializeAsString());
       break;
     }
-
     case MT_CREATE:
-    case MT_DELETE: 
-    case MT_SETDATA: 
+    case MT_DELETE:
+    case MT_SETDATA:
     case MT_SETACL: {
+      Transaction txn;
+      txn.set_time(NowMicros());
+      message->set_extra_data(txn.SerializeAsString());
       context_->user_data = reply_message;
-      node_->Propose(
-          group_id, message.SerializeAsString(), context_, 
-          [this](skywalker::MachineContext* context, 
+      bool res = node_->Propose(
+          group_id, message->SerializeAsString(), context_,
+          [this](skywalker::MachineContext* context,
                  const skywalker::Status& s, uint64_t instance_id) {
         OnProposeComplete(context, s, instance_id);
       });
-      wait = true;
-      break; 
+      if (res) {
+        wait = true;
+      } else {
+        SetFailedState(reply_message);
+      }
+      break;
     }
     default: {
       assert(false);
@@ -117,9 +125,12 @@ bool Committer::Execute(uint32_t group_id,
                         const std::string& value,
                         skywalker::MachineContext* context) {
   SaberMessage message;
+  Transaction txn;
   message.ParseFromString(value);
+  txn.ParseFromString(message.extra_data());
+  txn.set_id(instance_id);
   SaberMessage* reply_message = nullptr;
-  if (context) { 
+  if (context) {
     reply_message = reinterpret_cast<SaberMessage*>(context->user_data);
     assert(GetMachineId() == context->machine_id);
     assert(message.type() == reply_message->type());
@@ -129,7 +140,7 @@ bool Committer::Execute(uint32_t group_id,
       CreateRequest request;
       CreateResponse response;
       request.ParseFromString(message.data());
-      db_->Create(group_id, request, &response);
+      db_->Create(group_id, request, txn, &response);
       if (reply_message) {
         reply_message->set_data(response.SerializeAsString());
       }
@@ -139,7 +150,7 @@ bool Committer::Execute(uint32_t group_id,
       DeleteRequest request;
       DeleteResponse response;
       request.ParseFromString(message.data());
-      db_->Delete(group_id, request, &response);
+      db_->Delete(group_id, request, txn, &response);
       if (reply_message) {
         reply_message->set_data(response.SerializeAsString());
       }
@@ -149,7 +160,7 @@ bool Committer::Execute(uint32_t group_id,
       SetDataRequest request;
       SetDataResponse response;
       request.ParseFromString(message.data());
-      db_->SetData(group_id, request, &response); 
+      db_->SetData(group_id, request, txn, &response);
       if (reply_message) {
         reply_message->set_data(response.SerializeAsString());
       }
@@ -159,7 +170,7 @@ bool Committer::Execute(uint32_t group_id,
       SetACLRequest request;
       SetACLResponse response;
       request.ParseFromString(message.data());
-      db_->SetACL(group_id, request, &response);
+      db_->SetACL(group_id, request, txn, &response);
       if (reply_message) {
         reply_message->set_data(response.SerializeAsString());
       }
@@ -171,49 +182,19 @@ bool Committer::Execute(uint32_t group_id,
       break;
     }
   }
-  return true; 
+  return true;
 }
 
-void Committer::OnProposeComplete(skywalker::MachineContext* context, 
-                                  const skywalker::Status& s, 
+void Committer::OnProposeComplete(skywalker::MachineContext* context,
+                                  const skywalker::Status& s,
                                   uint64_t instance_id) {
   assert(context);
   assert(GetMachineId() == context->machine_id);
-  SaberMessage* reply_message = 
+  SaberMessage* reply_message =
       reinterpret_cast<SaberMessage*>(context->user_data);
   assert(reply_message);
   if (!s.ok()) {
-    switch(reply_message->type()) {
-      case MT_CREATE: {
-        CreateResponse response;
-        response.set_code(RC_FAILED);
-        reply_message->set_data(response.SerializeAsString());
-        break;
-      }
-      case MT_DELETE: { 
-        DeleteResponse response;
-        response.set_code(RC_FAILED);
-        reply_message->set_data(response.SerializeAsString());
-        break;
-      }
-      case MT_SETDATA: {
-        SetDataResponse response;
-        response.set_code(RC_FAILED);
-        reply_message->set_data(response.SerializeAsString());
-        break;
-      }
-      case MT_SETACL: {
-        SetACLResponse response;
-        response.set_code(RC_FAILED);
-        reply_message->set_data(response.SerializeAsString());
-        break;
-      }
-      default: {
-        assert(false);
-        LOG_ERROR("Invalid message type.\n");
-        break; 
-      }
-    }
+    SetFailedState(reply_message);
   } else {
     LOG_INFO("Committer::OnProposeComplete - %s\n", s.ToString().c_str());
   }
@@ -221,6 +202,40 @@ void Committer::OnProposeComplete(skywalker::MachineContext* context,
     assert(cb_);
     cb_(std::unique_ptr<SaberMessage>(reply_message));
   });
+}
+
+void Committer::SetFailedState(SaberMessage* reply_message) {
+  switch(reply_message->type()) {
+    case MT_CREATE: {
+      CreateResponse response;
+      response.set_code(RC_FAILED);
+      reply_message->set_data(response.SerializeAsString());
+      break;
+    }
+    case MT_DELETE: {
+      DeleteResponse response;
+      response.set_code(RC_FAILED);
+      reply_message->set_data(response.SerializeAsString());
+      break;
+    }
+    case MT_SETDATA: {
+      SetDataResponse response;
+      response.set_code(RC_FAILED);
+      reply_message->set_data(response.SerializeAsString());
+      break;
+    }
+    case MT_SETACL: {
+      SetACLResponse response;
+      response.set_code(RC_FAILED);
+      reply_message->set_data(response.SerializeAsString());
+      break;
+    }
+    default: {
+      assert(false);
+      LOG_ERROR("Invalid message type.\n");
+      break;
+    }
+  }
 }
 
 uint32_t Committer::Shard(const std::string& s) {

@@ -34,7 +34,7 @@ class Committer : public skywalker::StateMachine {
     cb_ = std::move(cb);
   }
 
-  void Commit(const SaberMessage& message);
+  void Commit(SaberMessage* message);
 
   virtual bool Execute(uint32_t group_id,
                        uint64_t instance_id,
@@ -42,10 +42,11 @@ class Committer : public skywalker::StateMachine {
                        skywalker::MachineContext* context);
 
  private:
-  void Commit(const SaberMessage& message, uint32_t group_id);
+  void Commit(SaberMessage* message, uint32_t group_id);
   void OnProposeComplete(skywalker::MachineContext* context,
                          const skywalker::Status& s,
                          uint64_t instance_id);
+  void SetFailedState(SaberMessage* reply_message);
   uint32_t Shard(const std::string& s);
 
   ServerConnection* conn_;

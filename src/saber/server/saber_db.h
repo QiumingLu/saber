@@ -6,6 +6,7 @@
 #define SABER_SERVER_SABER_DB_H_
 
 #include "saber/server/data_tree.h"
+#include "saber/proto/server.pb.h"
 
 namespace saber {
 
@@ -15,10 +16,10 @@ class SaberDB {
   ~SaberDB();
 
   void Create(uint32_t group_id, const CreateRequest& request, 
-              CreateResponse* response);
+              const Transaction& txn, CreateResponse* response);
 
   void Delete(uint32_t group_id, const DeleteRequest& request,
-              DeleteResponse* response);
+              const Transaction& txn, DeleteResponse* response);
 
   void Exists(uint32_t group_id, const ExistsRequest& request,
                 Watcher* watcher, ExistsResponse* response);
@@ -27,13 +28,13 @@ class SaberDB {
                Watcher* watcher, GetDataResponse* response);
 
   void SetData(uint32_t group_id, const SetDataRequest& request,
-               SetDataResponse* response);
+               const Transaction& txn, SetDataResponse* response);
 
   void GetACL(uint32_t group_id, const GetACLRequest& request,
               GetACLResponse* response);
 
   void SetACL(uint32_t group_id, const SetACLRequest& request, 
-              SetACLResponse* response); 
+              const Transaction& txn, SetACLResponse* response); 
 
   void GetChildren(uint32_t group_id, const GetChildrenRequest& request,
                    Watcher* watcher, GetChildrenResponse* response);

@@ -1,0 +1,8 @@
+syntax = "proto3";
+package saber;
+
+message Transaction {
+  int64 id = 1;
+  int64 time = 2;
+  int32 version = 3;
+}

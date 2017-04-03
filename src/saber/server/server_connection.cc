@@ -44,7 +44,7 @@ void ServerConnection::OnMessage(std::unique_ptr<SaberMessage> message) {
     pending_messages_.push_back(std::move(message));
     if (finished_) {
       finished_ = false;
-      committer_.Commit(*(pending_messages_.front().get()));
+      committer_.Commit(pending_messages_.front().get());
     }  
   }
 }
@@ -55,7 +55,7 @@ void ServerConnection::OnCommitComplete(
   messager_->SendMessage(*(message.get()));
   if (!pending_messages_.empty()) {
     assert(!finished_);
-    committer_.Commit(*(pending_messages_.front().get()));
+    committer_.Commit(pending_messages_.front().get());
   } else {
    finished_ = true;
   }
