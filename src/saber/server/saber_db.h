@@ -38,6 +38,8 @@ class SaberDB {
 
   void GetChildren(uint32_t group_id, const GetChildrenRequest& request,
                    Watcher* watcher, GetChildrenResponse* response);
+
+  void RemoveWatch(Watcher* watcher);
   
  private:
   std::vector<std::unique_ptr<DataTree> > trees_;

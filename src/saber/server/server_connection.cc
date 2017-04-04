@@ -45,7 +45,7 @@ void ServerConnection::OnMessage(std::unique_ptr<SaberMessage> message) {
     if (finished_) {
       finished_ = false;
       committer_.Commit(pending_messages_.front().get());
-    }  
+    }
   }
 }
 
@@ -53,11 +53,19 @@ void ServerConnection::OnCommitComplete(
     std::unique_ptr<SaberMessage> message) {
   pending_messages_.pop_front();
   messager_->SendMessage(*(message.get()));
-  if (!pending_messages_.empty()) {
-    assert(!finished_);
-    committer_.Commit(pending_messages_.front().get());
+  if (message->type() != MT_MASTER) {
+    if (!pending_messages_.empty()) {
+      assert(!finished_);
+      committer_.Commit(pending_messages_.front().get());
+    } else {
+     finished_ = true;
+    }
   } else {
-   finished_ = true;
+    // FIXME
+    voyager::TcpConnectionPtr p = messager_->GetTcpConnection();
+    if (p) {
+      p->ShutDown();
+    }
   }
 }
 

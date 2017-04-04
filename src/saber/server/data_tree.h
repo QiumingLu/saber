@@ -44,11 +44,15 @@ class DataTree {
 
   void GetChildren(const GetChildrenRequest& request, Watcher* watcher,
                    GetChildrenResponse* response);
+
+  void RemoveWatch(Watcher* watcher);
+
  private:
   Mutex mutex_;
+  std::unordered_map<std::string, std::unique_ptr<DataNode> > nodes_;
+
   ServerWatchManager data_watches_;
   ServerWatchManager child_watches_;
-  std::unordered_map<std::string, std::unique_ptr<DataNode> > nodes_;
 
   // No copying allowed
   DataTree(const DataTree&);

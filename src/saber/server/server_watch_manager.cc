@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "saber/server/server_watch_manager.h"
+#include "saber/util/mutexlock.h"
 
 namespace saber {
 
@@ -14,6 +15,7 @@ ServerWatchManager::~ServerWatchManager() {
 
 void ServerWatchManager::AddWatch(
     const std::string& path, Watcher* watcher) {
+  MutexLock lock(&mutex_);
   auto i  = path_to_watches_.find(path);
   if (i != path_to_watches_.end()) {
     i->second->insert(watcher);
@@ -34,6 +36,7 @@ void ServerWatchManager::AddWatch(
 }
 
 void ServerWatchManager::RemoveWatch(Watcher* watcher) {
+  MutexLock lock(&mutex_);
   auto i = watch_to_paths_.find(watcher);
   if (i != watch_to_paths_.end()) {
     for (auto& j : *(i->second)) {
@@ -55,6 +58,7 @@ WatcherSetPtr ServerWatchManager::TriggerWatcher(
 WatcherSetPtr ServerWatchManager::TriggerWatcher(
     const std::string& path, EventType type, WatcherSetPtr p) {
   WatcherSetPtr watches;
+  MutexLock lock(&mutex_);
   auto i = path_to_watches_.find(path);
   if (i != path_to_watches_.end()) {
     WatchedEvent event;

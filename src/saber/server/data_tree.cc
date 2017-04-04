@@ -4,6 +4,7 @@
 
 #include "saber/server/data_tree.h"
 #include "saber/util/mutexlock.h"
+#include "saber/util/logging.h"
 
 namespace saber {
 
@@ -43,15 +44,13 @@ void DataTree::Create(const CreateRequest& request, const Transaction& txn,
      acl->push_back(request.acl(i));
   }
 
+  {
   MutexLock lock(&mutex_);
   auto it = nodes_.find(parent);
   if (it != nodes_.end()) {
     bool res = it->second->AddChild(child, txn.instance_id());
     if (res) {
       nodes_.insert(std::make_pair(path, std::unique_ptr<DataNode>(node)));
-      data_watches_.TriggerWatcher(path, ET_NODE_CREATED);
-      child_watches_.TriggerWatcher(
-          parent.empty() ? "/" : parent, ET_NODE_CHILDREN_CHANGED);
       response->set_code(RC_OK);
       response->set_path(path);
     } else {
@@ -60,9 +59,15 @@ void DataTree::Create(const CreateRequest& request, const Transaction& txn,
   } else {
     response->set_code(RC_NO_PARENT);
   }
-  if (response->code() != RC_OK) {
-    delete node;
   }
+
+  if (response->code() == RC_OK) {
+    data_watches_.TriggerWatcher(path, ET_NODE_CREATED);
+    child_watches_.TriggerWatcher(
+        parent.empty() ? "/" : parent, ET_NODE_CHILDREN_CHANGED);
+  } else {
+    delete node;
+  } 
 }
 
 void DataTree::Delete(const DeleteRequest& request, const Transaction& txn,
@@ -71,7 +76,8 @@ void DataTree::Delete(const DeleteRequest& request, const Transaction& txn,
   size_t found = path.find_last_of('/');
   std::string parent = path.substr(0, found);
   std::string child = path.substr(found + 1);
-
+  
+  {
   MutexLock lock(&mutex_);
   auto it =  nodes_.find(path);
   if (it != nodes_.end()) {
@@ -79,27 +85,31 @@ void DataTree::Delete(const DeleteRequest& request, const Transaction& txn,
     it = nodes_.find(parent);
     if (it != nodes_.end()) {
       it->second->RemoveChild(child, txn.instance_id());
-      WatcherSetPtr p = data_watches_.TriggerWatcher(path, ET_NODE_DELETED);
-      child_watches_.TriggerWatcher(path, ET_NODE_DELETED, std::move(p));
-      child_watches_.TriggerWatcher(
-          parent.empty() ? "/" : parent, ET_NODE_CHILDREN_CHANGED);
-      response->set_code(RC_OK);
+     response->set_code(RC_OK);
     } else {
       response->set_code(RC_NO_PARENT);
     }
   } else {
     response->set_code(RC_NO_NODE);
   }
+  }
+
+  if (response->code() == RC_OK) {
+    WatcherSetPtr p = data_watches_.TriggerWatcher(path, ET_NODE_DELETED);
+    child_watches_.TriggerWatcher(path, ET_NODE_DELETED, std::move(p));
+    child_watches_.TriggerWatcher(
+        parent.empty() ? "/" : parent, ET_NODE_CHILDREN_CHANGED);
+  } 
 }
 
 void DataTree::Exists(const ExistsRequest& request, Watcher* watcher, 
                       ExistsResponse* response) {
   const std::string& path = request.path();
-
-  MutexLock lock(&mutex_);
   if (watcher) {
     data_watches_.AddWatch(path, watcher);
   }
+
+  MutexLock lock(&mutex_);
   auto it = nodes_.find(path);
   if (it != nodes_.end()) {
     response->set_code(RC_OK);
@@ -114,18 +124,23 @@ void DataTree::GetData(const GetDataRequest& request, Watcher* watcher,
                        GetDataResponse* response) {
   const std::string& path = request.path();
 
+  {
   MutexLock lock(&mutex_);
   auto it = nodes_.find(path);
   if (it != nodes_.end()) {
-    if (watcher) {
-      data_watches_.AddWatch(path, watcher);
-    }
     response->set_code(RC_OK);
     Stat* stat = new Stat(it->second->stat());
     response->set_data(it->second->data());
     response->set_allocated_stat(stat);
   } else {
     response->set_code(RC_NO_NODE);
+  }
+  }
+  
+  if (response->code() == RC_OK) {
+    if (watcher) {
+      data_watches_.AddWatch(path, watcher);
+    }
   }
 }
  
@@ -135,6 +150,7 @@ void DataTree::SetData(const SetDataRequest& request, const Transaction& txn,
   const std::string& data =  request.data();
   int version = request.version();
 
+  {
   MutexLock lock(&mutex_);
   auto it  =nodes_.find(path);
   if (it != nodes_.end()) {
@@ -147,12 +163,16 @@ void DataTree::SetData(const SetDataRequest& request, const Transaction& txn,
       stat->set_version(version + 1);
       stat->set_data_len(static_cast<int>(data.size()));
       it->second->set_data(data);
-      data_watches_.TriggerWatcher(path, ET_NODE_DATA_CHANGED);
       response->set_code(RC_OK);
       response->set_allocated_stat(new Stat(*stat));
     }
   } else {
     response->set_code(RC_NO_NODE);
+  }
+  }
+
+  if (response->code() == RC_OK) {
+    data_watches_.TriggerWatcher(path, ET_NODE_DATA_CHANGED);
   }
 }
 
@@ -203,12 +223,11 @@ void DataTree::SetACL(const SetACLRequest& request, const Transaction& txn,
 void DataTree::GetChildren(const GetChildrenRequest& request, Watcher* watcher,
                            GetChildrenResponse* response) {
   const std::string& path = request.path();
+ 
+  {  
   MutexLock lock(&mutex_);
   auto it = nodes_.find(path);
   if (it != nodes_.end()) {
-    if (watcher) {
-      child_watches_.AddWatch(path, watcher);
-    }
     response->set_code(RC_OK);
     Stat* stat = new Stat(it->second->stat());
     response->set_allocated_stat(stat);
@@ -219,6 +238,18 @@ void DataTree::GetChildren(const GetChildrenRequest& request, Watcher* watcher,
   } else {
     response->set_code(RC_NO_NODE);
   }
+  }
+  
+  if (response->code() == RC_OK) {
+    if (watcher) {
+      child_watches_.AddWatch(path, watcher);
+    }
+  }
 } 
+
+void DataTree::RemoveWatch(Watcher* watcher) {
+  data_watches_.RemoveWatch(watcher);
+  child_watches_.RemoveWatch(watcher);
+}
 
 }  // namespace saber

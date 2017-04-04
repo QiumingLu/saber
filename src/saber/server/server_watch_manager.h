@@ -11,6 +11,7 @@
 #include <unordered_map>
 
 #include "saber/service/watcher.h"
+#include "saber/util/mutex.h"
 
 namespace saber {
 
@@ -28,6 +29,7 @@ class ServerWatchManager {
       const std::string& path, EventType type, WatcherSetPtr p);
 
  private:
+  Mutex mutex_;
   std::unordered_map<std::string, WatcherSetPtr> path_to_watches_;
   std::unordered_map<Watcher*, PathSetPtr> watch_to_paths_;
 

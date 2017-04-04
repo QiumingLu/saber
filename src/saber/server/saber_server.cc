@@ -5,20 +5,19 @@
 #include "saber/server/saber_server.h"
 
 #include <voyager/core/tcp_connection.h>
+
 #include "saber/util/logging.h"
+#include "saber/util/timeops.h"
 
 namespace saber {
 
-SaberServer::SaberServer(voyager::EventLoop* loop,
+SaberServer::SaberServer(uint16_t server_id, voyager::EventLoop* loop,
                          const voyager::SockAddr& addr, int thread_size)
-    : node_(nullptr),
-      db_(nullptr),
+    : server_id_(server_id),
       server_(loop, addr, "SaberServer", thread_size) {
 }
 
 SaberServer::~SaberServer() {
-  delete db_;
-  delete node_;
 }
 
 bool SaberServer::Start(const skywalker::Options& options) {
@@ -29,10 +28,12 @@ bool SaberServer::Start(const skywalker::Options& options) {
     OnClose(p);
   });
 
-  bool res = skywalker::Node::Start(options, &node_);
+  skywalker::Node* node;
+  bool res = skywalker::Node::Start(options, &node);
   if (res) {
     LOG_INFO("Skywalker start successfully!\n");
-    db_ = new SaberDB(options.group_size);
+    db_.reset(new SaberDB(options.group_size));
+    node_.reset(node);
     server_.Start();
   } else {
     LOG_ERROR("Skywalker start failed!\n");
@@ -48,9 +49,10 @@ void SaberServer::OnConnection(const voyager::TcpConnectionPtr& p) {
     messager->OnMessage(ptr, buf);
   });
   ServerConnection* conn = new ServerConnection(
-      std::unique_ptr<Messager>(messager), db_, p->OwnerEventLoop(), node_);
+      std::unique_ptr<Messager>(messager),
+      db_.get(), p->OwnerEventLoop(), node_.get());
   p->SetContext(conn);
-  conn->set_session_id(seq_.GetNext());
+  conn->set_session_id(GetNextSessionId());
   conns_.insert(conn->session_id(), std::unique_ptr<ServerConnection>(conn));
 }
 
@@ -58,6 +60,10 @@ void SaberServer::OnClose(const voyager::TcpConnectionPtr& p) {
   ServerConnection* conn =
       reinterpret_cast<ServerConnection*>(p->Context());
   conns_.erase(conn->session_id());
+}
+
+uint64_t SaberServer::GetNextSessionId() const {
+  return ((NowMillis() << 16) | server_id_);
 }
 
 }  // namespace saber

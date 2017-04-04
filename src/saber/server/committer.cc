@@ -25,6 +25,7 @@ Committer::Committer(ServerConnection* conn,
 
 Committer::~Committer() {
   node_->RemoveMachine(this);
+  db_->RemoveWatch(conn_);
   delete context_;
 }
 
@@ -108,10 +109,10 @@ void Committer::Commit(uint32_t group_id, SaberMessage* message) {
 
 bool Committer::Propose(uint32_t group_id, 
                         SaberMessage* message, SaberMessage* reply_message) {
-  uint64_t micros = NowMicros();
-  char extra[64];
-  snprintf(extra, sizeof(extra), "%" PRIu64"", micros);
-  message->set_extra_data(extra);
+  Transaction txn;
+  txn.set_session_id(conn_->session_id());
+  txn.set_time(NowMicros());
+  message->set_extra_data(txn.SerializeAsString());
   context_->user_data = reply_message;
   bool res = node_->Propose(
       group_id, message->SerializeAsString(), context_,
@@ -131,12 +132,10 @@ bool Committer::Execute(uint32_t group_id,
                         skywalker::MachineContext* context) {
   SaberMessage message;
   message.ParseFromString(value);
-  uint64_t time;
-  memcpy(&time, message.extra_data().data(), sizeof(time));
   Transaction txn;
+  txn.ParseFromString(message.extra_data());
   txn.set_group_id(group_id);
   txn.set_instance_id(instance_id);
-  txn.set_time(time);
   SaberMessage* reply_message = nullptr;
   if (context) {
     reply_message = reinterpret_cast<SaberMessage*>(context->user_data);

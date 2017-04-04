@@ -18,7 +18,8 @@ namespace saber {
 
 class SaberServer {
  public:
-  SaberServer(voyager::EventLoop* loop,
+  SaberServer(uint16_t server_id,
+              voyager::EventLoop* loop,
               const voyager::SockAddr& addr,
               int thread_size = 1);
   ~SaberServer();
@@ -28,12 +29,13 @@ class SaberServer {
  private:
   void OnConnection(const voyager::TcpConnectionPtr& p);
   void OnClose(const voyager::TcpConnectionPtr& p);
+  uint64_t GetNextSessionId() const;
 
-  skywalker::Node* node_;
+  uint16_t server_id_;
 
-  SaberDB* db_;
-  
-  voyager::port::SequenceNumber seq_;
+  std::unique_ptr<SaberDB> db_;
+  std::unique_ptr<skywalker::Node> node_;
+
   ConcurrentMap<uint64_t, std::unique_ptr<ServerConnection> > conns_;
   voyager::TcpServer server_;
 
