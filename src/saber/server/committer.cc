@@ -6,7 +6,7 @@
 #include "saber/server/server_connection.h"
 #include "saber/util/logging.h"
 #include "saber/util/murmurhash3.h"
-#include "saber/util/timerlist.h"
+#include "saber/util/timeops.h"
 #include "saber/proto/server.pb.h"
 
 namespace saber {
@@ -31,7 +31,7 @@ Committer::~Committer() {
 void Committer::Commit(SaberMessage* message) {
   uint32_t group_id = Shard(message->extra_data());
   if (node_->IsMaster(group_id)) {
-    Commit(message, group_id);
+    Commit(group_id, message);
   } else {
     assert(cb_);
     skywalker::IpPort i;
@@ -47,7 +47,7 @@ void Committer::Commit(SaberMessage* message) {
   }
 }
 
-void Committer::Commit(SaberMessage* message, uint32_t group_id) {
+void Committer::Commit(uint32_t group_id, SaberMessage* message) {
   bool wait = false;
   SaberMessage* reply_message = new SaberMessage();
   reply_message->set_type(message->type());
@@ -91,21 +91,7 @@ void Committer::Commit(SaberMessage* message, uint32_t group_id) {
     case MT_DELETE:
     case MT_SETDATA:
     case MT_SETACL: {
-      Transaction txn;
-      txn.set_time(NowMicros());
-      message->set_extra_data(txn.SerializeAsString());
-      context_->user_data = reply_message;
-      bool res = node_->Propose(
-          group_id, message->SerializeAsString(), context_,
-          [this](skywalker::MachineContext* context,
-                 const skywalker::Status& s, uint64_t instance_id) {
-        OnProposeComplete(context, s, instance_id);
-      });
-      if (res) {
-        wait = true;
-      } else {
-        SetFailedState(reply_message);
-      }
+      wait = Propose(group_id, message, reply_message);
       break;
     }
     default: {
@@ -120,15 +106,37 @@ void Committer::Commit(SaberMessage* message, uint32_t group_id) {
   }
 }
 
+bool Committer::Propose(uint32_t group_id, 
+                        SaberMessage* message, SaberMessage* reply_message) {
+  uint64_t micros = NowMicros();
+  char extra[64];
+  snprintf(extra, sizeof(extra), "%" PRIu64"", micros);
+  message->set_extra_data(extra);
+  context_->user_data = reply_message;
+  bool res = node_->Propose(
+      group_id, message->SerializeAsString(), context_,
+      [this](skywalker::MachineContext* context,
+             const skywalker::Status& s, uint64_t instance_id) {
+    OnProposeComplete(context, s, instance_id);
+  });
+  if (!res) {
+    SetFailedState(reply_message);
+  }
+  return res; 
+}
+
 bool Committer::Execute(uint32_t group_id,
                         uint64_t instance_id,
                         const std::string& value,
                         skywalker::MachineContext* context) {
   SaberMessage message;
-  Transaction txn;
   message.ParseFromString(value);
-  txn.ParseFromString(message.extra_data());
-  txn.set_id(instance_id);
+  uint64_t time;
+  memcpy(&time, message.extra_data().data(), sizeof(time));
+  Transaction txn;
+  txn.set_group_id(group_id);
+  txn.set_instance_id(instance_id);
+  txn.set_time(time);
   SaberMessage* reply_message = nullptr;
   if (context) {
     reply_message = reinterpret_cast<SaberMessage*>(context->user_data);

@@ -59,6 +59,8 @@ class SaberClient {
                    void* context, const ChildrenCallback& cb);
 
  private:
+  void AddExtraData(const std::string& path, SaberMessage* message);
+ 
   void Connect(const voyager::SockAddr& addr);
   void Close();
   void TrySendInLoop(SaberMessage* message);
@@ -88,8 +90,7 @@ class SaberClient {
 
   std::deque<std::unique_ptr<SaberMessage> > outgoing_queue_;
 
-  std::string master_ip_;
-  uint16_t master_port_;
+  Master master_;
 
   // No copying allowed
   SaberClient(const SaberClient&);

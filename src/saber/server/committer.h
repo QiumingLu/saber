@@ -42,7 +42,10 @@ class Committer : public skywalker::StateMachine {
                        skywalker::MachineContext* context);
 
  private:
-  void Commit(SaberMessage* message, uint32_t group_id);
+  void Commit(uint32_t group_id, 
+              SaberMessage* message);
+  bool Propose(uint32_t group_id,
+               SaberMessage* message, SaberMessage* reply_message);
   void OnProposeComplete(skywalker::MachineContext* context,
                          const skywalker::Status& s,
                          uint64_t instance_id);

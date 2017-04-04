@@ -2,7 +2,15 @@ syntax = "proto3";
 package saber;
 
 message Transaction {
-  int64 id = 1;
-  int64 time = 2;
-  int32 version = 3;
+  uint32 group_id = 1;
+  uint64 instance_id = 2;
+  uint64 time = 3;
 }
+/*
+message DataNode {
+  Stat stat = 1;
+  bytes data = 2;
+  repeated ACL acl = 3;
+  repeated string children = 4;
+}
+*/

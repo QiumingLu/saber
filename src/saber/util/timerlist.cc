@@ -3,10 +3,7 @@
 // found in the LICENSE file.
 
 #include "saber/util/timerlist.h"
-
-#include <sys/time.h>
-#include <time.h>
-
+#include "saber/util/timeops.h"
 #include "saber/util/runloop.h"
 
 namespace saber {
@@ -43,12 +40,6 @@ class Timer {
   TimerProcCallback timerproc_cb;
   bool repeat;
 };
-
-uint64_t NowMicros() {
-  struct timeval tv;
-  gettimeofday(&tv, nullptr);
-  return static_cast<uint64_t>(tv.tv_sec)*1000000 + tv.tv_usec;
-}
 
 TimerList::TimerList(RunLoop* loop) 
     : loop_(loop) {

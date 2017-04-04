@@ -12,54 +12,45 @@ namespace saber {
 template<typename T>
 class Request {
  public:
-  std::string client_path;
-  std::string server_path;
+  std::string path;
   void* context;
   Watcher* watcher;
   T callback;
 
-  Request(std::string&& c, std::string&& s,
-          void* ctx, Watcher* w, const T& cb)
-      : client_path(std::move(c)),
-        server_path(std::move(s)),
+  Request(const std::string& p, void* ctx, Watcher* w, const T& cb)
+      : path(p),
         context(ctx),
         watcher(w),
         callback(cb) {
   }
 
-  Request(std::string&& c, std::string&& s,
-          void* ctx, Watcher* w, T&& cb)
-      : client_path(std::move(c)),
-        server_path(std::move(s)),
+  Request(const std::string& p, void* ctx, Watcher* w, T&& cb)
+      : path(p),
         context(ctx),
         watcher(w),
         callback(std::move(cb)) {
   }
 
   Request(const Request& r) {
-    client_path = r.client_path;
-    server_path = r.server_path;
+    path = r.path;
     context = r.context;
     watcher = r.watcher;
     callback = r.callback;
   }
   Request(Request&& r) {
-    client_path = std::move(r.client_path);
-    server_path = std::move(r.server_path);
+    path = std::move(r.path);
     context = r.context;
     watcher = r.watcher;
     callback = std::move(r.callback);
   }
   void operator=(const Request& r) {
-    client_path = r.client_path;
-    server_path = r.server_path;
+    path = r.path;
     context = r.context;
     watcher = r.watcher;
     callback = r.callback;
   }
   void operator=(Request&& r) {
-    client_path = std::move(r.client_path);
-    server_path = std::move(r.server_path);
+    path = std::move(r.path);
     context = r.context;
     watcher = r.watcher;
     callback = std::move(r.callback);

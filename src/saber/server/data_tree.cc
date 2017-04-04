@@ -22,30 +22,33 @@ void DataTree::Create(const CreateRequest& request, const Transaction& txn,
   size_t found = path.find_last_of('/');
   std::string parent = path.substr(0, found);
   std::string child = path.substr(found + 1);
-  Stat stat;
-  stat.set_created_id(txn.id());
-  stat.set_modified_id(txn.id());
-  stat.set_created_time(txn.time());
-  stat.set_modified_time(txn.time());
-  stat.set_version(0);
-  stat.set_children_version(0);
-  stat.set_acl_version(0);
-  stat.set_ephemeral_id(0);
-  stat.set_data_len(static_cast<int>(data.size()));
-  stat.set_children_num(0);
-  stat.set_children_id(txn.id());
-  std::vector<ACL> acl;
+ 
+  DataNode* node = new DataNode();
+  Stat* stat = node->mutable_stat();
+  stat->set_group_id(txn.group_id());
+  stat->set_created_id(txn.instance_id());
+  stat->set_modified_id(txn.instance_id());
+  stat->set_created_time(txn.time());
+  stat->set_modified_time(txn.time());
+  stat->set_version(0);
+  stat->set_children_version(0);
+  stat->set_acl_version(0);
+  stat->set_ephemeral_id(0);
+  stat->set_data_len(static_cast<uint32_t>(data.size()));
+  stat->set_children_num(0);
+  stat->set_children_id(txn.instance_id());
+  node->set_data(request.data());
+  std::vector<ACL>* acl = node->mutable_acl();
   for (int i = 0; i < request.acl_size(); ++i) {
-    acl.push_back(request.acl(i));
+     acl->push_back(request.acl(i));
   }
-  std::unique_ptr<DataNode> node(new DataNode(stat, data, std::move(acl)));
 
   MutexLock lock(&mutex_);
   auto it = nodes_.find(parent);
   if (it != nodes_.end()) {
-    bool res = it->second->AddChild(child);
+    bool res = it->second->AddChild(child, txn.instance_id());
     if (res) {
-      nodes_.insert(std::make_pair(path, std::move(node)));
+      nodes_.insert(std::make_pair(path, std::unique_ptr<DataNode>(node)));
       data_watches_.TriggerWatcher(path, ET_NODE_CREATED);
       child_watches_.TriggerWatcher(
           parent.empty() ? "/" : parent, ET_NODE_CHILDREN_CHANGED);
@@ -57,6 +60,9 @@ void DataTree::Create(const CreateRequest& request, const Transaction& txn,
   } else {
     response->set_code(RC_NO_PARENT);
   }
+  if (response->code() != RC_OK) {
+    delete node;
+  }
 }
 
 void DataTree::Delete(const DeleteRequest& request, const Transaction& txn,
@@ -65,14 +71,14 @@ void DataTree::Delete(const DeleteRequest& request, const Transaction& txn,
   size_t found = path.find_last_of('/');
   std::string parent = path.substr(0, found);
   std::string child = path.substr(found + 1);
+
   MutexLock lock(&mutex_);
   auto it =  nodes_.find(path);
   if (it != nodes_.end()) {
     nodes_.erase(it);
     it = nodes_.find(parent);
     if (it != nodes_.end()) {
-      it->second->RemoveChild(child);
-      it->second->mutable_stat()->set_children_id(txn.id());
+      it->second->RemoveChild(child, txn.instance_id());
       WatcherSetPtr p = data_watches_.TriggerWatcher(path, ET_NODE_DELETED);
       child_watches_.TriggerWatcher(path, ET_NODE_DELETED, std::move(p));
       child_watches_.TriggerWatcher(
@@ -89,6 +95,7 @@ void DataTree::Delete(const DeleteRequest& request, const Transaction& txn,
 void DataTree::Exists(const ExistsRequest& request, Watcher* watcher, 
                       ExistsResponse* response) {
   const std::string& path = request.path();
+
   MutexLock lock(&mutex_);
   if (watcher) {
     data_watches_.AddWatch(path, watcher);
@@ -106,6 +113,7 @@ void DataTree::Exists(const ExistsRequest& request, Watcher* watcher,
 void DataTree::GetData(const GetDataRequest& request, Watcher* watcher,
                        GetDataResponse* response) {
   const std::string& path = request.path();
+
   MutexLock lock(&mutex_);
   auto it = nodes_.find(path);
   if (it != nodes_.end()) {
@@ -125,17 +133,24 @@ void DataTree::SetData(const SetDataRequest& request, const Transaction& txn,
                        SetDataResponse* response) {
   const std::string& path = request.path();
   const std::string& data =  request.data();
+  int version = request.version();
+
   MutexLock lock(&mutex_);
   auto it  =nodes_.find(path);
   if (it != nodes_.end()) {
-    Stat* stat = it->second->mutable_stat();
-    stat->set_modified_id(txn.id());
-    stat->set_modified_time(txn.time());
-    stat->set_version(txn.version());
-    stat->set_data_len(static_cast<int>(data.size()));
-    it->second->set_data(data);
-    response->set_allocated_stat(new Stat(*stat));
-    data_watches_.TriggerWatcher(path, ET_NODE_DATA_CHANGED);
+    if (version != -1 && version != it->second->stat().version()) {
+      response->set_code(RC_BAD_VERSION);
+    } else {
+      Stat* stat = it->second->mutable_stat();
+      stat->set_modified_id(txn.instance_id());
+      stat->set_modified_time(txn.time());
+      stat->set_version(version + 1);
+      stat->set_data_len(static_cast<int>(data.size()));
+      it->second->set_data(data);
+      data_watches_.TriggerWatcher(path, ET_NODE_DATA_CHANGED);
+      response->set_code(RC_OK);
+      response->set_allocated_stat(new Stat(*stat));
+    }
   } else {
     response->set_code(RC_NO_NODE);
   }
@@ -162,18 +177,24 @@ void DataTree::GetACL(const GetACLRequest& request,
 void DataTree::SetACL(const SetACLRequest& request, const Transaction& txn, 
                       SetACLResponse* response) {
   const std::string& path = request.path();
+
   MutexLock lock(&mutex_);
   auto it = nodes_.find(path);
   if (it != nodes_.end()) {
-    std::vector<ACL> acl;
-    for (int i = 0; i < request.acl_size(); ++i) {
-      acl.push_back(request.acl(i));
+    int version = request.version();
+    if (version != -1 && version != it->second->stat().acl_version()) {
+      response->set_code(RC_BAD_VERSION);
+    } else {
+      std::vector<ACL> acl;
+      for (int i = 0; i < request.acl_size(); ++i) {
+        acl.push_back(request.acl(i));
+      }
+      it->second->set_acl(std::move(acl));
+      it->second->mutable_stat()->set_version(version + 1);
+      response->set_code(RC_OK);
+      Stat* stat = new Stat(it->second->stat());
+      response->set_allocated_stat(stat);  
     }
-    it->second->set_acl(std::move(acl));
-    it->second->mutable_stat()->set_version(txn.version());
-    response->set_code(RC_OK);
-    Stat* stat = new Stat(it->second->stat());
-    response->set_allocated_stat(stat);  
   } else {
     response->set_code(RC_NO_NODE);
   }

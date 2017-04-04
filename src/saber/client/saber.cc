@@ -62,58 +62,52 @@ void Saber::Close() {
 
 void Saber::Create(const CreateRequest& request,
                    void* context, const CreateCallback& cb) {
-  std::string root = request.path();
-  clients_[Shard(root)]->Create(request, context, cb);
+ clients_[Shard(request.path())]->Create(request, context, cb);
 }
 
 void Saber::Delete(const DeleteRequest& request,
                    void* context, const DeleteCallback& cb) {
-  std::string root = request.path();
-  clients_[Shard(root)]->Delete(request, context, cb);
+  clients_[Shard(request.path())]->Delete(request, context, cb);
 }
 
 void Saber::Exists(const ExistsRequest& request, Watcher* watcher,
                    void* context, const ExistsCallback& cb) {
-  std::string root = request.path();
-  clients_[Shard(root)]->Exists(request, watcher, context, cb);
+  clients_[Shard(request.path())]->Exists(request, watcher, context, cb);
 }
 
 void Saber::GetData(const GetDataRequest& request, Watcher* watcher,
                     void* context, const GetDataCallback& cb) {
-  std::string root = request.path();
-  clients_[Shard(root)]->GetData(request, watcher, context, cb);
+  clients_[Shard(request.path())]->GetData(request, watcher, context, cb);
 }
 
 void Saber::SetData(const SetDataRequest& request,
                     void* context, const SetDataCallback& cb) {
-  std::string root = request.path();
-  clients_[Shard(root)]->SetData(request, context, cb);
+  clients_[Shard(request.path())]->SetData(request, context, cb);
 }
 
 void Saber::GetACL(const GetACLRequest& request,
                    void* context, const GetACLCallback& cb) {
-  std::string root = request.path();
-  clients_[Shard(root)]->GetACL(request, context, cb);
+  clients_[Shard(request.path())]->GetACL(request, context, cb);
 }
 
 void Saber::SetACL(const SetACLRequest& request,
                    void* context, const SetACLCallback& cb) {
-  std::string root = request.path();
-  clients_[Shard(root)]->SetACL(request, context, cb);
+  clients_[Shard(request.path())]->SetACL(request, context, cb);
 }
 
 void Saber::GetChildren(const GetChildrenRequest& request, Watcher* watcher,
                         void* context, const ChildrenCallback& cb) {
-  std::string root = request.path();
-  clients_[Shard(root)]->GetChildren(request, watcher, context, cb);
+  clients_[Shard(request.path())]->GetChildren(request, watcher, context, cb);
 }
 
-uint32_t Saber::Shard(const std::string& s) {
+uint32_t Saber::Shard(const std::string& path) {
   if (options_.group_size == 1) {
     return 0;
   } else {
+    size_t found = path.find_first_of('/');
+    std::string root = path.substr(0, found);
     uint32_t h;
-    MurmurHash3_x86_32(s.c_str(), static_cast<int>(s.size()), 0, &h);
+    MurmurHash3_x86_32(root.data(), static_cast<int>(root.size()), 0, &h);
     return (h % options_.group_size);
   }
 }

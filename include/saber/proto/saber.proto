@@ -37,21 +37,23 @@ enum ResponseCode {
   RC_NO_NODE = 2;
   RC_NO_PARENT = 3;
   RC_NODE_EXISTS =4;
-  RC_NO_AUTH = 5;
+  RC_BAD_VERSION = 5;
+  RC_NO_AUTH = 6;
 }
 
 message Stat {
-  int64 created_id = 1;
-  int64 modified_id = 2;
-  int64 created_time = 3;
-  int64 modified_time = 4;
-  int32 version = 5;
-  int32 children_version = 6;
-  int32 acl_version = 7;
-  int64 ephemeral_id = 8;
-  int32 data_len = 9;
-  int32 children_num = 10;
-  int64 children_id = 11;
+  uint32 group_id = 1;
+  uint64 created_id = 2;
+  uint64 modified_id = 3;
+  uint64 created_time = 4;
+  uint64 modified_time = 5;
+  int32 version = 6;
+  int32 children_version = 7;
+  int32 acl_version = 8;
+  uint64 ephemeral_id = 9;
+  uint32 data_len = 10;
+  uint32 children_num = 11;
+  uint64 children_id = 12;
 }
 
 message Id {

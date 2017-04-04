@@ -9,30 +9,30 @@ namespace saber {
 DataNode::DataNode() {
 }
 
-DataNode::DataNode(
-    const Stat& stat, const std::string& data, const std::vector<ACL>& acl)
-    : stat_(stat),
-      data_(data),
-      acl_(acl) {
-}
-
-DataNode::DataNode(
-    const Stat& stat, const std::string& data, std::vector<ACL>&& acl)
-    : stat_(stat),
-      data_(data),
-      acl_(std::move(acl)) {
-}
-
 DataNode::~DataNode() {
 }
 
-bool DataNode::AddChild(const std::string& child) {
+bool DataNode::AddChild(const std::string& child, uint64_t children_id) {
   auto it = children_.insert(child);
-  return it.second;
+  bool res = it.second;
+  if (res) {
+    UpdateChildrenStat(children_id);
+  }
+  return res;
 }
 
-bool DataNode::RemoveChild(const std::string& child) {
-  return children_.erase(child);
+bool DataNode::RemoveChild(const std::string& child, uint64_t children_id) {
+  bool res = children_.erase(child);
+  if (res) {
+    UpdateChildrenStat(children_id);
+  }
+  return res;
+}
+
+void DataNode::UpdateChildrenStat(uint64_t children_id) {
+  stat_.set_children_version(stat_.children_version() + 1);
+  stat_.set_children_num(static_cast<int>(children_.size()));
+  stat_.set_children_id(children_id);
 }
 
 }  // namespace saber
