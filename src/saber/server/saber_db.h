@@ -15,10 +15,10 @@ namespace saber {
 class SaberDB : public skywalker::StateMachine {
  public:
   SaberDB(uint32_t group_size);
-  ~SaberDB();
+  virtual ~SaberDB();
 
   void Exists(uint32_t group_id, const ExistsRequest& request,
-                Watcher* watcher, ExistsResponse* response);
+              Watcher* watcher, ExistsResponse* response);
 
   void GetData(uint32_t group_id, const GetDataRequest& request,
                Watcher* watcher, GetDataResponse* response);
@@ -29,7 +29,7 @@ class SaberDB : public skywalker::StateMachine {
   void GetChildren(uint32_t group_id, const GetChildrenRequest& request,
                    Watcher* watcher, GetChildrenResponse* response);
 
-  void RemoveWatch(Watcher* watcher);
+  void RemoveWatcher(Watcher* watcher);
 
   virtual bool Execute(uint32_t group_id,
                        uint64_t instance_id,

@@ -39,13 +39,13 @@ class DataTree {
   void GetACL(const GetACLRequest& request,
               GetACLResponse* response);
  
- void SetACL(const SetACLRequest& request, const Transaction& txn, 
+  void SetACL(const SetACLRequest& request, const Transaction& txn, 
               SetACLResponse* response); 
 
   void GetChildren(const GetChildrenRequest& request, Watcher* watcher,
                    GetChildrenResponse* response);
 
-  void RemoveWatch(Watcher* watcher);
+  void RemoveWatcher(Watcher* watcher);
 
  private:
   Mutex mutex_;

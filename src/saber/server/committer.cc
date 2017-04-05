@@ -22,15 +22,11 @@ Committer::Committer(ServerConnection* conn,
       context_(new skywalker::MachineContext(db->machine_id())) {
 }
 
-Committer::~Committer() {
-}
-
 void Committer::Commit(SaberMessage* message) {
   uint32_t group_id = Shard(message->extra_data());
   if (node_->IsMaster(group_id)) {
     Commit(group_id, message);
   } else {
-    assert(cb_);
     skywalker::IpPort i;
     uint64_t version;
     node_->GetMaster(group_id, &i, &version);
@@ -40,7 +36,9 @@ void Committer::Commit(SaberMessage* message) {
     SaberMessage* reply_message = new SaberMessage();
     reply_message->set_type(MT_MASTER);
     reply_message->set_data(master.SerializeAsString());
-    cb_(std::unique_ptr<SaberMessage>(reply_message));
+    if (cb_) {
+      cb_(std::unique_ptr<SaberMessage>(reply_message));
+    }
   }
 }
 
@@ -99,8 +97,9 @@ void Committer::Commit(uint32_t group_id, SaberMessage* message) {
     }
   }
   if (!wait) {
-    assert(cb_);
-    cb_(std::unique_ptr<SaberMessage>(reply_message));
+    if (cb_) {
+      cb_(std::unique_ptr<SaberMessage>(reply_message));
+    }
   }
 }
 
@@ -144,8 +143,9 @@ void Committer::OnProposeComplete(skywalker::MachineContext* context,
   CommitterPtr ptr(shared_from_this());
   loop_->QueueInLoop([ptr, reply_message]() {
     if (!ptr.unique()) {
-      assert(ptr->cb_);
-      ptr->cb_(std::unique_ptr<SaberMessage>(reply_message));
+      if (ptr->cb_) {
+        ptr->cb_(std::unique_ptr<SaberMessage>(reply_message));
+      }
     }
   });
 }

@@ -6,19 +6,26 @@
 #define SABER_UTIL_RUNLOOP_H_
 
 #include <stdint.h>
+#include <memory>
 #include <vector>
 #include <functional>
 
 #include "saber/util/mutex.h"
-#include "saber/util/timerlist.h"
 
 namespace saber {
+
+class Timer;
+class TimerList;
+
+typedef std::pair<uint64_t, Timer*> TimerId;
+typedef std::function<void ()> TimerProcCallback;
 
 class RunLoop {
  public:
   typedef std::function<void ()> Func;
 
   RunLoop();
+  ~RunLoop();
 
   void Loop();
   void Exit();
@@ -48,7 +55,7 @@ class RunLoop {
   Mutex mutex_;
   Condition cond_;
   std::vector<Func> funcs_;
-  TimerList timers_;
+  std::unique_ptr<TimerList> timers_;
 
   // No copying allowed
   RunLoop(const RunLoop&);

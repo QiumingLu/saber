@@ -62,7 +62,7 @@ void SaberServer::OnConnection(const voyager::TcpConnectionPtr& p) {
 void SaberServer::OnClose(const voyager::TcpConnectionPtr& p) {
   ServerConnection* conn =
       reinterpret_cast<ServerConnection*>(p->Context());
-  db_->RemoveWatch(conn);
+  db_->RemoveWatcher(conn);
   conns_.erase(conn->session_id());
 }
 

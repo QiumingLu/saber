@@ -64,7 +64,7 @@ class Saber {
 
   Options options_;
   std::atomic<bool> has_connected_;
-  ServerManager* server_manager_;
+  std::unique_ptr<ServerManager> server_manager_;
   std::vector<std::unique_ptr<SaberClient> > clients_;
 
   voyager::EventLoop* send_loop_;

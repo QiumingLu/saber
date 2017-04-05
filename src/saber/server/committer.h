@@ -26,8 +26,6 @@ class Committer : public std::enable_shared_from_this<Committer> {
   Committer(ServerConnection* conn, voyager::EventLoop* loop,
             SaberDB* db, skywalker::Node* node);
 
-  virtual ~Committer();
-
   void SetCommitCompleteCallback(const CommitCompleteCallback& cb) {
     cb_ = cb;
   }

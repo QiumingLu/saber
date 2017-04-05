@@ -56,9 +56,9 @@ void SaberDB::GetChildren(uint32_t group_id, const GetChildrenRequest& request,
   trees_[group_id]->GetChildren(request, watcher, response);
 }
 
-void SaberDB::RemoveWatch(Watcher* watcher) {
+void SaberDB::RemoveWatcher(Watcher* watcher) {
   for (auto& tree : trees_) {
-    tree->RemoveWatch(watcher);
+    tree->RemoveWatcher(watcher);
   }
 }
 

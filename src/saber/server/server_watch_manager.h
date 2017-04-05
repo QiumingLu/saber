@@ -20,8 +20,8 @@ class ServerWatchManager {
   ServerWatchManager();
   ~ServerWatchManager();
 
-  void AddWatch(const std::string& path, Watcher* watcher);
-  void RemoveWatch(Watcher* watcher);
+  void AddWatcher(const std::string& path, Watcher* watcher);
+  void RemoveWatcher(Watcher* watcher);
 
   WatcherSetPtr TriggerWatcher(
       const std::string& path, EventType type);

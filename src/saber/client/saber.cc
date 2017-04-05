@@ -19,13 +19,12 @@ Saber::Saber(const Options& options)
 }
 
 Saber::~Saber() {
-  delete server_manager_;
 }
 
 bool Saber::Start() {
   if (!server_manager_) {
-    server_manager_ = new ServerManagerImpl();
-    options_.server_manager = server_manager_;
+    server_manager_.reset(new ServerManagerImpl());
+    options_.server_manager = server_manager_.get();
   }
   server_manager_->UpdateServers(options_.servers);
 

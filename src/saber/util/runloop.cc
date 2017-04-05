@@ -12,6 +12,7 @@
 #include "saber/util/mutexlock.h"
 #include "saber/util/thread.h"
 #include "saber/util/logging.h"
+#include "saber/util/timerlist.h"
 
 namespace saber {
 
@@ -20,14 +21,17 @@ RunLoop::RunLoop()
       tid_(CurrentThread::Tid()),
       mutex_(),
       cond_(&mutex_),
-      timers_(this) {
+      timers_(new TimerList(this)) {
+}
+
+RunLoop::~RunLoop() {
 }
 
 void RunLoop::Loop() {
   AssertInMyLoop();
   exit_ = false;
   while (!exit_) {
-    uint64_t t = timers_.TimeoutMicros();
+    uint64_t t = timers_->TimeoutMicros();
     uint64_t timeout = std::min(t, static_cast<uint64_t>(5000 * 1000));
     std::vector<Func> funcs;
     {
@@ -40,7 +44,7 @@ void RunLoop::Loop() {
     for (auto& f : funcs) {
       f();
     }
-    timers_.RunTimerProcs();
+    timers_->RunTimerProcs();
   }
 }
 
@@ -92,36 +96,36 @@ void RunLoop::QueueInLoop(Func&& func) {
 
 TimerId RunLoop::RunAt(uint64_t micros_value,
                        const TimerProcCallback& cb) {
-  return timers_.RunAt(micros_value, cb);
+  return timers_->RunAt(micros_value, cb);
 }
 
 TimerId RunLoop::RunAfter(uint64_t micros_delay,
                          const TimerProcCallback& cb) {
-  return timers_.RunAfter(micros_delay, cb);
+  return timers_->RunAfter(micros_delay, cb);
 }
 
 TimerId RunLoop::RunEvery(uint64_t micros_interval,
                          const TimerProcCallback& cb) {
-  return timers_.RunEvery(micros_interval, cb);
+  return timers_->RunEvery(micros_interval, cb);
 }
 
 TimerId RunLoop::RunAt(uint64_t micros_value,
                       TimerProcCallback&& cb) {
-  return timers_.RunAt(micros_value, std::move(cb));
+  return timers_->RunAt(micros_value, std::move(cb));
 }
 
 TimerId RunLoop::RunAfter(uint64_t micros_delay,
                          TimerProcCallback&& cb) {
-  return timers_.RunAfter(micros_delay, std::move(cb));
+  return timers_->RunAfter(micros_delay, std::move(cb));
 }
 
 TimerId RunLoop::RunEvery(uint64_t micros_interval,
                          TimerProcCallback&& cb) {
-  return timers_.RunEvery(micros_interval, std::move(cb));
+  return timers_->RunEvery(micros_interval, std::move(cb));
 }
 
 void RunLoop::Remove(TimerId t) {
-  timers_.Remove(t);
+  timers_->Remove(t);
 }
 
 }  // namespace saber

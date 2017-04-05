@@ -13,7 +13,7 @@ ServerWatchManager::ServerWatchManager() {
 ServerWatchManager::~ServerWatchManager() {
 }
 
-void ServerWatchManager::AddWatch(
+void ServerWatchManager::AddWatcher(
     const std::string& path, Watcher* watcher) {
   MutexLock lock(&mutex_);
   auto i  = path_to_watches_.find(path);
@@ -35,7 +35,7 @@ void ServerWatchManager::AddWatch(
   }
 }
 
-void ServerWatchManager::RemoveWatch(Watcher* watcher) {
+void ServerWatchManager::RemoveWatcher(Watcher* watcher) {
   MutexLock lock(&mutex_);
   auto i = watch_to_paths_.find(watcher);
   if (i != watch_to_paths_.end()) {
