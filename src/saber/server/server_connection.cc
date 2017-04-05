@@ -7,20 +7,21 @@
 
 namespace saber {
 
-ServerConnection::ServerConnection(std::unique_ptr<Messager> p,
+ServerConnection::ServerConnection(voyager::EventLoop* loop,
+                                   std::unique_ptr<Messager> p,
                                    SaberDB* db,
-                                   voyager::EventLoop* loop,
                                    skywalker::Node* node)
-    : finished_(true),
-      messager_(std::move(p)),
+    : closed_(false),
+      last_finished_(true),
       loop_(loop),
-      committer_(this, db, loop_, node) {
+      messager_(std::move(p)),
+      committer_(new Committer(this, loop_, db, node)) {
   assert(messager_);
   messager_->SetMessageCallback(
       [this](std::unique_ptr<SaberMessage> message) {
     OnMessage(std::move(message));
   });
-  committer_.SetCommitCompleteCallback(
+  committer_->SetCommitCompleteCallback(
       [this](std::unique_ptr<SaberMessage> message) {
     OnCommitComplete(std::move(message));
   });
@@ -30,42 +31,38 @@ ServerConnection::~ServerConnection() {
 }
 
 void ServerConnection::Process(const WatchedEvent& event) {
-  loop_->QueueInLoop([this, event]() {
-    SaberMessage message;
-    message.set_type(MT_NOTIFICATION);
-    message.set_data(event.SerializeAsString());
-    messager_->SendMessage(message);
-  });
+  SaberMessage message;
+  message.set_type(MT_NOTIFICATION);
+  message.set_data(event.SerializeAsString());
+  messager_->SendMessage(message);
 }
 
 void ServerConnection::OnMessage(std::unique_ptr<SaberMessage> message) {
+  assert(message);
   if (message->type() == MT_PING) {
   } else {
-    pending_messages_.push_back(std::move(message));
-    if (finished_) {
-      finished_ = false;
-      committer_.Commit(pending_messages_.front().get());
+    pending_messages_.push(std::move(message));
+    if (last_finished_) {
+      last_finished_ = false;
+      assert(!pending_messages_.empty());
+      committer_->Commit(pending_messages_.front().get());
     }
   }
 }
 
 void ServerConnection::OnCommitComplete(
     std::unique_ptr<SaberMessage> message) {
-  pending_messages_.pop_front();
+  pending_messages_.pop();
   messager_->SendMessage(*(message.get()));
-  if (message->type() != MT_MASTER) {
+  if (message->type() != MT_MASTER && !closed_) {
     if (!pending_messages_.empty()) {
-      assert(!finished_);
-      committer_.Commit(pending_messages_.front().get());
+      assert(!last_finished_);
+      committer_->Commit(pending_messages_.front().get());
     } else {
-     finished_ = true;
+     last_finished_ = true;
     }
   } else {
-    // FIXME
-    voyager::TcpConnectionPtr p = messager_->GetTcpConnection();
-    if (p) {
-      p->ShutDown();
-    }
+    closed_ = true;
   }
 }
 

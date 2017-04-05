@@ -25,8 +25,8 @@ int main() {
   options.membership.push_back(i);
 
   voyager::EventLoop loop;
-  voyager::SockAddr addr("127.0.0.1", 8888);
-  saber::SaberServer server(1, &loop, addr, 4);
+  saber::ServerOptions server_options;
+  saber::SaberServer server(&loop, server_options);
 
   bool res = server.Start(options);
   if (res) {

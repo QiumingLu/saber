@@ -23,7 +23,7 @@ void DataTree::Create(const CreateRequest& request, const Transaction& txn,
   size_t found = path.find_last_of('/');
   std::string parent = path.substr(0, found);
   std::string child = path.substr(found + 1);
- 
+
   DataNode* node = new DataNode();
   Stat* stat = node->mutable_stat();
   stat->set_group_id(txn.group_id());
@@ -67,7 +67,7 @@ void DataTree::Create(const CreateRequest& request, const Transaction& txn,
         parent.empty() ? "/" : parent, ET_NODE_CHILDREN_CHANGED);
   } else {
     delete node;
-  } 
+  }
 }
 
 void DataTree::Delete(const DeleteRequest& request, const Transaction& txn,
@@ -76,7 +76,7 @@ void DataTree::Delete(const DeleteRequest& request, const Transaction& txn,
   size_t found = path.find_last_of('/');
   std::string parent = path.substr(0, found);
   std::string child = path.substr(found + 1);
-  
+
   {
   MutexLock lock(&mutex_);
   auto it =  nodes_.find(path);
@@ -99,10 +99,10 @@ void DataTree::Delete(const DeleteRequest& request, const Transaction& txn,
     child_watches_.TriggerWatcher(path, ET_NODE_DELETED, std::move(p));
     child_watches_.TriggerWatcher(
         parent.empty() ? "/" : parent, ET_NODE_CHILDREN_CHANGED);
-  } 
+  }
 }
 
-void DataTree::Exists(const ExistsRequest& request, Watcher* watcher, 
+void DataTree::Exists(const ExistsRequest& request, Watcher* watcher,
                       ExistsResponse* response) {
   const std::string& path = request.path();
   if (watcher) {
@@ -119,7 +119,7 @@ void DataTree::Exists(const ExistsRequest& request, Watcher* watcher,
     response->set_code(RC_NO_NODE);
   }
 }
- 
+
 void DataTree::GetData(const GetDataRequest& request, Watcher* watcher,
                        GetDataResponse* response) {
   const std::string& path = request.path();
@@ -136,25 +136,25 @@ void DataTree::GetData(const GetDataRequest& request, Watcher* watcher,
     response->set_code(RC_NO_NODE);
   }
   }
-  
+
   if (response->code() == RC_OK) {
     if (watcher) {
       data_watches_.AddWatch(path, watcher);
     }
   }
 }
- 
+
 void DataTree::SetData(const SetDataRequest& request, const Transaction& txn,
                        SetDataResponse* response) {
   const std::string& path = request.path();
   const std::string& data =  request.data();
-  int version = request.version();
 
   {
   MutexLock lock(&mutex_);
   auto it  =nodes_.find(path);
   if (it != nodes_.end()) {
-    if (version != -1 && version != it->second->stat().version()) {
+    int version = it->second->stat().version();
+    if (request.version() != -1 && request.version() != version) {
       response->set_code(RC_BAD_VERSION);
     } else {
       Stat* stat = it->second->mutable_stat();
@@ -192,17 +192,17 @@ void DataTree::GetACL(const GetACLRequest& request,
   } else {
     response->set_code(RC_NO_NODE);
   }
-} 
+}
 
-void DataTree::SetACL(const SetACLRequest& request, const Transaction& txn, 
+void DataTree::SetACL(const SetACLRequest& request, const Transaction& txn,
                       SetACLResponse* response) {
   const std::string& path = request.path();
 
   MutexLock lock(&mutex_);
   auto it = nodes_.find(path);
   if (it != nodes_.end()) {
-    int version = request.version();
-    if (version != -1 && version != it->second->stat().acl_version()) {
+    int version = it->second->stat().acl_version();
+    if (request.version() != -1 && request.version() != version) {
       response->set_code(RC_BAD_VERSION);
     } else {
       std::vector<ACL> acl;
@@ -210,21 +210,21 @@ void DataTree::SetACL(const SetACLRequest& request, const Transaction& txn,
         acl.push_back(request.acl(i));
       }
       it->second->set_acl(std::move(acl));
-      it->second->mutable_stat()->set_version(version + 1);
+      it->second->mutable_stat()->set_acl_version(version + 1);
       response->set_code(RC_OK);
       Stat* stat = new Stat(it->second->stat());
-      response->set_allocated_stat(stat);  
+      response->set_allocated_stat(stat);
     }
   } else {
     response->set_code(RC_NO_NODE);
   }
 }
- 
+
 void DataTree::GetChildren(const GetChildrenRequest& request, Watcher* watcher,
                            GetChildrenResponse* response) {
   const std::string& path = request.path();
- 
-  {  
+
+  {
   MutexLock lock(&mutex_);
   auto it = nodes_.find(path);
   if (it != nodes_.end()) {
@@ -239,13 +239,13 @@ void DataTree::GetChildren(const GetChildrenRequest& request, Watcher* watcher,
     response->set_code(RC_NO_NODE);
   }
   }
-  
+
   if (response->code() == RC_OK) {
     if (watcher) {
       child_watches_.AddWatch(path, watcher);
     }
   }
-} 
+}
 
 void DataTree::RemoveWatch(Watcher* watcher) {
   data_watches_.RemoveWatch(watcher);

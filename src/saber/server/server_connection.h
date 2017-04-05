@@ -6,6 +6,7 @@
 #define SABER_SERVER_SERVER_CONNECTION_H_
 
 #include <deque>
+#include <queue>
 #include <voyager/core/eventloop.h>
 #include <voyager/core/tcp_connection.h>
 
@@ -19,9 +20,9 @@ namespace saber {
 
 class ServerConnection : public Watcher {
  public:
-  ServerConnection(std::unique_ptr<Messager> p, 
+  ServerConnection(voyager::EventLoop* loop,
+                   std::unique_ptr<Messager> p,
                    SaberDB* db,
-                   voyager::EventLoop* loop,
                    skywalker::Node* node);
   virtual ~ServerConnection();
 
@@ -32,14 +33,15 @@ class ServerConnection : public Watcher {
 
  private:
   void OnMessage(std::unique_ptr<SaberMessage> message);
-  void OnCommitComplete(std::unique_ptr<SaberMessage> message); 
+  void OnCommitComplete(std::unique_ptr<SaberMessage> message);
 
-  bool finished_;
+  bool closed_;
+  bool last_finished_;
   uint64_t session_id_;
-  std::deque<std::unique_ptr<SaberMessage> > pending_messages_; 
-  std::unique_ptr<Messager> messager_;
   voyager::EventLoop* loop_;
-  Committer committer_;
+  std::queue<std::unique_ptr<SaberMessage> > pending_messages_;
+  std::unique_ptr<Messager> messager_;
+  CommitterPtr committer_;
 
   // No copying allowed
   ServerConnection(const ServerConnection&);

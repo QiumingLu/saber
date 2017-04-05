@@ -10,6 +10,7 @@
 #include <voyager/core/tcp_server.h>
 #include <skywalker/node.h>
 
+#include "saber/server/server_options.h"
 #include "saber/server/saber_db.h"
 #include "saber/server/server_connection.h"
 #include "saber/util/concurrent_map.h"
@@ -18,10 +19,7 @@ namespace saber {
 
 class SaberServer {
  public:
-  SaberServer(uint16_t server_id,
-              voyager::EventLoop* loop,
-              const voyager::SockAddr& addr,
-              int thread_size = 1);
+  SaberServer(voyager::EventLoop* loop, const ServerOptions& options);
   ~SaberServer();
 
   bool Start(const skywalker::Options& options);
@@ -32,6 +30,7 @@ class SaberServer {
   uint64_t GetNextSessionId() const;
 
   uint16_t server_id_;
+  voyager::SockAddr addr_;
 
   std::unique_ptr<SaberDB> db_;
   std::unique_ptr<skywalker::Node> node_;

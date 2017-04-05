@@ -5,6 +5,7 @@
 #ifndef SABER_SERVER_COMMITTER_H_
 #define SABER_SERVER_COMMITTER_H_
 
+#include <memory>
 #include <functional>
 
 #include <skywalker/node.h>
@@ -17,13 +18,13 @@ namespace saber {
 
 class ServerConnection;
 
-class Committer : public skywalker::StateMachine {
+class Committer : public std::enable_shared_from_this<Committer> {
  public:
   typedef std::function<
       void (std::unique_ptr<SaberMessage>)> CommitCompleteCallback;
 
-  Committer(ServerConnection* conn, SaberDB* db_, 
-            voyager::EventLoop* loop, skywalker::Node* node);
+  Committer(ServerConnection* conn, voyager::EventLoop* loop,
+            SaberDB* db, skywalker::Node* node);
 
   virtual ~Committer();
 
@@ -36,14 +37,8 @@ class Committer : public skywalker::StateMachine {
 
   void Commit(SaberMessage* message);
 
-  virtual bool Execute(uint32_t group_id,
-                       uint64_t instance_id,
-                       const std::string& value,
-                       skywalker::MachineContext* context);
-
  private:
-  void Commit(uint32_t group_id, 
-              SaberMessage* message);
+  void Commit(uint32_t group_id, SaberMessage* message);
   bool Propose(uint32_t group_id,
                SaberMessage* message, SaberMessage* reply_message);
   void OnProposeComplete(skywalker::MachineContext* context,
@@ -53,16 +48,19 @@ class Committer : public skywalker::StateMachine {
   uint32_t Shard(const std::string& s);
 
   ServerConnection* conn_;
-  SaberDB* db_;
   voyager::EventLoop* loop_;
+  SaberDB* db_;
   skywalker::Node* node_;
-  skywalker::MachineContext* context_;
+  std::unique_ptr<skywalker::MachineContext> context_;
+
   CommitCompleteCallback cb_;
 
   // No copying allowed
   Committer(const Committer&);
   void operator=(const Committer&);
 };
+
+typedef std::shared_ptr<Committer> CommitterPtr;
 
 }  // namespace saber
 

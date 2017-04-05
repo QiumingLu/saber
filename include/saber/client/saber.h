@@ -56,10 +56,11 @@ class Saber {
               void* context, const SetACLCallback& cb);
 
   void GetChildren(const GetChildrenRequest& request, Watcher* watcher,
-                   void* context, const ChildrenCallback& cb);
+                   void* context, const GetChildrenCallback& cb);
 
  private:
-  uint32_t Shard(const std::string& s);
+  std::string GetRoot(const std::string& path);
+  uint32_t Shard(const std::string& root);
 
   Options options_;
   std::atomic<bool> has_connected_;

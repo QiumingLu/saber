@@ -34,33 +34,32 @@ class SaberClient {
   void Start();
   void Stop();
 
-  void Create(const CreateRequest& request,
+  void Create(const std::string& root, const CreateRequest& request,
               void* context, const CreateCallback& cb);
 
-  void Delete(const DeleteRequest& request,
+  void Delete(const std::string& root, const DeleteRequest& request,
               void* context, const DeleteCallback& cb);
 
-  void Exists(const ExistsRequest& request, Watcher* watcher,
-              void* context, const ExistsCallback& cb);
+  void Exists(const std::string& root, const ExistsRequest& request,
+              Watcher* watcher, void* context, const ExistsCallback& cb);
 
-  void GetData(const GetDataRequest& request, Watcher* watcher,
-               void* context, const GetDataCallback& cb);
+  void GetData(const std::string& root, const GetDataRequest& request,
+               Watcher* watcher, void* context, const GetDataCallback& cb);
 
-  void SetData(const SetDataRequest& request,
+  void SetData(const std::string& root, const SetDataRequest& request,
                void* context, const SetDataCallback& cb);
 
-  void GetACL(const GetACLRequest& request,
+  void GetACL(const std::string& root, const GetACLRequest& request,
               void* context, const GetACLCallback& cb);
 
-  void SetACL(const SetACLRequest& request,
+  void SetACL(const std::string& root, const SetACLRequest& request,
               void* context, const SetACLCallback& cb);
 
-  void GetChildren(const GetChildrenRequest& request, Watcher* watcher,
-                   void* context, const ChildrenCallback& cb);
+  void GetChildren(const std::string& root, const GetChildrenRequest& request,
+                   Watcher* watcher, void* context,
+                   const GetChildrenCallback& cb);
 
  private:
-  void AddExtraData(const std::string& path, SaberMessage* message);
- 
   void Connect(const voyager::SockAddr& addr);
   void Close();
   void TrySendInLoop(SaberMessage* message);
@@ -86,7 +85,7 @@ class SaberClient {
   std::queue<std::unique_ptr<Request<SetDataCallback> > > set_data_queue_;
   std::queue<std::unique_ptr<Request<GetACLCallback> > > get_acl_queue_;
   std::queue<std::unique_ptr<Request<SetACLCallback> > > set_acl_queue_;
-  std::queue<std::unique_ptr<Request<ChildrenCallback> > > children_queue_;
+  std::queue<std::unique_ptr<Request<GetChildrenCallback> > > children_queue_;
 
   std::deque<std::unique_ptr<SaberMessage> > outgoing_queue_;
 

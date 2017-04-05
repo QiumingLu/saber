@@ -36,7 +36,7 @@ typedef std::function<void (const std::string& path, void* context,
     const SetACLResponse&)> SetACLCallback;
 
 typedef std::function<void (const std::string& path, void* context,
-    const GetChildrenResponse&)> ChildrenCallback;
+    const GetChildrenResponse&)> GetChildrenCallback;
 
 }
 
