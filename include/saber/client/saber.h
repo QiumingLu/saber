@@ -12,7 +12,7 @@
 #include <voyager/core/eventloop.h>
 #include <voyager/core/bg_eventloop.h>
 
-#include "saber/client/options.h"
+#include "saber/client/client_options.h"
 #include "saber/client/callbacks.h"
 #include "saber/proto/saber.pb.h"
 #include "saber/service/watcher.h"
@@ -26,7 +26,7 @@ class ServerManager;
 
 class Saber {
  public:
-  Saber(const Options& options);
+  Saber(const ClientOptions& options);
   ~Saber();
 
   bool Start();
@@ -62,7 +62,7 @@ class Saber {
   std::string GetRoot(const std::string& path);
   uint32_t Shard(const std::string& root);
 
-  Options options_;
+  ClientOptions options_;
   std::atomic<bool> has_connected_;
   std::unique_ptr<ServerManager> server_manager_;
   std::vector<std::unique_ptr<SaberClient> > clients_;

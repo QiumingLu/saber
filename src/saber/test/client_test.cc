@@ -4,6 +4,7 @@
 
 #include <iostream>
 #include <saber/client/saber.h>
+#include <saber/util/runloop.h>
 
 void CreateCallback(const std::string& path, void* ctx,
                     const saber::CreateResponse& response) {
@@ -50,8 +51,7 @@ int main() {
   r3.set_data("saber client pass test");
   r3.set_version(-1);
   client.SetData(r3, nullptr, &SetDataCallback);
-  while (true) {
-
-  }
+  saber::RunLoop loop;
+  loop.Loop();
   return 0;
 }

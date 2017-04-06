@@ -10,7 +10,7 @@
 
 namespace saber {
 
-SaberClient::SaberClient(const Options& options,
+SaberClient::SaberClient(const ClientOptions& options,
                          voyager::EventLoop* send_loop,
                          RunLoop* event_loop)
     : has_started_(false),

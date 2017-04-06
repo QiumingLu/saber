@@ -2,11 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "saber/client/options.h"
+#include "saber/client/client_options.h"
 
 namespace saber {
 
-Options::Options()
+ClientOptions::ClientOptions()
     : auto_watch_reset(true),
       group_size(1),
       servers(),

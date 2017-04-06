@@ -10,7 +10,7 @@
 
 namespace saber {
 
-Saber::Saber(const Options& options)
+Saber::Saber(const ClientOptions& options)
     : options_(options),
       has_connected_(false),
       server_manager_(options.server_manager),
