@@ -96,6 +96,7 @@ void DataTree::Delete(const DeleteRequest& request, const Transaction& txn,
 
   if (response->code() == RC_OK) {
     WatcherSetPtr p = data_watches_.TriggerWatcher(path, ET_NODE_DELETED);
+    // FIXME
     child_watches_.TriggerWatcher(path, ET_NODE_DELETED, std::move(p));
     child_watches_.TriggerWatcher(
         parent.empty() ? "/" : parent, ET_NODE_CHILDREN_CHANGED);
@@ -220,7 +221,8 @@ void DataTree::SetACL(const SetACLRequest& request, const Transaction& txn,
   }
 }
 
-void DataTree::GetChildren(const GetChildrenRequest& request, Watcher* watcher,
+void DataTree::GetChildren(const GetChildrenRequest& request,
+                           Watcher* watcher,
                            GetChildrenResponse* response) {
   const std::string& path = request.path();
 

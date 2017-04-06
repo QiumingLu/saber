@@ -5,10 +5,8 @@
 #ifndef SABER_SERVER_SERVER_CONNECTION_H_
 #define SABER_SERVER_SERVER_CONNECTION_H_
 
-#include <deque>
 #include <queue>
 #include <voyager/core/eventloop.h>
-#include <voyager/core/tcp_connection.h>
 
 #include "saber/server/saber_db.h"
 #include "saber/server/committer.h"
@@ -20,7 +18,8 @@ namespace saber {
 
 class ServerConnection : public Watcher {
  public:
-  ServerConnection(voyager::EventLoop* loop,
+  ServerConnection(uint64_t session_id,
+                   voyager::EventLoop* loop,
                    std::unique_ptr<Messager> p,
                    SaberDB* db,
                    skywalker::Node* node);
@@ -28,7 +27,6 @@ class ServerConnection : public Watcher {
 
   virtual void Process(const WatchedEvent& event);
 
-  void set_session_id(uint64_t id) { session_id_ = id; }
   uint64_t session_id() const { return session_id_; }
 
  private:
@@ -37,7 +35,7 @@ class ServerConnection : public Watcher {
 
   bool closed_;
   bool last_finished_;
-  uint64_t session_id_;
+  const uint64_t session_id_;
   voyager::EventLoop* loop_;
   std::queue<std::unique_ptr<SaberMessage> > pending_messages_;
   std::unique_ptr<Messager> messager_;

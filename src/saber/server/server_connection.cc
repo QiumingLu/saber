@@ -7,12 +7,14 @@
 
 namespace saber {
 
-ServerConnection::ServerConnection(voyager::EventLoop* loop,
+ServerConnection::ServerConnection(uint64_t session_id,
+                                   voyager::EventLoop* loop,
                                    std::unique_ptr<Messager> p,
                                    SaberDB* db,
                                    skywalker::Node* node)
     : closed_(false),
       last_finished_(true),
+      session_id_(session_id),
       loop_(loop),
       messager_(std::move(p)),
       committer_(new Committer(this, loop_, db, node)) {
@@ -44,7 +46,6 @@ void ServerConnection::OnMessage(std::unique_ptr<SaberMessage> message) {
     pending_messages_.push(std::move(message));
     if (last_finished_) {
       last_finished_ = false;
-      assert(!pending_messages_.empty());
       committer_->Commit(pending_messages_.front().get());
     }
   }
@@ -52,14 +53,15 @@ void ServerConnection::OnMessage(std::unique_ptr<SaberMessage> message) {
 
 void ServerConnection::OnCommitComplete(
     std::unique_ptr<SaberMessage> message) {
-  pending_messages_.pop();
   messager_->SendMessage(*(message.get()));
-  if (message->type() != MT_MASTER && !closed_) {
-    if (!pending_messages_.empty()) {
+  assert(!pending_messages_.empty());
+  pending_messages_.pop();
+  if (message->type() != MT_MASTER) {
+    if (!pending_messages_.empty() && !closed_) {
       assert(!last_finished_);
       committer_->Commit(pending_messages_.front().get());
     } else {
-     last_finished_ = true;
+      last_finished_ = true;
     }
   } else {
     closed_ = true;

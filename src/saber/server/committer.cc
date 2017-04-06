@@ -4,6 +4,7 @@
 
 #include "saber/server/committer.h"
 #include "saber/server/server_connection.h"
+#include "saber/server/saber_cell.h"
 #include "saber/util/logging.h"
 #include "saber/util/murmurhash3.h"
 #include "saber/util/timeops.h"
@@ -30,9 +31,12 @@ void Committer::Commit(SaberMessage* message) {
     skywalker::IpPort i;
     uint64_t version;
     node_->GetMaster(group_id, &i, &version);
+    ServerMessage master_message;
+    SaberCell::Instance()->FindServerByPaxosIpPort(
+        std::make_pair(i.ip, i.port), &master_message);
     Master master;
-    master.set_ip(i.ip);
-    master.set_port(static_cast<int>(i.port));
+    master.set_ip(master_message.ip);
+    master.set_port(static_cast<int>(master_message.client_port));
     SaberMessage* reply_message = new SaberMessage();
     reply_message->set_type(MT_MASTER);
     reply_message->set_data(master.SerializeAsString());
@@ -85,7 +89,7 @@ void Committer::Commit(uint32_t group_id, SaberMessage* message) {
     }
     case MT_CREATE:
     case MT_DELETE:
-    case MT_SETDATA:
+    case MT_SETDATA: // FIXME check version here may be more effective?
     case MT_SETACL: {
       wait = Propose(group_id, message, reply_message);
       break;
@@ -137,8 +141,8 @@ void Committer::OnProposeComplete(skywalker::MachineContext* context,
   context->user_data = nullptr;
   if (!s.ok()) {
     SetFailedState(reply_message);
-    LOG_INFO("Committer::OnProposeComplete - %s\n", s.ToString().c_str());
   }
+  LOG_DEBUG("Committer::OnProposeComplete - %s\n", s.ToString().c_str());
 
   CommitterPtr ptr(shared_from_this());
   loop_->QueueInLoop([ptr, reply_message]() {

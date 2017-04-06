@@ -14,7 +14,7 @@ namespace saber {
 
 class SaberDB : public skywalker::StateMachine {
  public:
-  SaberDB(uint32_t group_size);
+  explicit SaberDB(uint32_t group_size);
   virtual ~SaberDB();
 
   void Exists(uint32_t group_id, const ExistsRequest& request,

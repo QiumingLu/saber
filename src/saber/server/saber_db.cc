@@ -51,7 +51,8 @@ void SaberDB::SetACL(uint32_t group_id, const SetACLRequest& request,
   trees_[group_id]->SetACL(request, txn, response);
 }
 
-void SaberDB::GetChildren(uint32_t group_id, const GetChildrenRequest& request,
+void SaberDB::GetChildren(uint32_t group_id,
+                          const GetChildrenRequest& request,
                           Watcher* watcher, GetChildrenResponse* response) {
   trees_[group_id]->GetChildren(request, watcher, response);
 }
@@ -81,7 +82,7 @@ bool SaberDB::Execute(uint32_t group_id,
   switch (message.type()) {
     case MT_CREATE: {
       CreateRequest request;
-      CreateResponse response;
+      CreateResponse response; // FIXME response may be no neccessary here?
       request.ParseFromString(message.data());
       Create(group_id, request, txn, &response);
       if (reply_message) {

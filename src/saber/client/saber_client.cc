@@ -237,7 +237,7 @@ void SaberClient::OnFailue() {
 void SaberClient::OnClose(const voyager::TcpConnectionPtr& p) {
   LOG_DEBUG("SaberClient::OnClose - connect close!\n");
   if (has_started_) {
-    if (!master_.ip().empty()) {
+    if (master_.ip().empty() == false) {
       voyager::SockAddr addr(
           master_.ip(), static_cast<uint16_t>(master_.port()));
       Connect(addr);
@@ -389,6 +389,8 @@ void SaberClient::OnMessage(std::unique_ptr<SaberMessage> message) {
     }
     case MT_MASTER: {
       master_.ParseFromString(message->data());
+      LOG_DEBUG("The master is %s:%d\n",
+                master_.ip().c_str(), master_.port());
       Close();
       break;
     }

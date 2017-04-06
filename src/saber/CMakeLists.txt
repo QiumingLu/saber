@@ -21,3 +21,7 @@ else()
 endif()
 
 install(DIRECTORY ${Saber_INCLUDE_DIRS}/saber DESTINATION include)
+
+if (NOT CMAKE_BUILD_NO_EXAMPLES)
+  add_subdirectory(test)
+endif()
