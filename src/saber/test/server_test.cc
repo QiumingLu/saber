@@ -24,7 +24,7 @@ int main() {
   skywalker_options.log_storage_path = std::string(path);
   skywalker_options.log_sync = true;
   skywalker_options.sync_interval = 3;
-  skywalker_options.group_size = 1;
+  skywalker_options.group_size = 3;
 
   std::vector<std::string> my;
   voyager::SplitStringUsing(server_str, ":", &my);

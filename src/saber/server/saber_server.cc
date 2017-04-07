@@ -6,6 +6,8 @@
 
 #include <voyager/core/tcp_connection.h>
 
+#include "saber/server/saber_db.h"
+#include "saber/server/server_connection.h"
 #include "saber/util/logging.h"
 #include "saber/util/timeops.h"
 

@@ -56,8 +56,6 @@ EOF
     cd voyager
     cmake -DCMAKE_BUILD_TYPE=release \
           -DCMAKE_INSTALL_PREFIX=$INSTALL_PATH \
-          -DCMAKE_BUILD_NO_EXAMPLES=0 \
-          -DCMAKE_BUILD_SHARED_LIBS=1 \
           .
     make
     sudo make install
@@ -74,8 +72,6 @@ EOF
     cd skywalker
     cmake -DCMAKE_BUILD_TYPE=release \
           -DCMAKE_INSTALL_PREFIX=$INSTALL_PATH \
-          -DCMAKE_BUILD_NO_EXAMPLES=0 \
-          -DCMAKE_BUILD_SHARED_LIBS=1 \
           .
     make
     sudo make install

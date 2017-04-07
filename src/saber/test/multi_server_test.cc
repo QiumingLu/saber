@@ -9,7 +9,7 @@
 #include <saber/util/logging.h>
 #include <saber/server/saber_server.h>
 #include <saber/server/saber_cell.h>
-#include <iostream>
+
 int main(int argc, char** argv) {
   if (argc != 3) {
     LOG_ERROR("Usage: %s id:ip:port:port id:ip:port:port,...\n", argv[0]);
@@ -27,7 +27,7 @@ int main(int argc, char** argv) {
   skywalker_options.log_storage_path = std::string(path);
   skywalker_options.log_sync = true;
   skywalker_options.sync_interval = 3;
-  skywalker_options.group_size = 1;
+  skywalker_options.group_size = 3;
 
   std::vector<std::string> my;
   voyager::SplitStringUsing(std::string(argv[1]), ":", &my);
@@ -45,8 +45,7 @@ int main(int argc, char** argv) {
   for (auto& s : servers) {
     std::vector<std::string> server;
     voyager::SplitStringUsing(s, ":", &server);
-    std::cout <<s  << servers.size()<< std::endl;
-    assert(servers.size() == 4);
+    assert(server.size() == 4);
     skywalker_options.membership.push_back(
         skywalker::IpPort(server[1], atoi(server[3].data())));
     saber::ServerMessage m;

@@ -1,7 +1,6 @@
-add_executable(client_test client_test.cc ${saber_client_srcs})
-add_executable(server_test server_test.cc ${saber_server_srcs})
-add_executable(multi_server_test multi_server_test.cc ${saber_server_srcs})
-target_link_libraries(client_test ${Saber_LINKER_LIBS})
-target_link_libraries(server_test ${Saber_LINKER_LIBS})
-target_link_libraries(multi_server_test ${Saber_LINKER_LIBS})
-
+add_executable(client_test client_test.cc)
+add_executable(server_test server_test.cc)
+add_executable(multi_server_test multi_server_test.cc)
+target_link_libraries(client_test ${Saber_LINKER_LIBS} ${SaberClient_LINK})
+target_link_libraries(server_test ${Saber_LINKER_LIBS} ${SaberServer_LINK})
+target_link_libraries(multi_server_test ${Saber_LINKER_LIBS} ${SaberServer_LINK})

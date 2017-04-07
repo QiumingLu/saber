@@ -10,11 +10,12 @@
 #include <skywalker/node.h>
 
 #include "saber/server/server_options.h"
-#include "saber/server/saber_db.h"
-#include "saber/server/server_connection.h"
 #include "saber/util/concurrent_map.h"
 
 namespace saber {
+
+class SaberDB;
+class ServerConnection;
 
 class SaberServer {
  public:

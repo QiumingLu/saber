@@ -33,8 +33,8 @@ class DefaultWatcher : public saber::Watcher {
 int main() {
   DefaultWatcher watcher;
   saber::ClientOptions options;
-  options.group_size = 1;
-  options.servers = "127.0.0.1:8887,127.0.0.1:8888,127.0.0.1:8889";
+  options.group_size = 3;
+  options.servers = "127.0.0.1:6666,127.0.0.1:6667,127.0.0.1:6668";
   saber::Saber client(options);
   client.Start();
   saber::CreateRequest r1;

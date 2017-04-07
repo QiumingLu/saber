@@ -10,15 +10,25 @@ endif()
 
 project (Saber C CXX)
 
+set(SABER_VERSION_MAJOR 1)
+set(SABER_VERSION_MINOR 0)
+set(SABER_VERSION_STRING ${SABER_VERSION_MAJOR}.${SABER_VERSION_MINOR})
+
 enable_testing()
 
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "debug")
 endif()
 
-if(NOT CMAKE_BUILD_SHARED_LIBS)
-  set(CMAKE_BUILD_SHARED_LIBS on)
+if(NOT CMAKE_INSTALL_DIR)
+  set(CMAKE_INSTALL_DIR "/usr/local")
 endif()
+
+option(BUILD_EXAMPLES "Build saber examples" ON)
+option(BUILD_TESTS "Build saber perftests and unittests." ON)
+option(BUILD_SHARED_LIBS "Build saber shared libraries" ON)
+option(BUILD_CLIENT_LIBS "Build saber client libraries" ON)
+option(BUILD_SERVER_LIBS "Build saber server libraries" ON)
 
 set(CXX_FLAGS
   -g
@@ -79,11 +89,12 @@ include_directories(${PROJECT_SOURCE_DIR} ${PROJECT_BINARY_DIR})
 include(cmake/Dependencies.cmake)
 include(cmake/Targets.cmake)
 
-saber_set_saber_link()
+saber_set_saber_client_link()
+saber_set_saber_server_link()
 
 add_subdirectory(src/saber)
 
-if (NOT CMAKE_BUILD_NO_EXAMPLES)
-  #  add_subdirectory(examples/wars)
-  #  add_subdirectory(examples/echo)
+if(BUILD_EXAMPLES)
+  add_subdirectory(examples/wars)
+  add_subdirectory(examples/echo)
 endif()
