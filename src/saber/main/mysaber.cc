@@ -92,21 +92,21 @@ bool MySaber::NewRequest(const std::string& s) {
 }
 
 void MySaber::Create() {
-  printf("please enter: path|data\n");
+  printf("please enter: path|data|type\n");
   printf("> ");
   std::string s;
   std::getline(std::cin, s);
   std::vector<std::string> v;
   voyager::SplitStringUsing(s, "|", &v);
-  if (v.size() != 2) {
+  if (v.size() != 3) {
     Create();
     return;
   }
   CreateRequest request;
   request.set_path(v[0]);
   request.set_data(v[1]);
-//  int node_type = atoi(v[2].c_str());
-//  request.set_type(
+  int node_type = atoi(v[2].c_str());
+  request.set_type(static_cast<NodeType>(node_type));
   saber_.Create(
       request, nullptr,
       [this](const std::string& path, void* context,
@@ -182,7 +182,6 @@ void MySaber::Exists() {
              const ExistsResponse& response) {
     OnExistsReply(path, context, response);
   });
-
 }
 
 void MySaber::OnExistsReply(const std::string& path, void* context,
@@ -264,15 +263,65 @@ void MySaber::OnSetDataReply(const std::string& path, void* context,
 }
 
 void MySaber::GetACL() {
+  printf("please enter: path\n");
+  printf("> ");
+  std::string s;
+  std::getline(std::cin, s);
+  GetACLRequest request;
+  request.set_path(s);
+  saber_.GetACL(
+      request, nullptr,
+      [this](const std::string& path, void* context,
+             const GetACLResponse& response) {
+    OnGetACLReply(path, context, response);
+  });
 }
 
 void MySaber::OnGetACLReply(const std::string& path, void* context,
                             const GetACLResponse& response) {
   printf("%s\n", ToString(response).c_str());
-  GetLine();
+  loop_->RunInLoop([this]() {
+    GetLine();
+  });
 }
 
 void MySaber::SetACL() {
+  printf("please enter: path|perms:scheme:id,...|version\n");
+  printf("> ");
+  std::string s;
+  std::getline(std::cin, s);
+  std::vector<std::string> v;
+  voyager::SplitStringUsing(s, "|", &v);
+  if (v.size() != 3) {
+    SetACL();
+    return;
+  }
+  SetACLRequest request;
+  request.set_path(v[0]);
+  std::vector<std::string> acls;
+  voyager::SplitStringUsing(v[1], ",", &acls);
+  for (auto& i : acls) {
+    std::vector<std::string> acl;
+    voyager::SplitStringUsing(i, ":", &acl);
+    if (acl.size() != 3) {
+      SetACL();
+      return;
+    }
+    ACL one;
+    Id *id = new Id();
+    one.set_perms(atoi(v[0].c_str()));
+    id->set_scheme(v[1]);
+    id->set_id(v[2]);
+    one.set_allocated_id(id);
+    *(request.add_acl()) = one;
+  }
+  request.set_version(atoi(v[2].c_str()));
+  saber_.SetACL(
+      request, nullptr,
+      [this](const std::string& path, void* context,
+             const SetACLResponse& response) {
+    OnSetACLReply(path, context, response);
+  });
 }
 
 void MySaber::OnSetACLReply(const std::string& path, void* context,

@@ -23,6 +23,7 @@ std::string ToString(SessionState state) {
       break;
     default:
       s = "Unknown";
+      assert(false);
       break;
   }
   s += "\n";
@@ -98,6 +99,7 @@ std::string ToString(ResponseCode code) {
       s = "NoAuth\n";
       break;
     default:
+      s = "Unknown\n";
       assert(false);
       break;
   }
@@ -142,15 +144,16 @@ std::string ToString(const Stat& stat) {
   s += "children_id: ";
   s += std::to_string(stat.children_id());
   s += "\n";
-  s += "\n";
   return s;
 }
 
 std::string ToString(const CreateResponse& response) {
   std::string s = ToString(response.code());
-  s += "path: ";
-  s += response.path();
-  s += "\n";
+  if (response.code() == RC_OK) {
+    s += "path: ";
+    s += response.path();
+    s += "\n";
+  }
   return s;
 }
 
@@ -161,14 +164,19 @@ std::string ToString(const DeleteResponse& response) {
 
 std::string ToString(const ExistsResponse& response) {
   std::string s = ToString(response.code());
-  s += "stat:\n";
-  s += ToString(response.stat());
+  if (response.code() == RC_OK) {
+    s += "stat:\n";
+    s += ToString(response.stat());
+  }
   return s;
 }
 
 std::string ToString(const GetDataResponse& response) {
   std::string s = ToString(response.code());
-  s += "data:\n";
+  if (response.code() != RC_OK) {
+    return s;
+  }
+  s += "data: ";
   s += response.data();
   s += "\n";
   s += "stat:\n";
@@ -178,28 +186,60 @@ std::string ToString(const GetDataResponse& response) {
 
 std::string ToString(const SetDataResponse& response) {
   std::string s = ToString(response.code());
+  if (response.code() != RC_OK) {
+    return s;
+  }
   s += "stat:\n";
   s += ToString(response.stat());
   return s;
 }
 
 std::string ToString(const GetACLResponse& response) {
-  std::string s;
+  std::string s = ToString(response.code());
+  if (response.code() != RC_OK) {
+    return s;
+  }
+  s += "acl:\n";
+  for (int i = 0; i < response.acl_size(); ++i) {
+    const ACL& acl = response.acl(i);
+    s += std::to_string(i + 1);
+    s += ":";
+    s += " perms:";
+    s += std::to_string(acl.perms());
+    s += " scheme:";
+    s += acl.id().scheme();
+    s += " id:";
+    s += acl.id().id();
+    s += "\n";
+  }
+  s += "stat:\n";
+  s += ToString(response.stat());
   return s;
 }
 
 std::string ToString(const SetACLResponse& response) {
-  std::string s;
+  std::string s = ToString(response.code());
+  if (response.code() != RC_OK) {
+    return s;
+  }
+  s += "stat:\n";
+  s += ToString(response.stat());
   return s;
 }
 
 std::string ToString(const GetChildrenResponse& response) {
   std::string s = ToString(response.code());
+  if (response.code() != RC_OK) {
+    return s;
+  }
   s += "stat:\n";
   s += ToString(response.stat());
   s += "children:\n";
   for (int i = 0; i < response.children_size(); ++i) {
-    printf("%d:%s\n", i+1, response.children(i).c_str());
+    s += std::to_string(i+1);
+    s += ": ";
+    s += response.children(i);
+    s += "\n";
   }
   return s;
 }
