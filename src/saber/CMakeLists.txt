@@ -1,9 +1,3 @@
-add_executable(saber_server_main saber_server_main.cc ${saber_server_srcs})
-add_executable(saber_client_main saber_client_main.cc ${saber_client_srcs})
-
-target_link_libraries(saber_server_main ${Saber_LINKER_LIBS})
-target_link_libraries(saber_client_main ${Saber_LINKER_LIBS})
-
 if(BUILD_SHARED_LIBS AND BUILD_CLIENT_LIBS)
   add_library(saber_client SHARED ${saber_client_srcs})
   add_library(saber_client_static STATIC ${saber_client_srcs})
@@ -49,4 +43,5 @@ endif()
 
 if(BUILD_TESTS)
   add_subdirectory(test)
+  add_subdirectory(main)
 endif()

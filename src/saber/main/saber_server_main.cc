@@ -7,8 +7,8 @@
 #include <skywalker/node.h>
 #include <skywalker/logging.h>
 #include <saber/util/logging.h>
-#include <saber/server/saber_server.h>
-#include <saber/server/saber_cell.h>
+#include "saber/server/saber_server.h"
+#include "saber/server/saber_cell.h"
 
 int main(int argc, char** argv) {
   if (argc != 3) {
