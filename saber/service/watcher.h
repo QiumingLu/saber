@@ -14,8 +14,8 @@ namespace saber {
 
 class Watcher {
  public:
-  Watcher();
-  virtual ~Watcher();
+  Watcher() { }
+  virtual ~Watcher() { }
 
   virtual void Process(const WatchedEvent& event) = 0;
 

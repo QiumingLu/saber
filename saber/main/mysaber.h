@@ -11,6 +11,7 @@
 #include <voyager/util/string_util.h>
 #include "saber/util/runloop.h"
 #include "saber/client/saber.h"
+#include "saber/client/client_options.h"
 #include "saber/main/default_watcher.h"
 
 namespace saber {

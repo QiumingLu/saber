@@ -81,9 +81,6 @@ message(STATUS "CXX_FLAGS = " ${CMAKE_CXX_FLAGS} " " ${CMAKE_CXX_FLAGS_${BUILD_T
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules)
 
-set(Saber_INCLUDE_DIRS ${PROJECT_SOURCE_DIR}/include)
-set(Saber_SOURCE_DIRS ${PROJECT_SOURCE_DIR}/src)
-include_directories(${Saber_INCLUDE_DIRS} ${Saber_SOURCE_DIRS})
 include_directories(${PROJECT_SOURCE_DIR} ${PROJECT_BINARY_DIR})
 
 include(cmake/Dependencies.cmake)
@@ -92,9 +89,9 @@ include(cmake/Targets.cmake)
 saber_set_saber_client_link()
 saber_set_saber_server_link()
 
-add_subdirectory(src/saber)
+add_subdirectory(saber)
 
-if(BUILD_EXAMPLES)
+if(BUILD_EXAMPLES AND BUILD_CLIENT_LIBS)
   add_subdirectory(examples/wars)
   add_subdirectory(examples/echo)
 endif()

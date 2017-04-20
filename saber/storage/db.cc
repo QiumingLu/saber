@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "saber/service/watcher.h"
+#include "saber/storage/db.h"
 
 namespace saber {
 
-Watcher::Watcher() {
+DB::DB() {
 }
 
-Watcher::~Watcher() {
+DB::~DB() {
 }
 
 }  // namespace saber

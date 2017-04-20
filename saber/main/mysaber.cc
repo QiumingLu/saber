@@ -10,11 +10,9 @@ namespace saber {
 MySaber::MySaber(RunLoop* loop, const ClientOptions& options)
     : loop_(loop),
       saber_(options) {
-
 }
 
 MySaber::~MySaber() {
-
 }
 
 void MySaber::Start() {
