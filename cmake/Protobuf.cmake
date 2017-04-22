@@ -12,8 +12,8 @@ if(PROTOBUF_FOUND)
   message(STATUS "Found Protobuf (include: ${PROTOBUF_INCLUDE_DIR}, libraries: ${PROTOBUF_LIBRARIES})")
 endif()
 
-set(proto_gen_folder "${PROJECT_BINARY_DIR}/include/saber/proto")
-include_directories("${PROJECT_BINARY_DIR}/include")
+set(proto_gen_folder "${PROJECT_BINARY_DIR}/saber/proto")
+include_directories("${PROJECT_BINARY_DIR}")
 
 set(PROTOBUF_GENERATE_CPP_APPEND_PATH TRUE)
 
