@@ -2,6 +2,8 @@ file(GLOB_RECURSE proto_files proto/*.proto)
 saber_protobuf_generate_cpp(${proto_gen_folder} proto_srcs proto_hdrs ${proto_files})
 set_source_files_properties(${proto_hdrs} ${proto_srcs} PROPERTIES COMPILE_FLAGS "-Wno-conversion -Wno-shorten-64-to-32 -Wno-deprecated-declarations -fPIC")
 
+install(FILES ${proto_gen_folder}/saber.pb.h DESTINATION include/saber/proto)
+
 set(Saber_CLIENT_SRCS ${proto_srcs})
 set(Saber_SERVER_SRCS ${proto_srcs})
 

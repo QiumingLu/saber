@@ -7,12 +7,3 @@ message Transaction {
   uint64 instance_id = 3;
   uint64 time = 4;
 }
-
-/*
-message DataNode {
-  Stat stat = 1;
-  bytes data = 2;
-  repeated ACL acl = 3;
-  repeated string children = 4;
-}
-*/

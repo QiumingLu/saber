@@ -24,11 +24,11 @@ if(NOT CMAKE_INSTALL_DIR)
   set(CMAKE_INSTALL_DIR "/usr/local")
 endif()
 
-option(BUILD_EXAMPLES "Build saber examples" ON)
-option(BUILD_TESTS "Build saber perftests and unittests." ON)
-option(BUILD_SHARED_LIBS "Build saber shared libraries" ON)
-option(BUILD_CLIENT_LIBS "Build saber client libraries" ON)
-option(BUILD_SERVER_LIBS "Build saber server libraries" ON)
+option(BUILD_EXAMPLES "Build saber examples" on)
+option(BUILD_TESTS "Build saber perftests and unittests." on)
+option(BUILD_SHARED_LIBS "Build saber shared libraries" on)
+option(BUILD_CLIENT_LIBS "Build saber client libraries" on)
+option(BUILD_SERVER_LIBS "Build saber server libraries" on)
 
 set(CXX_FLAGS
   -g
