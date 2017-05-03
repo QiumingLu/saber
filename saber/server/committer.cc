@@ -35,7 +35,7 @@ void Committer::Commit(SaberMessage* message) {
     SaberCell::Instance()->FindServerByPaxosIpPort(
         std::make_pair(i.ip, i.port), &master_message);
     Master master;
-    master.set_ip(master_message.ip);
+    master.set_ip(master_message.server_ip);
     master.set_port(static_cast<int>(master_message.client_port));
     SaberMessage* reply_message = new SaberMessage();
     reply_message->set_type(MT_MASTER);

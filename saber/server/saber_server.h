@@ -22,12 +22,14 @@ class SaberServer {
   SaberServer(voyager::EventLoop* loop, const ServerOptions& options);
   ~SaberServer();
 
-  bool Start(const skywalker::Options& options);
+  bool Start();
 
  private:
   void OnConnection(const voyager::TcpConnectionPtr& p);
   void OnClose(const voyager::TcpConnectionPtr& p);
   uint64_t GetNextSessionId() const;
+
+  ServerOptions options_;
 
   const uint16_t server_id_;
   voyager::SockAddr addr_;

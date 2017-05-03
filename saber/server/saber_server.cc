@@ -6,6 +6,7 @@
 
 #include <voyager/core/tcp_connection.h>
 
+#include "saber/server/saber_cell.h"
 #include "saber/server/saber_db.h"
 #include "saber/server/server_connection.h"
 #include "saber/util/logging.h"
@@ -15,23 +16,49 @@ namespace saber {
 
 SaberServer::SaberServer(voyager::EventLoop* loop,
                          const ServerOptions& options)
-    : server_id_(options.server_id),
-      addr_(options.server_ip, options.server_port),
+    : options_(options),
+      server_id_(options_.my_server_message.server_id),
+      addr_(options.my_server_message.server_ip, options.my_server_message.client_port),
       server_(loop, addr_, "SaberServer", options.server_thread_size) {
 }
 
 SaberServer::~SaberServer() {
 }
 
-bool SaberServer::Start(const skywalker::Options& options) {
+bool SaberServer::Start() {
+  skywalker::GroupOptions group_options;
+  group_options.use_master = true;
+  group_options.log_sync = true;
+  group_options.sync_interval = 3;
+  group_options.keep_log_count = 1000;
+  group_options.log_storage_path = options_.log_storage_path;
+
+  for (auto& server_message : options_.all_server_messages) {
+    SaberCell::Instance()->AddServer(server_message);
+    group_options.membership.push_back(
+        skywalker::IpPort(server_message.server_ip, server_message.paxos_port));
+  }
+
+  db_.reset(new SaberDB(3));
+  db_->set_machine_id(6);
+
+  group_options.checkpoint = db_.get();
+  group_options.machines.push_back(db_.get());
+
+  skywalker::Options skywalker_options;
+  skywalker_options.ipport.ip = options_.my_server_message.server_ip;
+  skywalker_options.ipport.port = options_.my_server_message.paxos_port;
+
+  for (int i = 1; i <= 3; ++i) {
+    group_options.group_id = i;
+    skywalker_options.groups.push_back(group_options);
+  }
+
   skywalker::Node* node;
-  bool res = skywalker::Node::Start(options, &node);
+  bool res = skywalker::Node::Start(skywalker_options, &node);
   if (res) {
     LOG_INFO("Skywalker start successfully!\n");
-    db_.reset(new SaberDB(options.group_size));
-    db_->set_machine_id(6);
     node_.reset(node);
-    node_->AddMachine(db_.get());
 
     server_.SetConnectionCallback([this](const voyager::TcpConnectionPtr& p) {
       OnConnection(p);

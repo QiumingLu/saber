@@ -7,14 +7,26 @@
 
 #include <stdint.h>
 #include <string>
+#include <vector>
 
 namespace saber {
 
-struct ServerOptions {
+class ServerMessage {
+ public:
   uint16_t server_id;
   std::string server_ip;
-  uint16_t server_port;
+  uint16_t client_port;
+  uint16_t paxos_port;
+
+  ServerMessage();
+};
+
+struct ServerOptions {
   int server_thread_size;
+  std::string log_storage_path;
+
+  ServerMessage my_server_message;
+  std::vector<ServerMessage> all_server_messages;
 
   ServerOptions();
 };

@@ -129,4 +129,28 @@ bool SaberDB::Execute(uint32_t group_id,
   return true;
 }
 
+uint64_t SaberDB::GetCheckpointInstanceId(uint32_t group_id) {
+  return -1;
+}
+
+bool SaberDB::LockCheckpoint(uint32_t group_id) {
+  return true;
+}
+    
+bool SaberDB::UnLockCheckpoint(uint32_t group_id) {
+  return true;
+}
+
+bool SaberDB::GetCheckpoint(uint32_t group_id, int machine_id,
+                            std::string* dir, 
+                            std::vector<std::string>* files) {
+  return true;
+}
+
+bool SaberDB::LoadCheckpoint(uint32_t group_id, int machine_id,
+                             const std::string& dir, 
+                             const std::vector<std::string>& files) {
+  return true;
+}
+
 }  // namespace saber

@@ -10,16 +10,9 @@
 #include <string>
 
 #include "saber/util/mutex.h"
+#include "saber/server/server_options.h"
 
 namespace saber {
-
-class ServerMessage {
- public:
-  uint16_t server_id;
-  uint16_t client_port;
-  uint16_t paxos_port;
-  std::string ip;
-};
 
 class SaberCell {
  public:

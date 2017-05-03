@@ -26,9 +26,9 @@ void SaberCell::AddServer(const ServerMessage& s) {
     id_to_servers_.insert(
         std::make_pair(s.server_id, server));
     client_to_servers_.insert(
-        std::make_pair(IpPort(s.ip, s.client_port), server));
+        std::make_pair(IpPort(s.server_ip, s.client_port), server));
     paxos_to_servers_.insert(
-        std::make_pair(IpPort(s.ip, s.paxos_port), server));
+        std::make_pair(IpPort(s.server_ip, s.paxos_port), server));
   }
 }
 

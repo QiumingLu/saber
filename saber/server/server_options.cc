@@ -6,11 +6,15 @@
 
 namespace saber {
 
-ServerOptions::ServerOptions()
-    : server_id(0),
+ServerMessage::ServerMessage()
+    : server_id(1),
       server_ip("127.0.0.1"),
-      server_port(8888),
-      server_thread_size(1) {
+      client_port(6666),
+      paxos_port(5666) {
+}
+
+ServerOptions::ServerOptions()
+    : server_thread_size(1) {
 }
 
 }  // namespace saber
