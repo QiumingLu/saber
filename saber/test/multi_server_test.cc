@@ -7,16 +7,15 @@
 #include <skywalker/node.h>
 #include <saber/util/logging.h>
 #include "saber/server/saber_server.h"
-#include "saber/server/saber_cell.h"
 
 int main(int argc, char** argv) {
   if (argc != 3) {
-    LOG_ERROR("Usage: %s id:ip:port:port id:ip:port:port,...\n", argv[0]);
+    LOG_ERROR("Usage: %s id:ip:port:port id:ip:port:port,...", argv[0]);
     return -1;
   }
   char path[1024];
   if (getcwd(path, sizeof(path)) == nullptr) {
-    LOG_ERROR("getcwd failed.\n");
+    LOG_ERROR("getcwd failed.");
     return -1;
   }
 
@@ -41,7 +40,7 @@ int main(int argc, char** argv) {
   for (auto& s : servers) {
     server.clear();
     voyager::SplitStringUsing(s, ":", &server);
-    
+
     server_message.server_id = atoi(server[0].data());
     server_message.server_ip = server[1];
     server_message.client_port = atoi(server[2].data());
@@ -55,10 +54,10 @@ int main(int argc, char** argv) {
 
   bool res = saber_server.Start();
   if (res) {
-    LOG_INFO("SaberServer start successfully!\n");
+    LOG_INFO("SaberServer start successfully!");
     loop.Loop();
   } else {
-    LOG_ERROR("SaberServer start failed!\n");
+    LOG_ERROR("SaberServer start failed!");
   }
   return 0;
 }

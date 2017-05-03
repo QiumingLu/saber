@@ -36,7 +36,7 @@ void SaberClient::Start() {
   if (has_started_.compare_exchange_strong(expected, true)) {
     Connect(server_manager_->GetNext());
   } else {
-    LOG_WARN("SaberClient has started, don't call it again!\n");
+    LOG_WARN("SaberClient has started, don't call it again!");
   }
 }
 
@@ -219,7 +219,7 @@ void SaberClient::TrySendInLoop(SaberMessage* message) {
 }
 
 void SaberClient::OnConnection(const voyager::TcpConnectionPtr& p) {
-  LOG_DEBUG("SaberClient::OnConnection - connect successfully!\n");
+  LOG_DEBUG("SaberClient::OnConnection - connect successfully!");
   messager_->SetTcpConnection(p);
   server_manager_->OnConnection();
   for (auto& i : outgoing_queue_) {
@@ -228,14 +228,14 @@ void SaberClient::OnConnection(const voyager::TcpConnectionPtr& p) {
 }
 
 void SaberClient::OnFailue() {
-  LOG_DEBUG("SaberClient::OnFailue - connect failed!\n");
+  LOG_DEBUG("SaberClient::OnFailue - connect failed!");
   if (has_started_) {
     Connect(server_manager_->GetNext());
   }
 }
 
 void SaberClient::OnClose(const voyager::TcpConnectionPtr& p) {
-  LOG_DEBUG("SaberClient::OnClose - connect close!\n");
+  LOG_DEBUG("SaberClient::OnClose - connect close!");
   if (has_started_) {
     if (master_.ip().empty() == false) {
       voyager::SockAddr addr(
@@ -389,7 +389,7 @@ void SaberClient::OnMessage(std::unique_ptr<SaberMessage> message) {
     }
     case MT_MASTER: {
       master_.ParseFromString(message->data());
-      LOG_DEBUG("The master is %s:%d\n",
+      LOG_DEBUG("The master is %s:%d.",
                 master_.ip().c_str(), master_.port());
       Close();
       break;
@@ -399,7 +399,7 @@ void SaberClient::OnMessage(std::unique_ptr<SaberMessage> message) {
     }
     default: {
       assert(false);
-      LOG_ERROR("Invalid message type.\n");
+      LOG_ERROR("Invalid message type.");
       break;
     }
   }

@@ -7,12 +7,11 @@
 #include <skywalker/node.h>
 #include <saber/util/logging.h>
 #include "saber/server/saber_server.h"
-#include "saber/server/saber_cell.h"
 
 int main(int argc, char** argv) {
   char path[1024];
   if (getcwd(path, sizeof(path)) == nullptr) {
-    LOG_ERROR("getcwd failed.\n");
+    LOG_ERROR("getcwd failed.");
     return -1;
   }
 
@@ -39,10 +38,10 @@ int main(int argc, char** argv) {
 
   bool res = saber_server.Start();
   if (res) {
-    LOG_INFO("SaberServer start successfully!\n");
+    LOG_INFO("SaberServer start successfully!");
     loop.Loop();
   } else {
-    LOG_ERROR("SaberServer start failed!\n");
+    LOG_ERROR("SaberServer start failed!");
   }
   return 0;
 }

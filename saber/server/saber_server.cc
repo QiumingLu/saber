@@ -18,7 +18,8 @@ SaberServer::SaberServer(voyager::EventLoop* loop,
                          const ServerOptions& options)
     : options_(options),
       server_id_(options_.my_server_message.server_id),
-      addr_(options.my_server_message.server_ip, options.my_server_message.client_port),
+      addr_(options.my_server_message.server_ip,
+            options.my_server_message.client_port),
       server_(loop, addr_, "SaberServer", options.server_thread_size) {
 }
 
@@ -57,7 +58,7 @@ bool SaberServer::Start() {
   skywalker::Node* node;
   bool res = skywalker::Node::Start(skywalker_options, &node);
   if (res) {
-    LOG_INFO("Skywalker start successfully!\n");
+    LOG_INFO("Skywalker start successfully!");
     node_.reset(node);
 
     server_.SetConnectionCallback([this](const voyager::TcpConnectionPtr& p) {
@@ -68,7 +69,7 @@ bool SaberServer::Start() {
     });
     server_.Start();
   } else {
-    LOG_ERROR("Skywalker start failed!\n");
+    LOG_ERROR("Skywalker start failed!");
   }
   return res;
 }

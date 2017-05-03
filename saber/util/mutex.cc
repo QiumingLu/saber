@@ -14,7 +14,7 @@ namespace saber {
 
 static void PthreadCall(const char* label, int result) {
   if (result != 0) {
-    LOG_FATAL("%s: %s\n", label, strerror(result));
+    LOG_FATAL("%s: %s", label, strerror(result));
   }
 }
 
@@ -57,13 +57,11 @@ bool Condition::Wait(uint64_t micros_second) {
       static_cast<suseconds_t>((micros_second % (1000 * 1000)) * 1000);
   outtime.tv_sec += outtime.tv_nsec / (1000 * 1000 * 1000);
   outtime.tv_nsec %= (1000 * 1000 * 1000);
-  int ret = pthread_cond_timedwait(&cond_, &mutex_->mutex_, &outtime);
-  bool res = true;
-  if (ret != 0 && ret != ETIMEDOUT) {
-    res = false;
-    PthreadCall("pthread_cond_timedwait", ret);
+  int res = pthread_cond_timedwait(&cond_, &mutex_->mutex_, &outtime);
+  if (res != 0 && res != ETIMEDOUT) {
+    PthreadCall("pthread_cond_timedwait", res);
   }
-  return res;
+  return res == 0;
 }
 
 void Condition::Signal() {

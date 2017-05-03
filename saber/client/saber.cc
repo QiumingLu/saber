@@ -44,7 +44,7 @@ void Saber::Connect() {
       i->Start();
     }
   } else {
-    LOG_WARN("Saber has connected, don't call it again!\n");
+    LOG_WARN("Saber has connected, don't call it again!");
   }
 }
 

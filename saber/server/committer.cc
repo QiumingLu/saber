@@ -96,7 +96,7 @@ void Committer::Commit(uint32_t group_id, SaberMessage* message) {
     }
     default: {
       assert(false);
-      LOG_ERROR("Invalid message type.\n");
+      LOG_ERROR("Invalid message type.");
       break;
     }
   }
@@ -142,7 +142,7 @@ void Committer::OnProposeComplete(skywalker::MachineContext* context,
   if (!s.ok()) {
     SetFailedState(reply_message);
   }
-  LOG_DEBUG("Committer::OnProposeComplete - %s\n", s.ToString().c_str());
+  LOG_DEBUG("Committer::OnProposeComplete - %s.", s.ToString().c_str());
 
   CommitterPtr ptr(shared_from_this());
   loop_->QueueInLoop([ptr, reply_message]() {
@@ -182,7 +182,7 @@ void Committer::SetFailedState(SaberMessage* reply_message) {
     }
     default: {
       assert(false);
-      LOG_ERROR("Invalid message type.\n");
+      LOG_ERROR("Invalid message type.");
       break;
     }
   }
@@ -194,7 +194,7 @@ uint32_t Committer::Shard(const std::string& s) {
   } else {
     uint32_t h;
     MurmurHash3_x86_32(s.c_str(), static_cast<int>(s.size()), 0, &h);
-    return (h % node_->group_size());
+    return (h % static_cast<uint32_t>(node_->group_size()));
   }
 }
 

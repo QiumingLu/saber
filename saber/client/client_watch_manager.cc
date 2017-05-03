@@ -121,7 +121,7 @@ WatcherSetPtr ClientWatchManager::Trigger(const WatchedEvent& event) {
       break;
     }
     default: {
-      LOG_ERROR("Invalid watched event type.\n");
+      LOG_ERROR("Invalid watched event type.");
       break;
     }
   }

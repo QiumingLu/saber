@@ -78,31 +78,32 @@ std::string ToString(ResponseCode code) {
   std::string s;
   switch (code) {
     case RC_OK:
-      s = "OK\n";
+      s = "OK";
       break;
     case RC_FAILED:
-      s = "FAIL\n";
+      s = "FAIL";
       break;
     case RC_NO_NODE:
-      s = "NoNode\n";
+      s = "NoNode";
       break;
     case RC_NO_PARENT:
-      s = "NoParent\n";
+      s = "NoParent";
       break;
     case RC_NODE_EXISTS:
-      s = "NodeExists\n";
+      s = "NodeExists";
       break;
     case RC_BAD_VERSION:
-      s = "BadVersion\n";
+      s = "BadVersion";
       break;
     case RC_NO_AUTH:
-      s = "NoAuth\n";
+      s = "NoAuth";
       break;
     default:
-      s = "Unknown\n";
+      s = "Unknown";
       assert(false);
       break;
   }
+  s += "\n";
   return s;
 }
 

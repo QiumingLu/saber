@@ -28,7 +28,7 @@ bool Messager::SendMessage(const SaberMessage& message) {
       s.replace(s.begin(), s.begin() + kHeaderSize, buf, kHeaderSize);
       p->SendMessage(std::move(s));
     } else {
-      LOG_ERROR("SaberMessage serialize to string failed.\n");
+      LOG_ERROR("SaberMessage serialize to string failed.");
     }
   }
   return res;
