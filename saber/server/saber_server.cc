@@ -50,7 +50,7 @@ bool SaberServer::Start() {
   skywalker_options.ipport.ip = options_.my_server_message.server_ip;
   skywalker_options.ipport.port = options_.my_server_message.paxos_port;
 
-  for (int i = 1; i <= 3; ++i) {
+  for (int i = 0; i < 3; ++i) {
     group_options.group_id = i;
     skywalker_options.groups.push_back(group_options);
   }

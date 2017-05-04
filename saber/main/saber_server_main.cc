@@ -28,7 +28,7 @@ int main(int argc, char** argv) {
   std::vector<std::string> servers;
 
   voyager::SplitStringUsing(std::string(argv[1]), ":", &server);
-  if (server.size() != 3) {
+  if (server.size() != 4) {
     LOG_ERROR("Usage: %s id:ip:port:port id:ip:port:port,...", argv[0]);
     return -1;
   }
@@ -44,7 +44,7 @@ int main(int argc, char** argv) {
   for (auto& s : servers) {
     server.clear();
     voyager::SplitStringUsing(s, ":", &server);
-    if (server.size() != 3) {
+    if (server.size() != 4) {
       LOG_ERROR("Usage: %s id:ip:port:port id:ip:port:port,...", argv[0]);
       return -1;
     }
