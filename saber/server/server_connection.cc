@@ -42,7 +42,7 @@ void ServerConnection::Process(const WatchedEvent& event) {
 void ServerConnection::OnMessage(std::unique_ptr<SaberMessage> message) {
   assert(message);
   if (message->type() == MT_PING) {
-  } else {
+  } else if (!closed_) {
     pending_messages_.push(std::move(message));
     if (last_finished_) {
       last_finished_ = false;
@@ -65,6 +65,10 @@ void ServerConnection::OnCommitComplete(
     }
   } else {
     closed_ = true;
+    voyager::TcpConnectionPtr p = messager_->GetTcpConnection();
+    if (p) {
+      p->ShutDown();
+    }
   }
 }
 

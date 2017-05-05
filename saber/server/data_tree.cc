@@ -80,7 +80,7 @@ void DataTree::Delete(const DeleteRequest& request, const Transaction& txn,
   {
     MutexLock lock(&mutex_);
     auto it =  nodes_.find(path);
-    if (it != nodes_.end()) {
+    if (it != nodes_.end() && it->second->children().empty()) {
       nodes_.erase(it);
       it = nodes_.find(parent);
       if (it != nodes_.end()) {
@@ -89,6 +89,8 @@ void DataTree::Delete(const DeleteRequest& request, const Transaction& txn,
       } else {
         response->set_code(RC_NO_PARENT);
       }
+    } else if (it != nodes_.end()) {
+      response->set_code(RC_CHILDREN_EXISTS);
     } else {
       response->set_code(RC_NO_NODE);
     }

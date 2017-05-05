@@ -92,6 +92,9 @@ std::string ToString(ResponseCode code) {
     case RC_NODE_EXISTS:
       s = "NodeExists";
       break;
+    case RC_CHILDREN_EXISTS:
+      s = "ChildrenExists";
+      break;
     case RC_BAD_VERSION:
       s = "BadVersion";
       break;

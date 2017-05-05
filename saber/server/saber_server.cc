@@ -37,7 +37,8 @@ bool SaberServer::Start() {
   for (auto& server_message : options_.all_server_messages) {
     SaberCell::Instance()->AddServer(server_message);
     group_options.membership.push_back(
-        skywalker::IpPort(server_message.server_ip, server_message.paxos_port));
+        skywalker::IpPort(server_message.server_ip,
+                          server_message.paxos_port));
   }
 
   db_.reset(new SaberDB(3));
