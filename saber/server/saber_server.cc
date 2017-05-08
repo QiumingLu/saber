@@ -83,8 +83,7 @@ void SaberServer::OnConnection(const voyager::TcpConnectionPtr& p) {
     messager->OnMessage(ptr, buf);
   });
   ServerConnection* conn = new ServerConnection(
-      GetNextSessionId(),
-      p->OwnerEventLoop(), std::unique_ptr<Messager>(messager),
+      GetNextSessionId(), p->OwnerEventLoop(), messager,
       db_.get(), node_.get());
   p->SetContext(conn);
   conns_.insert(conn->session_id(), std::unique_ptr<ServerConnection>(conn));

@@ -9,14 +9,14 @@ namespace saber {
 
 ServerConnection::ServerConnection(uint64_t session_id,
                                    voyager::EventLoop* loop,
-                                   std::unique_ptr<Messager> p,
+                                   Messager* owned_messager,
                                    SaberDB* db,
                                    skywalker::Node* node)
     : closed_(false),
       last_finished_(true),
       session_id_(session_id),
       loop_(loop),
-      messager_(std::move(p)),
+      messager_(owned_messager),
       committer_(new Committer(this, loop_, db, node)) {
   assert(messager_);
   messager_->SetMessageCallback(

@@ -5,6 +5,7 @@
 #ifndef SABER_SERVER_SERVER_CONNECTION_H_
 #define SABER_SERVER_SERVER_CONNECTION_H_
 
+#include <memory>
 #include <queue>
 #include <voyager/core/eventloop.h>
 
@@ -20,7 +21,7 @@ class ServerConnection : public Watcher {
  public:
   ServerConnection(uint64_t session_id,
                    voyager::EventLoop* loop,
-                   std::unique_ptr<Messager> p,
+                   Messager* owned_messager,
                    SaberDB* db,
                    skywalker::Node* node);
   virtual ~ServerConnection();
