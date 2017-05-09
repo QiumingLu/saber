@@ -66,7 +66,7 @@ class SaberClient {
   void OnConnection(const voyager::TcpConnectionPtr& p);
   void OnFailue();
   void OnClose(const voyager::TcpConnectionPtr& p);
-  void OnMessage(std::unique_ptr<SaberMessage> message);
+  bool OnMessage(std::unique_ptr<SaberMessage> message);
 
   std::atomic<bool> has_started_;
 

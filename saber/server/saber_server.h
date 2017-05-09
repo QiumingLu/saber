@@ -5,6 +5,7 @@
 #ifndef SABER_SERVER_SABER_SERVER_H_
 #define SABER_SERVER_SABER_SERVER_H_
 
+#include <atomic>
 #include <memory>
 #include <voyager/core/tcp_server.h>
 #include <skywalker/node.h>
@@ -27,11 +28,14 @@ class SaberServer {
  private:
   void OnConnection(const voyager::TcpConnectionPtr& p);
   void OnClose(const voyager::TcpConnectionPtr& p);
+
   uint64_t GetNextSessionId() const;
+
+  static std::atomic<uint8_t> seq_num_;
 
   ServerOptions options_;
 
-  const uint16_t server_id_;
+  const uint64_t server_id_;
   voyager::SockAddr addr_;
 
   std::unique_ptr<SaberDB> db_;

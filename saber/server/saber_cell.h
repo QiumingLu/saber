@@ -29,9 +29,9 @@ class SaberCell {
   }
 
   void AddServer(const ServerMessage& s);
-  void RemoveServer(uint16_t id);
+  void RemoveServer(uint64_t id);
 
-  bool FindServerById(uint16_t id, ServerMessage* s) const;
+  bool FindServerById(uint64_t id, ServerMessage* s) const;
   bool FindServerByClientIpPort(const IpPort& i, ServerMessage* s) const;
   bool FindServerByPaxosIpPort(const IpPort& i, ServerMessage* s) const;
 
@@ -43,7 +43,7 @@ class SaberCell {
   static SaberCell* instance_;
 
   mutable Mutex mutex_;
-  std::map<int, ServerMessage*> id_to_servers_;
+  std::map<uint64_t, ServerMessage*> id_to_servers_;
   std::map<IpPort, ServerMessage*> client_to_servers_;
   std::map<IpPort, ServerMessage*> paxos_to_servers_;
 

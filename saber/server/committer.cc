@@ -40,9 +40,7 @@ void Committer::Commit(SaberMessage* message) {
     SaberMessage* reply_message = new SaberMessage();
     reply_message->set_type(MT_MASTER);
     reply_message->set_data(master.SerializeAsString());
-    if (cb_) {
-      cb_(std::unique_ptr<SaberMessage>(reply_message));
-    }
+    conn_->OnCommitComplete(std::unique_ptr<SaberMessage>(reply_message));
   }
 }
 
@@ -101,9 +99,7 @@ void Committer::Commit(uint32_t group_id, SaberMessage* message) {
     }
   }
   if (!wait) {
-    if (cb_) {
-      cb_(std::unique_ptr<SaberMessage>(reply_message));
-    }
+    conn_->OnCommitComplete(std::unique_ptr<SaberMessage>(reply_message));
   }
 }
 
@@ -147,9 +143,8 @@ void Committer::OnProposeComplete(skywalker::MachineContext* context,
   CommitterPtr ptr(shared_from_this());
   loop_->QueueInLoop([ptr, reply_message]() {
     if (!ptr.unique()) {
-      if (ptr->cb_) {
-        ptr->cb_(std::unique_ptr<SaberMessage>(reply_message));
-      }
+      ptr->conn_->OnCommitComplete(
+          std::unique_ptr<SaberMessage>(reply_message));
     }
   });
 }

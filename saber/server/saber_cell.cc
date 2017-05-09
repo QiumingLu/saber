@@ -32,7 +32,7 @@ void SaberCell::AddServer(const ServerMessage& s) {
   }
 }
 
-void SaberCell::RemoveServer(uint16_t id) {
+void SaberCell::RemoveServer(uint64_t id) {
   MutexLock lock(&mutex_);
   auto it = id_to_servers_.find(id);
   if (it != id_to_servers_.end()) {
@@ -41,7 +41,7 @@ void SaberCell::RemoveServer(uint16_t id) {
   }
 }
 
-bool SaberCell::FindServerById(uint16_t id, ServerMessage* s) const {
+bool SaberCell::FindServerById(uint64_t id, ServerMessage* s) const {
   MutexLock lock(&mutex_);
   auto it = id_to_servers_.find(id);
   if (it != id_to_servers_.end()) {

@@ -8,52 +8,48 @@
 namespace saber {
 
 ServerConnection::ServerConnection(uint64_t session_id,
-                                   voyager::EventLoop* loop,
-                                   Messager* owned_messager,
+                                   const voyager::TcpConnectionPtr& p,
                                    SaberDB* db,
                                    skywalker::Node* node)
     : closed_(false),
       last_finished_(true),
       session_id_(session_id),
-      loop_(loop),
-      messager_(owned_messager),
-      committer_(new Committer(this, loop_, db, node)) {
-  assert(messager_);
+      conn_(p),
+      messager_(new Messager()),
+      committer_(new Committer(this, p->OwnerEventLoop(), db, node)) {
+  messager_->SetTcpConnection(p);
   messager_->SetMessageCallback(
       [this](std::unique_ptr<SaberMessage> message) {
-    OnMessage(std::move(message));
-  });
-  committer_->SetCommitCompleteCallback(
-      [this](std::unique_ptr<SaberMessage> message) {
-    OnCommitComplete(std::move(message));
+    return HandleMessage(std::move(message));
   });
 }
 
 ServerConnection::~ServerConnection() {
 }
 
-void ServerConnection::Process(const WatchedEvent& event) {
-  SaberMessage message;
-  message.set_type(MT_NOTIFICATION);
-  message.set_data(event.SerializeAsString());
-  messager_->SendMessage(message);
+void ServerConnection::OnMessage(
+    const voyager::TcpConnectionPtr& p, voyager::Buffer* buf) {
+  messager_->OnMessage(p, buf);
 }
 
-void ServerConnection::OnMessage(std::unique_ptr<SaberMessage> message) {
-  assert(message);
+bool ServerConnection::HandleMessage(std::unique_ptr<SaberMessage> message) {
+  if (closed_) {
+    return false;
+  }
   if (message->type() == MT_PING) {
-  } else if (!closed_) {
+  } else {
     pending_messages_.push(std::move(message));
     if (last_finished_) {
       last_finished_ = false;
       committer_->Commit(pending_messages_.front().get());
     }
   }
+  return true;
 }
 
 void ServerConnection::OnCommitComplete(
     std::unique_ptr<SaberMessage> message) {
-  messager_->SendMessage(*(message.get()));
+  messager_->SendMessage(*message);
   assert(!pending_messages_.empty());
   pending_messages_.pop();
   if (message->type() != MT_MASTER) {
@@ -65,11 +61,15 @@ void ServerConnection::OnCommitComplete(
     }
   } else {
     closed_ = true;
-    voyager::TcpConnectionPtr p = messager_->GetTcpConnection();
-    if (p) {
-      p->ShutDown();
-    }
+    conn_->ShutDown();
   }
+}
+
+void ServerConnection::Process(const WatchedEvent& event) {
+  SaberMessage message;
+  message.set_type(MT_NOTIFICATION);
+  message.set_data(event.SerializeAsString());
+  messager_->SendMessage(message);
 }
 
 }  // namespace saber

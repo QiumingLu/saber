@@ -7,6 +7,7 @@
 #include "saber/client/client_watch_manager.h"
 #include "saber/net/messager.h"
 #include "saber/util/logging.h"
+#include "saber/util/timeops.h"
 
 namespace saber {
 
@@ -21,7 +22,7 @@ SaberClient::SaberClient(const ClientOptions& options,
       watch_manager_(new ClientWatchManager(options.auto_watch_reset)) {
   messager_->SetMessageCallback(
       [this](std::unique_ptr<SaberMessage> message) {
-    OnMessage(std::move(message));
+    return OnMessage(std::move(message));
   });
 }
 
@@ -243,12 +244,14 @@ void SaberClient::OnClose(const voyager::TcpConnectionPtr& p) {
       Connect(addr);
       master_.clear_ip();
     } else {
+      SleepForMicroseconds(1000);
       Connect(server_manager_->GetNext());
     }
   }
 }
 
-void SaberClient::OnMessage(std::unique_ptr<SaberMessage> message) {
+bool SaberClient::OnMessage(std::unique_ptr<SaberMessage> message) {
+  bool res = true;
   MessageType type = message->type();
   switch (type) {
     case MT_NOTIFICATION: {
@@ -388,6 +391,7 @@ void SaberClient::OnMessage(std::unique_ptr<SaberMessage> message) {
       break;
     }
     case MT_MASTER: {
+      res = false;
       master_.ParseFromString(message->data());
       LOG_DEBUG("The master is %s:%d.",
                 master_.ip().c_str(), master_.port());
@@ -407,6 +411,7 @@ void SaberClient::OnMessage(std::unique_ptr<SaberMessage> message) {
     assert(!outgoing_queue_.empty());
     outgoing_queue_.pop_front();
   }
+  return res;
 }
 
 }  // namespace saber

@@ -101,6 +101,9 @@ std::string ToString(ResponseCode code) {
     case RC_NO_AUTH:
       s = "NoAuth";
       break;
+    case RC_UNKNOWN:
+      s = "UnKnown";
+      break;
     default:
       s = "Unknown";
       assert(false);

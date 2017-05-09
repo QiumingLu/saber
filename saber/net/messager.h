@@ -15,7 +15,7 @@ namespace saber {
 class Messager {
  public:
   typedef std::function<
-      void (std::unique_ptr<SaberMessage>) > MessageCallback;
+      bool (std::unique_ptr<SaberMessage>) > MessageCallback;
 
   Messager();
   ~Messager();

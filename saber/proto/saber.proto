@@ -40,6 +40,7 @@ enum ResponseCode {
   RC_CHILDREN_EXISTS = 5;
   RC_BAD_VERSION = 6;
   RC_NO_AUTH = 7;
+  RC_UNKNOWN = 8;
 }
 
 message Stat {

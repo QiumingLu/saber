@@ -21,14 +21,16 @@ class HashMap {
  public:
   HashMap() : mu_() { }
 
-  void insert(const K& key, const V& value) {
+  bool insert(const K& key, const V& value) {
     MutexLock lock(&mu_);
-    map_[key] = value;
+    auto it = map_.insert(std::pair<K, V>(key, value));
+    return it.second;
   }
 
-  void insert(const K& key, V&& value) {
+  bool insert(const K& key, V&& value) {
     MutexLock lock(&mu_);
-    map_[key] = std::move(value);
+    auto it = map_.insert(std::pair<K, V>(key,std::move(value)));
+    return it.second;
   }
 
   void erase(const K& key) {
@@ -39,6 +41,11 @@ class HashMap {
   size_t size() const {
     MutexLock lock(&mu_);
     return map_.size();
+  }
+
+  bool contains(const K& key) const {
+    MutexLock lock(&mu_);
+    return map_.count(key) == 1;
   }
 
  private:
@@ -55,14 +62,14 @@ class ConcurrentMap {
  public:
   ConcurrentMap() { }
 
-  void insert(const K& key, const V& value) {
+  bool insert(const K& key, const V& value) {
     const size_t h = Hash(key);
-    shard_[Shard(h)].insert(key, value);
+    return shard_[Shard(h)].insert(key, value);
   }
 
-  void insert(const K& key, V&& value) {
+  bool insert(const K& key, V&& value) {
     const size_t h = Hash(key);
-    shard_[Shard(h)].insert(key, std::move(value));
+    return shard_[Shard(h)].insert(key, std::move(value));
   }
 
   void erase(const K& key) {
@@ -76,6 +83,11 @@ class ConcurrentMap {
       total += shard_[s].size();
     }
     return total;
+  }
+
+  bool contains(const K& key) const {
+    const size_t h = Hash(key);
+    return shard_[Shard(h)].contains(key);
   }
 
  private:

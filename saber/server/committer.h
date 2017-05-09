@@ -6,7 +6,6 @@
 #define SABER_SERVER_COMMITTER_H_
 
 #include <memory>
-#include <functional>
 
 #include <skywalker/node.h>
 #include <voyager/core/eventloop.h>
@@ -20,18 +19,8 @@ class ServerConnection;
 
 class Committer : public std::enable_shared_from_this<Committer> {
  public:
-  typedef std::function<
-      void (std::unique_ptr<SaberMessage>)> CommitCompleteCallback;
-
   Committer(ServerConnection* conn, voyager::EventLoop* loop,
             SaberDB* db, skywalker::Node* node);
-
-  void SetCommitCompleteCallback(const CommitCompleteCallback& cb) {
-    cb_ = cb;
-  }
-  void SetCommitCompleteCallback(CommitCompleteCallback&& cb) {
-    cb_ = std::move(cb);
-  }
 
   void Commit(SaberMessage* message);
 
@@ -50,8 +39,6 @@ class Committer : public std::enable_shared_from_this<Committer> {
   SaberDB* db_;
   skywalker::Node* node_;
   std::unique_ptr<skywalker::MachineContext> context_;
-
-  CommitCompleteCallback cb_;
 
   // No copying allowed
   Committer(const Committer&);

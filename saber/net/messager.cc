@@ -38,7 +38,8 @@ void Messager::OnMessage(const voyager::TcpConnectionPtr& p,
                          voyager::Buffer* buf) {
   assert(conn_wp_.lock() == p);
 
-  while (true) {
+  bool res = true;
+  while (res) {
     if (buf->ReadableSize() >= kHeaderSize) {
       int size;
       memcpy(&size, buf->Peek(), kHeaderSize);
@@ -47,15 +48,13 @@ void Messager::OnMessage(const voyager::TcpConnectionPtr& p,
         message->ParseFromArray(buf->Peek() + kHeaderSize,
                                 size - kHeaderSize);
         if (cb_) {
-          cb_(std::unique_ptr<SaberMessage>(message));
+          res = cb_(std::unique_ptr<SaberMessage>(message));
         }
         buf->Retrieve(size);
-      } else {
-        break;
+        continue;
       }
-    } else {
-      break;
     }
+    break;
   }
 }
 

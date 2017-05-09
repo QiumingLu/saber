@@ -14,6 +14,8 @@
 
 namespace saber {
 
+std::atomic<uint8_t> SaberServer::seq_num_;
+
 SaberServer::SaberServer(voyager::EventLoop* loop,
                          const ServerOptions& options)
     : options_(options),
@@ -31,7 +33,7 @@ bool SaberServer::Start() {
   group_options.use_master = true;
   group_options.log_sync = true;
   group_options.sync_interval = 3;
-  group_options.keep_log_count = 1000;
+  group_options.keep_log_count = 10000;
   group_options.log_storage_path = options_.log_storage_path;
 
   for (auto& server_message : options_.all_server_messages) {
@@ -76,28 +78,33 @@ bool SaberServer::Start() {
 }
 
 void SaberServer::OnConnection(const voyager::TcpConnectionPtr& p) {
-  Messager* messager = new Messager();
-  messager->SetTcpConnection(p);
-  p->SetMessageCallback(
-      [messager](const voyager::TcpConnectionPtr& ptr, voyager::Buffer* buf) {
-    messager->OnMessage(ptr, buf);
-  });
   ServerConnection* conn = new ServerConnection(
-      GetNextSessionId(), p->OwnerEventLoop(), messager,
-      db_.get(), node_.get());
-  p->SetContext(conn);
-  conns_.insert(conn->session_id(), std::unique_ptr<ServerConnection>(conn));
+      GetNextSessionId(), p, db_.get(), node_.get());
+  bool result = conns_.insert(conn->session_id(),
+                              std::unique_ptr<ServerConnection>(conn));
+  if (result) {
+    p->SetContext(conn);
+    p->SetMessageCallback(
+        [conn](const voyager::TcpConnectionPtr& ptr, voyager::Buffer* buf) {
+      conn->OnMessage(ptr, buf);
+    });
+  } else {
+    p->ShutDown();
+  }
 }
 
 void SaberServer::OnClose(const voyager::TcpConnectionPtr& p) {
   ServerConnection* conn =
       reinterpret_cast<ServerConnection*>(p->Context());
-  db_->RemoveWatcher(conn);
-  conns_.erase(conn->session_id());
+  if (conn != nullptr) {
+    db_->RemoveWatcher(conn);
+    conns_.erase(conn->session_id());
+  }
 }
 
 uint64_t SaberServer::GetNextSessionId() const {
-  return ((NowMillis() << 16) | server_id_);
+  uint64_t session_id = (NowMillis() << 22) | (server_id_ << 8) | seq_num_++;
+  return session_id;
 }
 
 }  // namespace saber
