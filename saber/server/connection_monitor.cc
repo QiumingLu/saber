@@ -6,8 +6,6 @@
 
 namespace saber {
 
-std::atomic<int> ConnectionMonitor::all_conn_size_(0);
-
 ConnectionMonitor::ConnectionMonitor(int server_id,
                                      int max_ip_connections,
                                      int max_all_connections,

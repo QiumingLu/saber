@@ -105,4 +105,11 @@ void SaberServer::OnClose(const voyager::TcpConnectionPtr& p) {
   */
 }
 
+/*
+uint64_t SaberServer::GetNextSessionId() const {
+  static SequencenNumber<int> seq_num_(1 << 10);
+  return (NowMillis() << 22) | (server_id_ << 10) | seq_num_.GetNext();
+}
+*/
+
 }  // namespace saber

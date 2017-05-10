@@ -30,8 +30,6 @@ class ConnectionMonitor {
  private:
   uint64_t GetNextSessionId() const;
 
-  static std::atomic<int> all_conn_size_;
-
   const int server_id_;
   const int max_ip_connections_;
   const int max_all_connections_;
