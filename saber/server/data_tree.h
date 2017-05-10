@@ -23,24 +23,24 @@ class DataTree {
 
   void Create(const CreateRequest& request, const Transaction& txn,
               CreateResponse* response);
- 
+
   void Delete(const DeleteRequest& request, const Transaction& txn,
               DeleteResponse* response);
 
   void Exists(const ExistsRequest& request, Watcher* watcher,
               ExistsResponse* response);
- 
+
   void GetData(const GetDataRequest& request, Watcher* watcher,
                GetDataResponse* response);
 
   void SetData(const SetDataRequest& request, const Transaction& txn,
                SetDataResponse* response);
- 
+
   void GetACL(const GetACLRequest& request,
               GetACLResponse* response);
- 
-  void SetACL(const SetACLRequest& request, const Transaction& txn, 
-              SetACLResponse* response); 
+
+  void SetACL(const SetACLRequest& request, const Transaction& txn,
+              SetACLResponse* response);
 
   void GetChildren(const GetChildrenRequest& request, Watcher* watcher,
                    GetChildrenResponse* response);

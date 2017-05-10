@@ -3,18 +3,13 @@
 // found in the LICENSE file.
 
 #include "saber/server/saber_server.h"
-
-#include <voyager/core/tcp_connection.h>
-
 #include "saber/server/saber_cell.h"
 #include "saber/server/saber_db.h"
 #include "saber/server/server_connection.h"
+#include "saber/server/connection_monitor.h"
 #include "saber/util/logging.h"
-#include "saber/util/timeops.h"
 
 namespace saber {
-
-std::atomic<uint8_t> SaberServer::seq_num_;
 
 SaberServer::SaberServer(voyager::EventLoop* loop,
                          const ServerOptions& options)
@@ -22,7 +17,7 @@ SaberServer::SaberServer(voyager::EventLoop* loop,
       server_id_(options_.my_server_message.server_id),
       addr_(options.my_server_message.server_ip,
             options.my_server_message.client_port),
-      server_(loop, addr_, "SaberServer", options.server_thread_size) {
+      server_(loop, addr_, "SaberServer", options.paxos_group_size) {
 }
 
 SaberServer::~SaberServer() {
@@ -32,8 +27,8 @@ bool SaberServer::Start() {
   skywalker::GroupOptions group_options;
   group_options.use_master = true;
   group_options.log_sync = true;
-  group_options.sync_interval = 3;
-  group_options.keep_log_count = 10000;
+  group_options.sync_interval = options_.log_sync_interval;
+  group_options.keep_log_count = options_.keep_log_count;
   group_options.log_storage_path = options_.log_storage_path;
 
   for (auto& server_message : options_.all_server_messages) {
@@ -53,7 +48,7 @@ bool SaberServer::Start() {
   skywalker_options.ipport.ip = options_.my_server_message.server_ip;
   skywalker_options.ipport.port = options_.my_server_message.paxos_port;
 
-  for (int i = 0; i < 3; ++i) {
+  for (int i = 0; i < options_.paxos_group_size; ++i) {
     group_options.group_id = i;
     skywalker_options.groups.push_back(group_options);
   }
@@ -71,6 +66,15 @@ bool SaberServer::Start() {
       OnClose(p);
     });
     server_.Start();
+
+    const std::vector<voyager::EventLoop*>* loops = server_.AllLoops();
+    for (size_t i = 0; i < loops->size(); ++i) {
+      ConnectionMonitor* monitor = new ConnectionMonitor(
+          server_id_,
+          options_.max_ip_connections, options_.max_all_connections,
+          db_.get(), node_.get());
+      monitors_[loops->at(i)] = std::unique_ptr<ConnectionMonitor>(monitor);
+    }
   } else {
     LOG_ERROR("Skywalker start failed!");
   }
@@ -78,33 +82,27 @@ bool SaberServer::Start() {
 }
 
 void SaberServer::OnConnection(const voyager::TcpConnectionPtr& p) {
+  monitors_[p->OwnerEventLoop()]->OnConnection(p);
+  /*
   ServerConnection* conn = new ServerConnection(
       GetNextSessionId(), p, db_.get(), node_.get());
-  bool result = conns_.insert(conn->session_id(),
-                              std::unique_ptr<ServerConnection>(conn));
-  if (result) {
-    p->SetContext(conn);
-    p->SetMessageCallback(
-        [conn](const voyager::TcpConnectionPtr& ptr, voyager::Buffer* buf) {
-      conn->OnMessage(ptr, buf);
-    });
-  } else {
-    p->ShutDown();
-  }
+  p->SetContext(conn);
+  p->SetMessageCallback(
+      [conn](const voyager::TcpConnectionPtr& ptr, voyager::Buffer* buf) {
+    conn->OnMessage(ptr, buf);
+  });
+  */
 }
 
 void SaberServer::OnClose(const voyager::TcpConnectionPtr& p) {
+  monitors_[p->OwnerEventLoop()]->OnClose(p);
+  /*
   ServerConnection* conn =
       reinterpret_cast<ServerConnection*>(p->Context());
-  if (conn != nullptr) {
-    db_->RemoveWatcher(conn);
-    conns_.erase(conn->session_id());
-  }
-}
-
-uint64_t SaberServer::GetNextSessionId() const {
-  uint64_t session_id = (NowMillis() << 22) | (server_id_ << 8) | seq_num_++;
-  return session_id;
+  assert(conn != nullptr);
+  db_->RemoveWatcher(conn);
+  delete conn;
+  */
 }
 
 }  // namespace saber

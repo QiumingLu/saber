@@ -3,6 +3,11 @@
 // found in the LICENSE file.
 
 #include "saber/server/data_tree.h"
+
+#include <set>
+#include <utility>
+#include <vector>
+
 #include "saber/util/mutexlock.h"
 #include "saber/util/logging.h"
 
@@ -154,7 +159,7 @@ void DataTree::SetData(const SetDataRequest& request, const Transaction& txn,
 
   {
     MutexLock lock(&mutex_);
-    auto it  =nodes_.find(path);
+    auto it = nodes_.find(path);
     if (it != nodes_.end()) {
       int version = it->second->stat().version();
       if (request.version() != -1 && request.version() != version) {

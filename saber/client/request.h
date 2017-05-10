@@ -5,6 +5,9 @@
 #ifndef SABER_CLIENT_REQUEST_H_
 #define SABER_CLIENT_REQUEST_H_
 
+#include <utility>
+#include <string>
+
 #include "saber/service/watcher.h"
 
 namespace saber {
@@ -37,18 +40,21 @@ class Request {
     watcher = r.watcher;
     callback = r.callback;
   }
+
   Request(Request&& r) {
     path = std::move(r.path);
     context = r.context;
     watcher = r.watcher;
     callback = std::move(r.callback);
   }
+
   void operator=(const Request& r) {
     path = r.path;
     context = r.context;
     watcher = r.watcher;
     callback = r.callback;
   }
+
   void operator=(Request&& r) {
     path = std::move(r.path);
     context = r.context;

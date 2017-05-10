@@ -8,6 +8,7 @@
 #include <vector>
 #include <set>
 #include <string>
+#include <utility>
 
 #include "saber/proto/saber.pb.h"
 
@@ -40,8 +41,8 @@ class DataNode {
   bool RemoveChild(const std::string& child, uint64_t children_id);
 
  private:
-  void UpdateChildrenStat(uint64_t children_id); 
- 
+  void UpdateChildrenStat(uint64_t children_id);
+
   Stat stat_;
   std::string data_;
   std::vector<ACL> acl_;

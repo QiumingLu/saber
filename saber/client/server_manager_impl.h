@@ -6,6 +6,7 @@
 #define SABER_CLIENT_SERVER_MANAGER_IMPL_H_
 
 #include <vector>
+#include <string>
 
 #include "saber/client/server_manager.h"
 #include "saber/util/mutex.h"

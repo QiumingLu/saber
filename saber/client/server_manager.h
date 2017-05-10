@@ -6,7 +6,9 @@
 #define SABER_CLIENT_SERVER_MANAGER_H_
 
 #include <stdint.h>
+
 #include <string>
+
 #include <voyager/core/sockaddr.h>
 
 namespace saber {

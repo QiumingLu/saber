@@ -38,6 +38,6 @@ typedef std::function<void (const std::string& path, void* context,
 typedef std::function<void (const std::string& path, void* context,
     const GetChildrenResponse&)> GetChildrenCallback;
 
-}
+}  // namespace saber
 
 #endif  // SABER_CLIENT_CALLBACKS_H_

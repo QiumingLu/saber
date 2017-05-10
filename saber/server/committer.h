@@ -6,6 +6,7 @@
 #define SABER_SERVER_COMMITTER_H_
 
 #include <memory>
+#include <string>
 
 #include <skywalker/node.h>
 #include <voyager/core/eventloop.h>

@@ -7,16 +7,24 @@
 
 #include <atomic>
 #include <memory>
+
+#include <voyager/core/buffer.h>
+#include <voyager/core/eventloop.h>
 #include <voyager/core/tcp_server.h>
+#include <voyager/core/tcp_connection.h>
+#include <voyager/core/sockaddr.h>
+
 #include <skywalker/node.h>
 
 #include "saber/server/server_options.h"
 #include "saber/util/concurrent_map.h"
+#include "saber/util/sequence_number.h"
 
 namespace saber {
 
 class SaberDB;
 class ServerConnection;
+class ConnectionMonitor;
 
 class SaberServer {
  public:
@@ -29,19 +37,15 @@ class SaberServer {
   void OnConnection(const voyager::TcpConnectionPtr& p);
   void OnClose(const voyager::TcpConnectionPtr& p);
 
-  uint64_t GetNextSessionId() const;
-
-  static std::atomic<uint8_t> seq_num_;
-
   ServerOptions options_;
 
-  const uint64_t server_id_;
+  const int server_id_;
   voyager::SockAddr addr_;
 
   std::unique_ptr<SaberDB> db_;
   std::unique_ptr<skywalker::Node> node_;
 
-  ConcurrentMap<uint64_t, std::unique_ptr<ServerConnection> > conns_;
+  std::map<voyager::EventLoop*, std::unique_ptr<ConnectionMonitor>> monitors_;
   voyager::TcpServer server_;
 
   // No copying allowed

@@ -13,7 +13,7 @@ namespace saber {
 
 class ServerMessage {
  public:
-  uint64_t server_id;
+  int server_id;
   std::string server_ip;
   uint16_t client_port;
   uint16_t paxos_port;
@@ -22,8 +22,19 @@ class ServerMessage {
 };
 
 struct ServerOptions {
-  int server_thread_size;
+  int paxos_group_size;
+  int tick_time;
+  int min_session_timeout;
+  int max_session_timeout;
+  int max_all_connections;
+  int max_ip_connections;
+  int max_data_size;
+  int keep_log_count;
+  int log_sync_interval;
+  int keep_checkpoint_count;
+  int make_checkpoint_interval;
   std::string log_storage_path;
+  std::string checkpoint_storage_path;
 
   ServerMessage my_server_message;
   std::vector<ServerMessage> all_server_messages;

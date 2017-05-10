@@ -9,11 +9,13 @@
 #include <unistd.h>
 #include <sys/syscall.h>
 
+#include <algorithm>
+
+#include "saber/util/logging.h"
+
 #ifdef __linux__
 #include <sys/prctl.h>
 #endif
-
-#include "saber/util/logging.h"
 
 namespace saber {
 
@@ -60,7 +62,7 @@ class ThreadInitializer {
 
 ThreadInitializer thread_init;
 
-}
+}  // anonymous namespace
 
 namespace CurrentThread {
 

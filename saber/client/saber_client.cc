@@ -3,6 +3,10 @@
 // found in the LICENSE file.
 
 #include "saber/client/saber_client.h"
+
+#include <utility>
+#include <set>
+
 #include "saber/client/server_manager_impl.h"
 #include "saber/client/client_watch_manager.h"
 #include "saber/net/messager.h"

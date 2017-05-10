@@ -82,7 +82,7 @@ bool SaberDB::Execute(uint32_t group_id,
   switch (message.type()) {
     case MT_CREATE: {
       CreateRequest request;
-      CreateResponse response; // FIXME response may be no neccessary here?
+      CreateResponse response;  // FIXME response may be no neccessary here?
       request.ParseFromString(message.data());
       Create(group_id, request, txn, &response);
       if (reply_message) {

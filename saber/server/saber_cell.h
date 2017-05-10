@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <map>
 #include <string>
+#include <utility>
 
 #include "saber/util/mutex.h"
 #include "saber/server/server_options.h"

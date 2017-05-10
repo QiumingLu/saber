@@ -3,6 +3,9 @@
 // found in the LICENSE file.
 
 #include "saber/main/mysaber.h"
+
+#include <vector>
+
 #include "saber/main/to_string.h"
 
 namespace saber {
@@ -165,7 +168,7 @@ void MySaber::Exists() {
   ExistsRequest request;
   Watcher* watcher = nullptr;
   request.set_path(v[0]);
-   if (v[1] == "0") {
+  if (v[1] == "0") {
     request.set_watch(false);
   } else if (v[1] == "1") {
     request.set_watch(true);

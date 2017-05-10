@@ -7,6 +7,7 @@
 
 #include <assert.h>
 #include <queue>
+#include <utility>
 
 #include "saber/util/mutex.h"
 #include "saber/util/mutexlock.h"
@@ -70,6 +71,6 @@ class BlockingQueue {
   void operator=(const BlockingQueue&);
 };
 
-}  // namespace mythread
+}  // namespace saber
 
 #endif  // SABER_UTIL_BLOCKINGQUEUE_H_

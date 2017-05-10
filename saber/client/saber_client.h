@@ -8,6 +8,8 @@
 #include <memory>
 #include <queue>
 #include <deque>
+#include <string>
+
 #include <voyager/core/eventloop.h>
 #include <voyager/core/bg_eventloop.h>
 #include <voyager/core/tcp_client.h>

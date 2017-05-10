@@ -14,7 +14,17 @@ ServerMessage::ServerMessage()
 }
 
 ServerOptions::ServerOptions()
-    : server_thread_size(1) {
+    : paxos_group_size(3),
+      tick_time(3000),
+      min_session_timeout(2 * tick_time),
+      max_session_timeout(20 * tick_time),
+      max_all_connections(60000),
+      max_ip_connections(60),
+      max_data_size(1024 * 1024),
+      keep_log_count(1000000),
+      log_sync_interval(10),
+      keep_checkpoint_count(3),
+      make_checkpoint_interval(100000) {
 }
 
 }  // namespace saber

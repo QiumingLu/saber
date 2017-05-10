@@ -23,13 +23,13 @@ class HashMap {
 
   bool insert(const K& key, const V& value) {
     MutexLock lock(&mu_);
-    auto it = map_.insert(std::pair<K, V>(key, value));
+    auto it = map_.insert(std::make_pair(key, value));
     return it.second;
   }
 
   bool insert(const K& key, V&& value) {
     MutexLock lock(&mu_);
-    auto it = map_.insert(std::pair<K, V>(key,std::move(value)));
+    auto it = map_.insert(std::make_pair(key, std::move(value)));
     return it.second;
   }
 

@@ -41,7 +41,7 @@ class Timer {
   bool repeat;
 };
 
-TimerList::TimerList(RunLoop* loop) 
+TimerList::TimerList(RunLoop* loop)
     : loop_(loop) {
 }
 
@@ -92,7 +92,7 @@ TimerId TimerList::RunEvery(uint64_t micros_interval,
 TimerId TimerList::RunEvery(uint64_t micros_interval,
                             TimerProcCallback&& cb) {
   uint64_t micros_value = NowMicros() + micros_interval;
-  TimerId timer(micros_value, 
+  TimerId timer(micros_value,
                 new Timer(micros_value, micros_interval, std::move(cb)));
   InsertInLoop(timer);
   return timer;

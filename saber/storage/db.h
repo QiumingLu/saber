@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 #ifndef SABER_STORAGE_DB_H_
-#define SABER_STORAGE_DB_H_ 
+#define SABER_STORAGE_DB_H_
 
 namespace saber {
 

@@ -8,6 +8,7 @@
 #include <atomic>
 #include <memory>
 #include <vector>
+#include <string>
 
 #include <voyager/core/eventloop.h>
 #include <voyager/core/bg_eventloop.h>
@@ -26,7 +27,7 @@ class ServerManager;
 
 class Saber {
  public:
-  Saber(const ClientOptions& options);
+  explicit Saber(const ClientOptions& options);
   ~Saber();
 
   bool Start();

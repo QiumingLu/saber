@@ -3,6 +3,10 @@
 // found in the LICENSE file.
 
 #include "saber/client/client_watch_manager.h"
+
+#include <set>
+#include <utility>
+
 #include "saber/util/logging.h"
 
 namespace saber {
@@ -52,7 +56,7 @@ void ClientWatchManager::AddChildWatch(
 
 WatcherSetPtr ClientWatchManager::Trigger(const WatchedEvent& event) {
   WatcherSetPtr result;
-  switch(event.type()) {
+  switch (event.type()) {
     case ET_NONE: {
       result.reset(new std::set<Watcher*>());
       for (auto& i : data_watches_) {

@@ -7,15 +7,17 @@
 
 #include <memory>
 #include <functional>
+#include <utility>
+
 #include <voyager/core/tcp_connection.h>
+
 #include "saber/proto/saber.pb.h"
 
 namespace saber {
 
 class Messager {
  public:
-  typedef std::function<
-      bool (std::unique_ptr<SaberMessage>) > MessageCallback;
+  typedef std::function<bool (std::unique_ptr<SaberMessage>)> MessageCallback;
 
   Messager();
   ~Messager();

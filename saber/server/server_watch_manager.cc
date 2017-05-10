@@ -3,6 +3,9 @@
 // found in the LICENSE file.
 
 #include "saber/server/server_watch_manager.h"
+
+#include <utility>
+
 #include "saber/util/mutexlock.h"
 
 namespace saber {

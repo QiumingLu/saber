@@ -9,6 +9,7 @@
 #include <memory>
 #include <vector>
 #include <functional>
+#include <utility>
 
 #include "saber/util/mutex.h"
 

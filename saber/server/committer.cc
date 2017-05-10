@@ -3,6 +3,9 @@
 // found in the LICENSE file.
 
 #include "saber/server/committer.h"
+
+#include <utility>
+
 #include "saber/server/server_connection.h"
 #include "saber/server/saber_cell.h"
 #include "saber/util/logging.h"
@@ -87,7 +90,7 @@ void Committer::Commit(uint32_t group_id, SaberMessage* message) {
     }
     case MT_CREATE:
     case MT_DELETE:
-    case MT_SETDATA: // FIXME check version here may be more effective?
+    case MT_SETDATA:  // FIXME check version here may be more effective?
     case MT_SETACL: {
       wait = Propose(group_id, message, reply_message);
       break;
@@ -150,7 +153,7 @@ void Committer::OnProposeComplete(skywalker::MachineContext* context,
 }
 
 void Committer::SetFailedState(SaberMessage* reply_message) {
-  switch(reply_message->type()) {
+  switch (reply_message->type()) {
     case MT_CREATE: {
       CreateResponse response;
       response.set_code(RC_FAILED);

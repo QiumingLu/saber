@@ -5,6 +5,10 @@
 #ifndef SABER_SERVER_SABER_DB_H_
 #define SABER_SERVER_SABER_DB_H_
 
+#include <vector>
+#include <string>
+#include <memory>
+
 #include <skywalker/node.h>
 
 #include "saber/server/data_tree.h"
@@ -39,15 +43,15 @@ class SaberDB : public skywalker::StateMachine, public skywalker::Checkpoint {
   virtual uint64_t GetCheckpointInstanceId(uint32_t group_id);
 
   virtual bool LockCheckpoint(uint32_t group_id);
-    
+
   virtual bool UnLockCheckpoint(uint32_t group_id);
 
   virtual bool GetCheckpoint(uint32_t group_id, int machine_id,
-                             std::string* dir, 
+                             std::string* dir,
                              std::vector<std::string>* files);
 
   virtual bool LoadCheckpoint(uint32_t group_id, int machine_id,
-                              const std::string& dir, 
+                              const std::string& dir,
                               const std::vector<std::string>& files);
 
  private:

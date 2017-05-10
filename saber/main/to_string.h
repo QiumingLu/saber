@@ -5,6 +5,8 @@
 #ifndef SABER_MAIN_TO_STRING_H_
 #define SABER_MAIN_TO_STRING_H_
 
+#include <string>
+
 #include "saber/proto/saber.pb.h"
 
 namespace saber {

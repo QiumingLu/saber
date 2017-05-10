@@ -5,6 +5,7 @@
 #ifndef SABER_CLIENT_CLIENT_WATCH_MANAGER_H_
 #define SABER_CLIENT_CLIENT_WATCH_MANAGER_H_
 
+#include <string>
 #include <unordered_map>
 
 #include "saber/service/watcher.h"
@@ -13,7 +14,7 @@ namespace saber {
 
 class ClientWatchManager {
  public:
-  ClientWatchManager(bool auto_watch_reset = false);
+  explicit ClientWatchManager(bool auto_watch_reset = false);
   ~ClientWatchManager();
 
   void AddDataWatch(const std::string& path, Watcher* watcher);
