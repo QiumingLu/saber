@@ -35,6 +35,8 @@ class SaberDB : public skywalker::StateMachine, public skywalker::Checkpoint {
 
   void RemoveWatcher(Watcher* watcher);
 
+  void KillSession(uint64_t session_id, const Transaction& txn);
+
   virtual bool Execute(uint32_t group_id,
                        uint64_t instance_id,
                        const std::string& value,

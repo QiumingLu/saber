@@ -63,6 +63,12 @@ void SaberDB::RemoveWatcher(Watcher* watcher) {
   }
 }
 
+void SaberDB::KillSession(uint64_t session_id, const Transaction& txn) {
+  for (auto& tree : trees_) {
+    tree->KillSession(session_id, txn);
+  }
+}
+
 bool SaberDB::Execute(uint32_t group_id,
                       uint64_t instance_id,
                       const std::string& value,

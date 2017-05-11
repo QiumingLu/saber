@@ -37,7 +37,7 @@ int main(int argc, char** argv) {
 
   bool res = saber_server.Start();
   if (res) {
-    LOG_INFO("SaberServer start successfully!");
+    LOG_INFO("SaberServer start successful!");
     loop.Loop();
   } else {
     LOG_ERROR("SaberServer start failed!");

@@ -18,6 +18,7 @@ ServerConnection::ServerConnection(uint64_t session_id,
       last_finished_(true),
       session_id_(session_id),
       conn_(p),
+      db_(db),
       messager_(new Messager()),
       committer_(new Committer(this, p->OwnerEventLoop(), db, node)) {
   messager_->SetTcpConnection(p);
@@ -28,6 +29,7 @@ ServerConnection::ServerConnection(uint64_t session_id,
 }
 
 ServerConnection::~ServerConnection() {
+  db_->RemoveWatcher(this);
 }
 
 void ServerConnection::OnMessage(

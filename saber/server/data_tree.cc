@@ -58,6 +58,11 @@ void DataTree::Create(const CreateRequest& request, const Transaction& txn,
         nodes_.insert(std::make_pair(path, std::unique_ptr<DataNode>(node)));
         response->set_code(RC_OK);
         response->set_path(path);
+        if (request.type() == NT_EPHEMERAL ||
+            request.type() == NT_EPHEMERAL_SEQUENTIAL) {
+          stat->set_ephemeral_id(txn.session_id());
+          ephemerals_[stat->ephemeral_id()].insert(path);
+        }
       } else {
         response->set_code(RC_NODE_EXISTS);
       }
@@ -86,6 +91,10 @@ void DataTree::Delete(const DeleteRequest& request, const Transaction& txn,
     MutexLock lock(&mutex_);
     auto it =  nodes_.find(path);
     if (it != nodes_.end() && it->second->children().empty()) {
+      auto e = ephemerals_.find(it->second->stat().ephemeral_id());
+      if (e != ephemerals_.end()) {
+        e->second.erase(path);
+      }
       nodes_.erase(it);
       it = nodes_.find(parent);
       if (it != nodes_.end()) {
@@ -259,6 +268,25 @@ void DataTree::GetChildren(const GetChildrenRequest& request,
 void DataTree::RemoveWatcher(Watcher* watcher) {
   data_watches_.RemoveWatcher(watcher);
   child_watches_.RemoveWatcher(watcher);
+}
+
+void DataTree::KillSession(uint64_t session_id, const Transaction& txn) {
+  auto it = ephemerals_.find(session_id);
+  if (it != ephemerals_.end()) {
+    DeleteRequest request;
+    DeleteResponse response;
+    for (auto& p : it->second) {
+      request.set_path(p);
+      request.set_version(-1);
+      Delete(request, txn, &response);
+      if (response.code() != RC_OK) {
+        LOG_WARN("Ignoring not RC_OK for path %s while removing ephemeral "
+                 "for dead session %llu.",
+                 p.c_str(), (unsigned long long)session_id);
+      }
+    }
+    ephemerals_.erase(it);
+  }
 }
 
 }  // namespace saber

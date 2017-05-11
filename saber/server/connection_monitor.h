@@ -7,37 +7,28 @@
 
 #include <string>
 #include <map>
-#include <unordered_map>
-
 #include <voyager/core/tcp_connection.h>
-#include <skywalker/node.h>
+#include <voyager/core/eventloop.h>
+
+#include "saber/server/connection_monitor.h"
+#include "saber/util/mutex.h"
 
 namespace saber {
 
-class SaberDB;
-class ServerConnection;
-
 class ConnectionMonitor {
  public:
-  ConnectionMonitor(int server_id,
-                    int max_ip_connections, int max_all_connections,
-                    SaberDB* db, skywalker::Node* node);
+  ConnectionMonitor(int max_all_connections, int max_ip_connections);
   ~ConnectionMonitor();
 
-  void OnConnection(const voyager::TcpConnectionPtr& p);
+  bool OnConnection(const voyager::TcpConnectionPtr& p);
   void OnClose(const voyager::TcpConnectionPtr& p);
 
  private:
-  uint64_t GetNextSessionId() const;
-
-  const int server_id_;
-  const int max_ip_connections_;
   const int max_all_connections_;
-  SaberDB* db_;
-  skywalker::Node* node_;
+  const int max_ip_connections_;
 
+  Mutex mutex_;
   std::map<std::string, int> ip_counter_;
-  std::unordered_map<uint64_t, std::unique_ptr<ServerConnection> > conns_;
 
   // No copying allowed
   ConnectionMonitor(const ConnectionMonitor&);

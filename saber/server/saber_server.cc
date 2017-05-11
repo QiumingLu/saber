@@ -8,6 +8,8 @@
 #include "saber/server/server_connection.h"
 #include "saber/server/connection_monitor.h"
 #include "saber/util/logging.h"
+#include "saber/util/timeops.h"
+#include "saber/util/sequence_number.h"
 
 namespace saber {
 
@@ -17,6 +19,8 @@ SaberServer::SaberServer(voyager::EventLoop* loop,
       server_id_(options_.my_server_message.server_id),
       addr_(options.my_server_message.server_ip,
             options.my_server_message.client_port),
+      monitor_(new ConnectionMonitor(options.max_all_connections,
+                                     options.max_ip_connections)),
       server_(loop, addr_, "SaberServer", options.paxos_group_size) {
 }
 
@@ -56,7 +60,7 @@ bool SaberServer::Start() {
   skywalker::Node* node;
   bool res = skywalker::Node::Start(skywalker_options, &node);
   if (res) {
-    LOG_INFO("Skywalker start successfully!");
+    LOG_INFO("Skywalker start successful!");
     node_.reset(node);
 
     server_.SetConnectionCallback([this](const voyager::TcpConnectionPtr& p) {
@@ -66,15 +70,6 @@ bool SaberServer::Start() {
       OnClose(p);
     });
     server_.Start();
-
-    const std::vector<voyager::EventLoop*>* loops = server_.AllLoops();
-    for (size_t i = 0; i < loops->size(); ++i) {
-      ConnectionMonitor* monitor = new ConnectionMonitor(
-          server_id_,
-          options_.max_ip_connections, options_.max_all_connections,
-          db_.get(), node_.get());
-      monitors_[loops->at(i)] = std::unique_ptr<ConnectionMonitor>(monitor);
-    }
   } else {
     LOG_ERROR("Skywalker start failed!");
   }
@@ -82,34 +77,27 @@ bool SaberServer::Start() {
 }
 
 void SaberServer::OnConnection(const voyager::TcpConnectionPtr& p) {
-  monitors_[p->OwnerEventLoop()]->OnConnection(p);
-  /*
-  ServerConnection* conn = new ServerConnection(
-      GetNextSessionId(), p, db_.get(), node_.get());
-  p->SetContext(conn);
-  p->SetMessageCallback(
-      [conn](const voyager::TcpConnectionPtr& ptr, voyager::Buffer* buf) {
-    conn->OnMessage(ptr, buf);
-  });
-  */
+  bool result = monitor_->OnConnection(p);
+  if (result) {
+    // FIXME check session id is unique or not?
+    ServerConnection* conn = new ServerConnection(
+        GetNextSessionId(), p, db_.get(), node_.get());
+    p->SetContext(conn);
+    p->SetMessageCallback(
+        [conn](const voyager::TcpConnectionPtr& ptr, voyager::Buffer* buf) {
+      conn->OnMessage(ptr, buf);
+    });
+  }
 }
 
 void SaberServer::OnClose(const voyager::TcpConnectionPtr& p) {
-  monitors_[p->OwnerEventLoop()]->OnClose(p);
-  /*
-  ServerConnection* conn =
-      reinterpret_cast<ServerConnection*>(p->Context());
-  assert(conn != nullptr);
-  db_->RemoveWatcher(conn);
-  delete conn;
-  */
+  monitor_->OnClose(p);
+  delete reinterpret_cast<ServerConnection*>(p->Context());
 }
 
-/*
 uint64_t SaberServer::GetNextSessionId() const {
   static SequencenNumber<int> seq_num_(1 << 10);
   return (NowMillis() << 22) | (server_id_ << 10) | seq_num_.GetNext();
 }
-*/
 
 }  // namespace saber

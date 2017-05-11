@@ -43,6 +43,7 @@ class ServerConnection : public Watcher {
   bool last_finished_;
   const uint64_t session_id_;
   voyager::TcpConnectionPtr conn_;
+  SaberDB* db_;
   std::unique_ptr<Messager> messager_;
   std::queue<std::unique_ptr<SaberMessage> > pending_messages_;
   CommitterPtr committer_;

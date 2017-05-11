@@ -36,6 +36,7 @@ class SaberServer {
  private:
   void OnConnection(const voyager::TcpConnectionPtr& p);
   void OnClose(const voyager::TcpConnectionPtr& p);
+  uint64_t GetNextSessionId() const;
 
   ServerOptions options_;
 
@@ -44,8 +45,7 @@ class SaberServer {
 
   std::unique_ptr<SaberDB> db_;
   std::unique_ptr<skywalker::Node> node_;
-
-  std::map<voyager::EventLoop*, std::unique_ptr<ConnectionMonitor>> monitors_;
+  std::unique_ptr<ConnectionMonitor> monitor_;
   voyager::TcpServer server_;
 
   // No copying allowed

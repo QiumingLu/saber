@@ -47,9 +47,12 @@ class DataTree {
 
   void RemoveWatcher(Watcher* watcher);
 
+  void KillSession(uint64_t session_id, const Transaction& txn);
+
  private:
   Mutex mutex_;
   std::unordered_map<std::string, std::unique_ptr<DataNode> > nodes_;
+  std::unordered_map<uint64_t, std::set<std::string> > ephemerals_;
 
   ServerWatchManager data_watches_;
   ServerWatchManager child_watches_;
