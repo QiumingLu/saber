@@ -31,15 +31,12 @@ void Committer::Commit(SaberMessage* message) {
   if (node_->IsMaster(group_id)) {
     Commit(group_id, message);
   } else {
-    skywalker::IpPort i;
+    skywalker::Member i;
     uint64_t version;
     node_->GetMaster(group_id, &i, &version);
-    ServerMessage master_message;
-    SaberCell::Instance()->FindServerByPaxosIpPort(
-        std::make_pair(i.ip, i.port), &master_message);
     Master master;
-    master.set_ip(master_message.server_ip);
-    master.set_port(static_cast<int>(master_message.client_port));
+    master.set_ip(i.ip);
+    master.set_port(atoi(i.context.c_str()));
     SaberMessage* reply_message = new SaberMessage();
     reply_message->set_type(MT_MASTER);
     reply_message->set_data(master.SerializeAsString());

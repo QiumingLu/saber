@@ -35,11 +35,13 @@ bool SaberServer::Start() {
   group_options.keep_log_count = options_.keep_log_count;
   group_options.log_storage_path = options_.log_storage_path;
 
+  skywalker::Member member;
   for (auto& server_message : options_.all_server_messages) {
-    SaberCell::Instance()->AddServer(server_message);
-    group_options.membership.push_back(
-        skywalker::IpPort(server_message.server_ip,
-                          server_message.paxos_port));
+    member.id = server_message.server_id;
+    member.ip = server_message.server_ip;
+    member.port = server_message.paxos_port;
+    member.context = std::to_string(server_message.client_port);
+    group_options.membership.push_back(member);
   }
 
   db_.reset(new SaberDB(3));
@@ -49,8 +51,9 @@ bool SaberServer::Start() {
   group_options.machines.push_back(db_.get());
 
   skywalker::Options skywalker_options;
-  skywalker_options.ipport.ip = options_.my_server_message.server_ip;
-  skywalker_options.ipport.port = options_.my_server_message.paxos_port;
+  skywalker_options.my.id = options_.my_server_message.server_id;
+  skywalker_options.my.ip = options_.my_server_message.server_ip;
+  skywalker_options.my.port = options_.my_server_message.paxos_port;
 
   for (int i = 0; i < options_.paxos_group_size; ++i) {
     group_options.group_id = i;
