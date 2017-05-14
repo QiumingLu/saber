@@ -59,8 +59,8 @@ message Stat {
 }
 
 message Id {
-  string scheme = 1;
-  string id = 2;
+  bytes scheme = 1;
+  bytes id = 2;
 }
 
 message ACL {
@@ -75,7 +75,7 @@ message ConnectResponse {
 }
 
 message CreateRequest {
-  string path = 1;
+  bytes path = 1;
   bytes data = 2;
   repeated ACL acl = 3;
   NodeType type = 4;
@@ -83,11 +83,11 @@ message CreateRequest {
 
 message CreateResponse {
   ResponseCode code = 1;
-  string path = 2;
+  bytes path = 2;
 }
 
 message DeleteRequest {
-  string path = 1;
+  bytes path = 1;
   int32 version = 2;
 }
 
@@ -96,7 +96,7 @@ message DeleteResponse {
 }
 
 message ExistsRequest {
-  string path = 1;
+  bytes path = 1;
   bool watch = 2;
 }
 
@@ -106,7 +106,7 @@ message ExistsResponse {
 }
 
 message GetDataRequest {
-  string path = 1;
+  bytes path = 1;
   bool watch = 2;
 }
 
@@ -117,7 +117,7 @@ message GetDataResponse {
 }
 
 message SetDataRequest {
-  string path = 1;
+  bytes path = 1;
   bytes data = 2;
   int32 version = 3;
 }
@@ -128,7 +128,7 @@ message SetDataResponse {
 }
 
 message GetACLRequest {
-  string path = 1;
+  bytes path = 1;
 }
 
 message GetACLResponse {
@@ -138,7 +138,7 @@ message GetACLResponse {
 }
 
 message SetACLRequest {
-  string path = 1;
+  bytes path = 1;
   repeated ACL acl = 2;
   int32 version = 3;
 }
@@ -149,18 +149,18 @@ message SetACLResponse {
 }
 
 message GetChildrenRequest {
-  string path = 1;
+  bytes path = 1;
   bool watch = 2;
 }
 
 message GetChildrenResponse {
   ResponseCode code = 1;
   Stat stat = 2;
-  repeated string children = 3;
+  repeated bytes children = 3;
 }
 
 message Master {
-  string ip = 1;
+  bytes ip = 1;
   int32  port = 2;
 }
 
