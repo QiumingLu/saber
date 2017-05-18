@@ -29,7 +29,7 @@ class Committer : public std::enable_shared_from_this<Committer> {
   void Commit(uint32_t group_id, SaberMessage* message);
   bool Propose(uint32_t group_id,
                SaberMessage* message, SaberMessage* reply_message);
-  void OnProposeComplete(skywalker::MachineContext* context,
+  void OnProposeComplete(void* context,
                          const skywalker::Status& s,
                          uint64_t instance_id);
   void SetFailedState(SaberMessage* reply_message);
@@ -39,7 +39,6 @@ class Committer : public std::enable_shared_from_this<Committer> {
   voyager::EventLoop* loop_;
   SaberDB* db_;
   skywalker::Node* node_;
-  std::unique_ptr<skywalker::MachineContext> context_;
 
   // No copying allowed
   Committer(const Committer&);

@@ -40,7 +40,7 @@ class SaberDB : public skywalker::StateMachine, public skywalker::Checkpoint {
   virtual bool Execute(uint32_t group_id,
                        uint64_t instance_id,
                        const std::string& value,
-                       skywalker::MachineContext* context);
+                       void* context);
 
   virtual uint64_t GetCheckpointInstanceId(uint32_t group_id);
 

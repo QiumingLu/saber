@@ -22,8 +22,7 @@ Committer::Committer(ServerConnection* conn,
     : conn_(conn),
       loop_(loop),
       db_(db),
-      node_(node),
-      context_(new skywalker::MachineContext(db->machine_id())) {
+      node_(node) {
 }
 
 void Committer::Commit(SaberMessage* message) {
@@ -109,14 +108,11 @@ bool Committer::Propose(uint32_t group_id,
   txn.set_session_id(conn_->session_id());
   txn.set_time(NowMicros());
   message->set_extra_data(txn.SerializeAsString());
-  assert(context_->user_data == nullptr);
-  context_->user_data = reply_message;
 
   CommitterPtr ptr(shared_from_this());
   bool res = node_->Propose(
-      group_id, message->SerializeAsString(), context_.get(),
-      [ptr](skywalker::MachineContext* context,
-            const skywalker::Status& s, uint64_t instance_id) {
+      group_id, message->SerializeAsString(), db_->machine_id(), reply_message,
+      [ptr](void* context, const skywalker::Status& s, uint64_t instance_id) {
     if (!ptr.unique()) {
       ptr->OnProposeComplete(context, s, instance_id);
     }
@@ -127,14 +123,11 @@ bool Committer::Propose(uint32_t group_id,
   return res;
 }
 
-void Committer::OnProposeComplete(skywalker::MachineContext* context,
+void Committer::OnProposeComplete(void* context,
                                   const skywalker::Status& s,
                                   uint64_t instance_id) {
-  assert(context_.get() == context);
-  SaberMessage* reply_message =
-      reinterpret_cast<SaberMessage*>(context->user_data);
+  SaberMessage* reply_message = reinterpret_cast<SaberMessage*>(context);
   assert(reply_message);
-  context->user_data = nullptr;
   if (!s.ok()) {
     SetFailedState(reply_message);
   }

@@ -72,7 +72,7 @@ void SaberDB::KillSession(uint64_t session_id, const Transaction& txn) {
 bool SaberDB::Execute(uint32_t group_id,
                       uint64_t instance_id,
                       const std::string& value,
-                      skywalker::MachineContext* context) {
+                      void* context) {
   SaberMessage message;
   message.ParseFromString(value);
   Transaction txn;
@@ -81,8 +81,7 @@ bool SaberDB::Execute(uint32_t group_id,
   txn.set_instance_id(instance_id);
   SaberMessage* reply_message = nullptr;
   if (context) {
-    reply_message = reinterpret_cast<SaberMessage*>(context->user_data);
-    assert(machine_id() == context->machine_id);
+    reply_message = reinterpret_cast<SaberMessage*>(context);
     assert(message.type() == reply_message->type());
   }
   switch (message.type()) {
