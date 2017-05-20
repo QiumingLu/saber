@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include "saber/server/saber_server.h"
-#include "saber/server/saber_cell.h"
 #include "saber/server/saber_db.h"
 #include "saber/server/server_connection.h"
 #include "saber/server/connection_monitor.h"
@@ -16,8 +15,8 @@ namespace saber {
 SaberServer::SaberServer(voyager::EventLoop* loop,
                          const ServerOptions& options)
     : options_(options),
-      server_id_(options_.my_server_message.server_id),
-      addr_(options.my_server_message.server_ip,
+      server_id_(options_.my_server_message.id),
+      addr_(options.my_server_message.host,
             options.my_server_message.client_port),
       monitor_(new ConnectionMonitor(options.max_all_connections,
                                      options.max_ip_connections)),
@@ -37,8 +36,8 @@ bool SaberServer::Start() {
 
   skywalker::Member member;
   for (auto& server_message : options_.all_server_messages) {
-    member.id = server_message.server_id;
-    member.ip = server_message.server_ip;
+    member.id = server_message.id;
+    member.host = server_message.host;
     member.port = server_message.paxos_port;
     member.context = std::to_string(server_message.client_port);
     group_options.membership.push_back(member);
@@ -51,8 +50,8 @@ bool SaberServer::Start() {
   group_options.machines.push_back(db_.get());
 
   skywalker::Options skywalker_options;
-  skywalker_options.my.id = options_.my_server_message.server_id;
-  skywalker_options.my.ip = options_.my_server_message.server_ip;
+  skywalker_options.my.id = options_.my_server_message.id;
+  skywalker_options.my.host = options_.my_server_message.host;
   skywalker_options.my.port = options_.my_server_message.paxos_port;
 
   for (int i = 0; i < options_.paxos_group_size; ++i) {

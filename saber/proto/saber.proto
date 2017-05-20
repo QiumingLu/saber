@@ -160,7 +160,7 @@ message GetChildrenResponse {
 }
 
 message Master {
-  bytes ip = 1;
+  bytes host = 1;
   int32  port = 2;
 }
 

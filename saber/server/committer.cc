@@ -34,7 +34,7 @@ void Committer::Commit(SaberMessage* message) {
     uint64_t version;
     node_->GetMaster(group_id, &i, &version);
     Master master;
-    master.set_ip(i.ip);
+    master.set_host(i.host);
     master.set_port(atoi(i.context.c_str()));
     SaberMessage* reply_message = new SaberMessage();
     reply_message->set_type(MT_MASTER);

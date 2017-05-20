@@ -28,8 +28,8 @@ int main(int argc, char** argv) {
   voyager::SplitStringUsing(std::string(argv[1]), ":", &server);
 
   saber::ServerMessage server_message;
-  server_message.server_id = atoi(server[0].data());
-  server_message.server_ip = server[1];
+  server_message.id = atoi(server[0].data());
+  server_message.host = server[1];
   server_message.client_port = atoi(server[2].data());
   server_message.paxos_port = atoi(server[3].data());
 
@@ -39,8 +39,8 @@ int main(int argc, char** argv) {
     server.clear();
     voyager::SplitStringUsing(s, ":", &server);
 
-    server_message.server_id = atoi(server[0].data());
-    server_message.server_ip = server[1];
+    server_message.id = atoi(server[0].data());
+    server_message.host = server[1];
     server_message.client_port = atoi(server[2].data());
     server_message.paxos_port = atoi(server[3].data());
 

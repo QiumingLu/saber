@@ -31,8 +31,8 @@ int main(int argc, char** argv) {
     return -1;
   }
 
-  server_options.my_server_message.server_id = atoi(server[0].data());
-  server_options.my_server_message.server_ip = server[1];
+  server_options.my_server_message.id = atoi(server[0].data());
+  server_options.my_server_message.host = server[1];
   server_options.my_server_message.client_port = atoi(server[2].data());
   server_options.my_server_message.paxos_port = atoi(server[3].data());
 
@@ -46,8 +46,8 @@ int main(int argc, char** argv) {
     }
 
     saber::ServerMessage server_message;
-    server_message.server_id = atoi(server[0].data());
-    server_message.server_ip = server[1];
+    server_message.id = atoi(server[0].data());
+    server_message.host = server[1];
     server_message.client_port = atoi(server[2].data());
     server_message.paxos_port = atoi(server[3].data());
 

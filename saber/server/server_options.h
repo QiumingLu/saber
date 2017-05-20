@@ -13,8 +13,8 @@ namespace saber {
 
 class ServerMessage {
  public:
-  int server_id;
-  std::string server_ip;
+  int id;
+  std::string host;
   uint16_t client_port;
   uint16_t paxos_port;
 

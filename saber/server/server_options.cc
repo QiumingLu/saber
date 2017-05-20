@@ -7,8 +7,8 @@
 namespace saber {
 
 ServerMessage::ServerMessage()
-    : server_id(1),
-      server_ip("127.0.0.1"),
+    : id(1),
+      host("127.0.0.1"),
       client_port(6666),
       paxos_port(5666) {
 }
