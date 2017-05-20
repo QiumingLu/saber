@@ -7,7 +7,6 @@
 #include <utility>
 
 #include "saber/server/server_connection.h"
-#include "saber/server/saber_cell.h"
 #include "saber/util/logging.h"
 #include "saber/util/murmurhash3.h"
 #include "saber/util/timeops.h"
