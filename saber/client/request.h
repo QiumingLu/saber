@@ -5,14 +5,14 @@
 #ifndef SABER_CLIENT_REQUEST_H_
 #define SABER_CLIENT_REQUEST_H_
 
-#include <utility>
 #include <string>
+#include <utility>
 
 #include "saber/service/watcher.h"
 
 namespace saber {
 
-template<typename T>
+template <typename T>
 class Request {
  public:
   std::string path;
@@ -21,18 +21,10 @@ class Request {
   T callback;
 
   Request(const std::string& p, void* ctx, Watcher* w, const T& cb)
-      : path(p),
-        context(ctx),
-        watcher(w),
-        callback(cb) {
-  }
+      : path(p), context(ctx), watcher(w), callback(cb) {}
 
   Request(const std::string& p, void* ctx, Watcher* w, T&& cb)
-      : path(p),
-        context(ctx),
-        watcher(w),
-        callback(std::move(cb)) {
-  }
+      : path(p), context(ctx), watcher(w), callback(std::move(cb)) {}
 
   Request(const Request& r) {
     path = r.path;

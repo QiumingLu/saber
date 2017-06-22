@@ -8,18 +8,16 @@
 #include <utility>
 #include <vector>
 
-#include "saber/util/mutexlock.h"
 #include "saber/util/logging.h"
+#include "saber/util/mutexlock.h"
 
 namespace saber {
 
 DataTree::DataTree() {
-  nodes_.insert(
-      std::make_pair("", std::unique_ptr<DataNode>(new DataNode())));
+  nodes_.insert(std::make_pair("", std::unique_ptr<DataNode>(new DataNode())));
 }
 
-DataTree::~DataTree() {
-}
+DataTree::~DataTree() {}
 
 void DataTree::Create(const CreateRequest& request, const Transaction& txn,
                       CreateResponse* response) {
@@ -46,7 +44,7 @@ void DataTree::Create(const CreateRequest& request, const Transaction& txn,
   node->set_data(request.data());
   std::vector<ACL>* acl = node->mutable_acl();
   for (int i = 0; i < request.acl_size(); ++i) {
-     acl->push_back(request.acl(i));
+    acl->push_back(request.acl(i));
   }
 
   {
@@ -73,8 +71,8 @@ void DataTree::Create(const CreateRequest& request, const Transaction& txn,
 
   if (response->code() == RC_OK) {
     data_watches_.TriggerWatcher(path, ET_NODE_CREATED);
-    child_watches_.TriggerWatcher(
-        parent.empty() ? "/" : parent, ET_NODE_CHILDREN_CHANGED);
+    child_watches_.TriggerWatcher(parent.empty() ? "/" : parent,
+                                  ET_NODE_CHILDREN_CHANGED);
   } else {
     delete node;
   }
@@ -89,7 +87,7 @@ void DataTree::Delete(const DeleteRequest& request, const Transaction& txn,
 
   {
     MutexLock lock(&mutex_);
-    auto it =  nodes_.find(path);
+    auto it = nodes_.find(path);
     if (it != nodes_.end() && it->second->children().empty()) {
       auto e = ephemerals_.find(it->second->stat().ephemeral_id());
       if (e != ephemerals_.end()) {
@@ -114,8 +112,8 @@ void DataTree::Delete(const DeleteRequest& request, const Transaction& txn,
     WatcherSetPtr p = data_watches_.TriggerWatcher(path, ET_NODE_DELETED);
     // FIXME
     child_watches_.TriggerWatcher(path, ET_NODE_DELETED, std::move(p));
-    child_watches_.TriggerWatcher(
-        parent.empty() ? "/" : parent, ET_NODE_CHILDREN_CHANGED);
+    child_watches_.TriggerWatcher(parent.empty() ? "/" : parent,
+                                  ET_NODE_CHILDREN_CHANGED);
   }
 }
 
@@ -164,7 +162,7 @@ void DataTree::GetData(const GetDataRequest& request, Watcher* watcher,
 void DataTree::SetData(const SetDataRequest& request, const Transaction& txn,
                        SetDataResponse* response) {
   const std::string& path = request.path();
-  const std::string& data =  request.data();
+  const std::string& data = request.data();
 
   {
     MutexLock lock(&mutex_);
@@ -193,14 +191,13 @@ void DataTree::SetData(const SetDataRequest& request, const Transaction& txn,
   }
 }
 
-void DataTree::GetACL(const GetACLRequest& request,
-                      GetACLResponse* response) {
+void DataTree::GetACL(const GetACLRequest& request, GetACLResponse* response) {
   const std::string& path = request.path();
   MutexLock lock(&mutex_);
   auto it = nodes_.find(path);
   if (it != nodes_.end()) {
     response->set_code(RC_OK);
-    Stat* stat =  new Stat(it->second->stat());
+    Stat* stat = new Stat(it->second->stat());
     response->set_allocated_stat(stat);
     const std::vector<ACL>& acl = it->second->acl();
     for (auto& i : acl) {
@@ -237,8 +234,7 @@ void DataTree::SetACL(const SetACLRequest& request, const Transaction& txn,
   }
 }
 
-void DataTree::GetChildren(const GetChildrenRequest& request,
-                           Watcher* watcher,
+void DataTree::GetChildren(const GetChildrenRequest& request, Watcher* watcher,
                            GetChildrenResponse* response) {
   const std::string& path = request.path();
 
@@ -280,9 +276,10 @@ void DataTree::KillSession(uint64_t session_id, const Transaction& txn) {
       request.set_version(-1);
       Delete(request, txn, &response);
       if (response.code() != RC_OK) {
-        LOG_WARN("Ignoring not RC_OK for path %s while removing ephemeral "
-                 "for dead session %llu.",
-                 p.c_str(), (unsigned long long)session_id);
+        LOG_WARN(
+            "Ignoring not RC_OK for path %s while removing ephemeral "
+            "for dead session %llu.",
+            p.c_str(), (unsigned long long)session_id);
       }
     }
     ephemerals_.erase(it);

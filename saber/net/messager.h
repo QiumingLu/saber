@@ -5,8 +5,8 @@
 #ifndef SABER_NET_MESSAGER_H_
 #define SABER_NET_MESSAGER_H_
 
-#include <memory>
 #include <functional>
+#include <memory>
 #include <utility>
 
 #include <voyager/core/tcp_connection.h>
@@ -17,17 +17,13 @@ namespace saber {
 
 class Messager {
  public:
-  typedef std::function<bool (std::unique_ptr<SaberMessage>)> MessageCallback;
+  typedef std::function<bool(std::unique_ptr<SaberMessage>)> MessageCallback;
 
   Messager();
   ~Messager();
 
-  void SetTcpConnection(const voyager::TcpConnectionPtr& p) {
-    conn_wp_ = p;
-  }
-  voyager::TcpConnectionPtr GetTcpConnection() const {
-    return conn_wp_.lock();
-  }
+  void SetTcpConnection(const voyager::TcpConnectionPtr& p) { conn_wp_ = p; }
+  voyager::TcpConnectionPtr GetTcpConnection() const { return conn_wp_.lock(); }
   void SetMessageCallback(const MessageCallback& cb) { cb_ = cb; }
   void SetMessageCallback(MessageCallback&& cb) { cb_ = std::move(cb); }
 

@@ -11,8 +11,8 @@
 #include <skywalker/node.h>
 #include <voyager/core/eventloop.h>
 
-#include "saber/server/saber_db.h"
 #include "saber/proto/saber.pb.h"
+#include "saber/server/saber_db.h"
 
 namespace saber {
 
@@ -20,17 +20,16 @@ class ServerConnection;
 
 class Committer : public std::enable_shared_from_this<Committer> {
  public:
-  Committer(ServerConnection* conn, voyager::EventLoop* loop,
-            SaberDB* db, skywalker::Node* node);
+  Committer(ServerConnection* conn, voyager::EventLoop* loop, SaberDB* db,
+            skywalker::Node* node);
 
   void Commit(SaberMessage* message);
 
  private:
   void Commit(uint32_t group_id, SaberMessage* message);
-  bool Propose(uint32_t group_id,
-               SaberMessage* message, SaberMessage* reply_message);
-  void OnProposeComplete(void* context,
-                         const skywalker::Status& s,
+  bool Propose(uint32_t group_id, SaberMessage* message,
+               SaberMessage* reply_message);
+  void OnProposeComplete(void* context, const skywalker::Status& s,
                          uint64_t instance_id);
   void SetFailedState(SaberMessage* reply_message);
   uint32_t Shard(const std::string& s);

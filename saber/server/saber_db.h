@@ -5,14 +5,14 @@
 #ifndef SABER_SERVER_SABER_DB_H_
 #define SABER_SERVER_SABER_DB_H_
 
-#include <vector>
-#include <string>
 #include <memory>
+#include <string>
+#include <vector>
 
 #include <skywalker/node.h>
 
-#include "saber/server/data_tree.h"
 #include "saber/proto/server.pb.h"
+#include "saber/server/data_tree.h"
 
 namespace saber {
 
@@ -21,8 +21,8 @@ class SaberDB : public skywalker::StateMachine, public skywalker::Checkpoint {
   explicit SaberDB(uint32_t group_size);
   virtual ~SaberDB();
 
-  void Exists(uint32_t group_id, const ExistsRequest& request,
-              Watcher* watcher, ExistsResponse* response);
+  void Exists(uint32_t group_id, const ExistsRequest& request, Watcher* watcher,
+              ExistsResponse* response);
 
   void GetData(uint32_t group_id, const GetDataRequest& request,
                Watcher* watcher, GetDataResponse* response);
@@ -37,10 +37,8 @@ class SaberDB : public skywalker::StateMachine, public skywalker::Checkpoint {
 
   void KillSession(uint64_t session_id, const Transaction& txn);
 
-  virtual bool Execute(uint32_t group_id,
-                       uint64_t instance_id,
-                       const std::string& value,
-                       void* context);
+  virtual bool Execute(uint32_t group_id, uint64_t instance_id,
+                       const std::string& value, void* context);
 
   virtual uint64_t GetCheckpointInstanceId(uint32_t group_id);
 
@@ -49,8 +47,7 @@ class SaberDB : public skywalker::StateMachine, public skywalker::Checkpoint {
   virtual bool UnLockCheckpoint(uint32_t group_id);
 
   virtual bool GetCheckpoint(uint32_t group_id, int machine_id,
-                             std::string* dir,
-                             std::vector<std::string>* files);
+                             std::string* dir, std::vector<std::string>* files);
 
   virtual bool LoadCheckpoint(uint32_t group_id, int machine_id,
                               const std::string& dir,

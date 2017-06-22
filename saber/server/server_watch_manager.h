@@ -6,8 +6,8 @@
 #define SABER_SERVER_SERVER_WATCH_MANAGER_H_
 
 #include <memory>
-#include <string>
 #include <set>
+#include <string>
 #include <unordered_map>
 
 #include "saber/service/watcher.h"
@@ -23,10 +23,9 @@ class ServerWatchManager {
   void AddWatcher(const std::string& path, Watcher* watcher);
   void RemoveWatcher(Watcher* watcher);
 
-  WatcherSetPtr TriggerWatcher(
-      const std::string& path, EventType type);
-  WatcherSetPtr TriggerWatcher(
-      const std::string& path, EventType type, WatcherSetPtr p);
+  WatcherSetPtr TriggerWatcher(const std::string& path, EventType type);
+  WatcherSetPtr TriggerWatcher(const std::string& path, EventType type,
+                               WatcherSetPtr p);
 
  private:
   Mutex mutex_;

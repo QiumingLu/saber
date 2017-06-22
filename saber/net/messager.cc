@@ -5,17 +5,16 @@
 #include "saber/net/messager.h"
 
 #include <string>
+
 #include <voyager/core/buffer.h>
 
 #include "saber/util/logging.h"
 
 namespace saber {
 
-Messager::Messager() {
-}
+Messager::Messager() {}
 
-Messager::~Messager() {
-}
+Messager::~Messager() {}
 
 bool Messager::SendMessage(const SaberMessage& message) {
   bool res = false;
@@ -49,8 +48,7 @@ void Messager::OnMessage(const voyager::TcpConnectionPtr& p,
       memcpy(&size, buf->Peek(), kHeaderSize);
       if (buf->ReadableSize() >= static_cast<size_t>(size)) {
         SaberMessage* message = new SaberMessage();
-        message->ParseFromArray(buf->Peek() + kHeaderSize,
-                                size - kHeaderSize);
+        message->ParseFromArray(buf->Peek() + kHeaderSize, size - kHeaderSize);
         if (cb_) {
           res = cb_(std::unique_ptr<SaberMessage>(message));
         }

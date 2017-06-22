@@ -3,28 +3,25 @@
 // found in the LICENSE file.
 
 #include "saber/server/saber_server.h"
+#include "saber/server/connection_monitor.h"
 #include "saber/server/saber_db.h"
 #include "saber/server/server_connection.h"
-#include "saber/server/connection_monitor.h"
 #include "saber/util/logging.h"
-#include "saber/util/timeops.h"
 #include "saber/util/sequence_number.h"
+#include "saber/util/timeops.h"
 
 namespace saber {
 
-SaberServer::SaberServer(voyager::EventLoop* loop,
-                         const ServerOptions& options)
+SaberServer::SaberServer(voyager::EventLoop* loop, const ServerOptions& options)
     : options_(options),
       server_id_(options_.my_server_message.id),
       addr_(options.my_server_message.host,
             options.my_server_message.client_port),
-      monitor_(new ConnectionMonitor(options.max_all_connections,
-                                     options.max_ip_connections)),
-      server_(loop, addr_, "SaberServer", options.paxos_group_size) {
-}
+      monitor_(new ConnectionMonitor(options.max_ip_connections)),
+      server_(loop, addr_, "SaberServer", options.paxos_group_size,
+              options.max_all_connections) {}
 
-SaberServer::~SaberServer() {
-}
+SaberServer::~SaberServer() {}
 
 bool SaberServer::Start() {
   skywalker::GroupOptions group_options;
@@ -65,12 +62,10 @@ bool SaberServer::Start() {
     LOG_INFO("Skywalker start successful!");
     node_.reset(node);
 
-    server_.SetConnectionCallback([this](const voyager::TcpConnectionPtr& p) {
-      OnConnection(p);
-    });
-    server_.SetCloseCallback([this](const voyager::TcpConnectionPtr& p) {
-      OnClose(p);
-    });
+    server_.SetConnectionCallback(
+        [this](const voyager::TcpConnectionPtr& p) { OnConnection(p); });
+    server_.SetCloseCallback(
+        [this](const voyager::TcpConnectionPtr& p) { OnClose(p); });
     server_.Start();
   } else {
     LOG_ERROR("Skywalker start failed!");
@@ -82,13 +77,13 @@ void SaberServer::OnConnection(const voyager::TcpConnectionPtr& p) {
   bool result = monitor_->OnConnection(p);
   if (result) {
     // FIXME check session id is unique or not?
-    ServerConnection* conn = new ServerConnection(
-        GetNextSessionId(), p, db_.get(), node_.get());
+    ServerConnection* conn =
+        new ServerConnection(GetNextSessionId(), p, db_.get(), node_.get());
     p->SetContext(conn);
     p->SetMessageCallback(
         [conn](const voyager::TcpConnectionPtr& ptr, voyager::Buffer* buf) {
-      conn->OnMessage(ptr, buf);
-    });
+          conn->OnMessage(ptr, buf);
+        });
   }
 }
 

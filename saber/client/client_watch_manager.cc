@@ -12,14 +12,12 @@
 namespace saber {
 
 ClientWatchManager::ClientWatchManager(bool auto_watch_reset)
-    : auto_watch_reset_(auto_watch_reset) {
-}
+    : auto_watch_reset_(auto_watch_reset) {}
 
-ClientWatchManager::~ClientWatchManager() {
-}
+ClientWatchManager::~ClientWatchManager() {}
 
-void ClientWatchManager::AddDataWatch(
-    const std::string& path, Watcher* watcher) {
+void ClientWatchManager::AddDataWatch(const std::string& path,
+                                      Watcher* watcher) {
   auto it = data_watches_.find(path);
   if (it == data_watches_.end()) {
     WatcherSetPtr watches(new std::set<Watcher*>());
@@ -30,8 +28,8 @@ void ClientWatchManager::AddDataWatch(
   }
 }
 
-void ClientWatchManager::AddExistWatch(
-    const std::string& path, Watcher* watcher) {
+void ClientWatchManager::AddExistWatch(const std::string& path,
+                                       Watcher* watcher) {
   auto it = exist_watches_.find(path);
   if (it == exist_watches_.end()) {
     WatcherSetPtr watches(new std::set<Watcher*>());
@@ -42,8 +40,8 @@ void ClientWatchManager::AddExistWatch(
   }
 }
 
-void ClientWatchManager::AddChildWatch(
-    const std::string& path, Watcher* watcher) {
+void ClientWatchManager::AddChildWatch(const std::string& path,
+                                       Watcher* watcher) {
   auto it = child_watches_.find(path);
   if (it == child_watches_.end()) {
     WatcherSetPtr watches(new std::set<Watcher*>());

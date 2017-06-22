@@ -3,8 +3,8 @@
 // found in the LICENSE file.
 
 #include "saber/util/timerlist.h"
-#include "saber/util/timeops.h"
 #include "saber/util/runloop.h"
+#include "saber/util/timeops.h"
 
 namespace saber {
 
@@ -13,37 +13,21 @@ class Timer {
   friend class TimerList;
 
   Timer(uint64_t value, uint64_t interval, const TimerProcCallback& cb)
-      : micros_value(value),
-        micros_interval(interval),
-        timerproc_cb(cb),
-        repeat(false) {
-    if (micros_interval > 0) {
-      repeat = true;
-    }
-  }
+      : micros_value(value), micros_interval(interval), timerproc_cb(cb) {}
 
   Timer(uint64_t value, uint64_t interval, TimerProcCallback&& cb)
       : micros_value(value),
         micros_interval(interval),
-        timerproc_cb(std::move(cb)),
-        repeat(false) {
-    if (micros_interval > 0) {
-      repeat = true;
-    }
-  }
+        timerproc_cb(std::move(cb)) {}
 
-  ~Timer() {
-  }
+  ~Timer() {}
 
   uint64_t micros_value;
   uint64_t micros_interval;
   TimerProcCallback timerproc_cb;
-  bool repeat;
 };
 
-TimerList::TimerList(RunLoop* loop)
-    : loop_(loop) {
-}
+TimerList::TimerList(RunLoop* loop) : loop_(loop) {}
 
 TimerList::~TimerList() {
   for (auto& t : timer_ptrs_) {
@@ -51,15 +35,13 @@ TimerList::~TimerList() {
   }
 }
 
-TimerId TimerList::RunAt(uint64_t micros_value,
-                         const TimerProcCallback& cb) {
+TimerId TimerList::RunAt(uint64_t micros_value, const TimerProcCallback& cb) {
   TimerId timer(micros_value, new Timer(micros_value, 0, cb));
   InsertInLoop(timer);
   return timer;
 }
 
-TimerId TimerList::RunAt(uint64_t micros_value,
-                         TimerProcCallback&& cb) {
+TimerId TimerList::RunAt(uint64_t micros_value, TimerProcCallback&& cb) {
   TimerId timer(micros_value, new Timer(micros_value, 0, std::move(cb)));
   InsertInLoop(timer);
   return timer;
@@ -73,8 +55,7 @@ TimerId TimerList::RunAfter(uint64_t micros_delay,
   return timer;
 }
 
-TimerId TimerList::RunAfter(uint64_t micros_delay,
-                            TimerProcCallback&& cb) {
+TimerId TimerList::RunAfter(uint64_t micros_delay, TimerProcCallback&& cb) {
   uint64_t micros_value = NowMicros() + micros_delay;
   TimerId timer(micros_value, new Timer(micros_value, 0, std::move(cb)));
   InsertInLoop(timer);
@@ -89,8 +70,7 @@ TimerId TimerList::RunEvery(uint64_t micros_interval,
   return timer;
 }
 
-TimerId TimerList::RunEvery(uint64_t micros_interval,
-                            TimerProcCallback&& cb) {
+TimerId TimerList::RunEvery(uint64_t micros_interval, TimerProcCallback&& cb) {
   uint64_t micros_value = NowMicros() + micros_interval;
   TimerId timer(micros_value,
                 new Timer(micros_value, micros_interval, std::move(cb)));
@@ -144,7 +124,7 @@ void TimerList::RunTimerProcs() {
       Timer* t = it->second;
       timers_.erase(it);
       TimerProcCallback cb = t->timerproc_cb;
-      if (t->repeat) {
+      if (t->micros_interval > 0) {
         t->micros_value += t->micros_interval;
         TimerId timer(t->micros_value, t);
         timers_.insert(timer);

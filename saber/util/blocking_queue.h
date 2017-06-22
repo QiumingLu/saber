@@ -14,10 +14,10 @@
 
 namespace saber {
 
-template<typename T>
+template <typename T>
 class BlockingQueue {
  public:
-  BlockingQueue() : mutex_(), cond_(&mutex_) { }
+  BlockingQueue() : mutex_(), cond_(&mutex_) {}
 
   void push(const T& t) {
     MutexLock lock(&mutex_);

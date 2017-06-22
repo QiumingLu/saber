@@ -9,10 +9,10 @@
 #include <string>
 #include <unordered_map>
 
+#include "saber/proto/server.pb.h"
 #include "saber/server/data_node.h"
 #include "saber/server/server_watch_manager.h"
 #include "saber/util/mutex.h"
-#include "saber/proto/server.pb.h"
 
 namespace saber {
 
@@ -36,8 +36,7 @@ class DataTree {
   void SetData(const SetDataRequest& request, const Transaction& txn,
                SetDataResponse* response);
 
-  void GetACL(const GetACLRequest& request,
-              GetACLResponse* response);
+  void GetACL(const GetACLRequest& request, GetACLResponse* response);
 
   void SetACL(const SetACLRequest& request, const Transaction& txn,
               SetACLResponse* response);

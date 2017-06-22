@@ -5,10 +5,10 @@
 #ifndef SABER_SERVER_DATA_NODE_H_
 #define SABER_SERVER_DATA_NODE_H_
 
-#include <vector>
 #include <set>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "saber/proto/saber.pb.h"
 
@@ -33,9 +33,7 @@ class DataNode {
   const std::vector<ACL>& acl() const { return acl_; }
   std::vector<ACL>* mutable_acl() { return &acl_; }
 
-  const std::set<std::string>& children() const {
-    return children_;
-  }
+  const std::set<std::string>& children() const { return children_; }
 
   bool AddChild(const std::string& child, uint64_t children_id);
   bool RemoveChild(const std::string& child, uint64_t children_id);

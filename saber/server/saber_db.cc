@@ -13,8 +13,7 @@ SaberDB::SaberDB(uint32_t group_size) {
   }
 }
 
-SaberDB::~SaberDB() {
-}
+SaberDB::~SaberDB() {}
 
 void SaberDB::Create(uint32_t group_id, const CreateRequest& request,
                      const Transaction& txn, CreateResponse* response) {
@@ -51,8 +50,7 @@ void SaberDB::SetACL(uint32_t group_id, const SetACLRequest& request,
   trees_[group_id]->SetACL(request, txn, response);
 }
 
-void SaberDB::GetChildren(uint32_t group_id,
-                          const GetChildrenRequest& request,
+void SaberDB::GetChildren(uint32_t group_id, const GetChildrenRequest& request,
                           Watcher* watcher, GetChildrenResponse* response) {
   trees_[group_id]->GetChildren(request, watcher, response);
 }
@@ -69,10 +67,8 @@ void SaberDB::KillSession(uint64_t session_id, const Transaction& txn) {
   }
 }
 
-bool SaberDB::Execute(uint32_t group_id,
-                      uint64_t instance_id,
-                      const std::string& value,
-                      void* context) {
+bool SaberDB::Execute(uint32_t group_id, uint64_t instance_id,
+                      const std::string& value, void* context) {
   SaberMessage message;
   message.ParseFromString(value);
   Transaction txn;
@@ -134,20 +130,13 @@ bool SaberDB::Execute(uint32_t group_id,
   return true;
 }
 
-uint64_t SaberDB::GetCheckpointInstanceId(uint32_t group_id) {
-  return -1;
-}
+uint64_t SaberDB::GetCheckpointInstanceId(uint32_t group_id) { return -1; }
 
-bool SaberDB::LockCheckpoint(uint32_t group_id) {
-  return true;
-}
+bool SaberDB::LockCheckpoint(uint32_t group_id) { return true; }
 
-bool SaberDB::UnLockCheckpoint(uint32_t group_id) {
-  return true;
-}
+bool SaberDB::UnLockCheckpoint(uint32_t group_id) { return true; }
 
-bool SaberDB::GetCheckpoint(uint32_t group_id, int machine_id,
-                            std::string* dir,
+bool SaberDB::GetCheckpoint(uint32_t group_id, int machine_id, std::string* dir,
                             std::vector<std::string>* files) {
   return true;
 }

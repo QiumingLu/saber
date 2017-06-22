@@ -7,14 +7,14 @@
 
 #include <atomic>
 #include <memory>
-#include <vector>
 #include <string>
+#include <vector>
 
-#include <voyager/core/eventloop.h>
 #include <voyager/core/bg_eventloop.h>
+#include <voyager/core/eventloop.h>
 
-#include "saber/client/client_options.h"
 #include "saber/client/callbacks.h"
+#include "saber/client/client_options.h"
 #include "saber/proto/saber.pb.h"
 #include "saber/service/watcher.h"
 #include "saber/util/runloop.h"
@@ -35,26 +35,26 @@ class Saber {
   void Connect();
   void Close();
 
-  void Create(const CreateRequest& request,
-              void* context, const CreateCallback& cb);
+  void Create(const CreateRequest& request, void* context,
+              const CreateCallback& cb);
 
-  void Delete(const DeleteRequest& request,
-              void* context, const DeleteCallback& cb);
+  void Delete(const DeleteRequest& request, void* context,
+              const DeleteCallback& cb);
 
-  void Exists(const ExistsRequest& request, Watcher* watcher,
-              void* context, const ExistsCallback& cb);
+  void Exists(const ExistsRequest& request, Watcher* watcher, void* context,
+              const ExistsCallback& cb);
 
-  void GetData(const GetDataRequest& request, Watcher* watcher,
-               void* context, const GetDataCallback& cb);
+  void GetData(const GetDataRequest& request, Watcher* watcher, void* context,
+               const GetDataCallback& cb);
 
-  void SetData(const SetDataRequest& request,
-               void* context, const SetDataCallback& cb);
+  void SetData(const SetDataRequest& request, void* context,
+               const SetDataCallback& cb);
 
-  void GetACL(const GetACLRequest& request,
-              void* context, const GetACLCallback& cb);
+  void GetACL(const GetACLRequest& request, void* context,
+              const GetACLCallback& cb);
 
-  void SetACL(const SetACLRequest& request,
-              void* context, const SetACLCallback& cb);
+  void SetACL(const SetACLRequest& request, void* context,
+              const SetACLCallback& cb);
 
   void GetChildren(const GetChildrenRequest& request, Watcher* watcher,
                    void* context, const GetChildrenCallback& cb);

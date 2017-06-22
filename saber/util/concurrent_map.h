@@ -5,8 +5,8 @@
 #ifndef SABER_UTIL_CONCURRENT_MAP_H_
 #define SABER_UTIL_CONCURRENT_MAP_H_
 
-#include <utility>
 #include <unordered_map>
+#include <utility>
 
 #include "saber/util/mutex.h"
 #include "saber/util/mutexlock.h"
@@ -19,7 +19,7 @@ static const int kNumShards = 1 << kNumShardBits;
 template <typename K, typename V>
 class HashMap {
  public:
-  HashMap() : mu_() { }
+  HashMap() : mu_() {}
 
   bool insert(const K& key, const V& value) {
     MutexLock lock(&mu_);
@@ -60,7 +60,7 @@ class HashMap {
 template <typename K, typename V>
 class ConcurrentMap {
  public:
-  ConcurrentMap() { }
+  ConcurrentMap() {}
 
   bool insert(const K& key, const V& value) {
     const size_t h = Hash(key);
@@ -96,9 +96,7 @@ class ConcurrentMap {
     return h(key);
   }
 
-  static inline size_t Shard(size_t h) {
-    return (h & (kNumShards - 1));
-  }
+  static inline size_t Shard(size_t h) { return (h & (kNumShards - 1)); }
 
   HashMap<K, V> shard_[kNumShards];
 

@@ -20,36 +20,35 @@ enum LogLevel {
 
 extern void Log(LogLevel level, const char* filename, int line,
                 const char* format, ...)
-#    if defined(__GNUC__) || defined(__clang__)
-     __attribute__((__format__ (__printf__, 4, 5)))
-#    endif
-     ;
+#if defined(__GNUC__) || defined(__clang__)
+    __attribute__((__format__(__printf__, 4, 5)))
+#endif
+    ;
 
-#define LOG_DEBUG(format, ...)  \
-  ::saber::Log(                 \
-    ::saber::LOGLEVEL_DEBUG, __FILE__, __LINE__, format, ## __VA_ARGS__)
+#define LOG_DEBUG(format, ...)                                      \
+  ::saber::Log(::saber::LOGLEVEL_DEBUG, __FILE__, __LINE__, format, \
+               ##__VA_ARGS__)
 
-#define LOG_INFO(format, ...)  \
-  ::saber::Log(                 \
-    ::saber::LOGLEVEL_INFO, __FILE__, __LINE__, format, ## __VA_ARGS__)
+#define LOG_INFO(format, ...)                                      \
+  ::saber::Log(::saber::LOGLEVEL_INFO, __FILE__, __LINE__, format, \
+               ##__VA_ARGS__)
 
-#define LOG_WARN(format, ...)  \
-  ::saber::Log(                 \
-    ::saber::LOGLEVEL_WARN, __FILE__, __LINE__, format, ## __VA_ARGS__)
+#define LOG_WARN(format, ...)                                      \
+  ::saber::Log(::saber::LOGLEVEL_WARN, __FILE__, __LINE__, format, \
+               ##__VA_ARGS__)
 
-#define LOG_ERROR(format, ...)  \
-  ::saber::Log(                 \
-    ::saber::LOGLEVEL_ERROR, __FILE__, __LINE__, format, ## __VA_ARGS__)
+#define LOG_ERROR(format, ...)                                      \
+  ::saber::Log(::saber::LOGLEVEL_ERROR, __FILE__, __LINE__, format, \
+               ##__VA_ARGS__)
 
-#define LOG_FATAL(format, ...)  \
-  ::saber::Log(                 \
-    ::saber::LOGLEVEL_FATAL, __FILE__, __LINE__, format, ## __VA_ARGS__)
+#define LOG_FATAL(format, ...)                                      \
+  ::saber::Log(::saber::LOGLEVEL_FATAL, __FILE__, __LINE__, format, \
+               ##__VA_ARGS__)
 
 extern void DefaultLogHandler(LogLevel level, const char* filename, int line,
                               const char* format, va_list ap);
 
-typedef void LogHandler(LogLevel level,
-                        const char* filename, int line,
+typedef void LogHandler(LogLevel level, const char* filename, int line,
                         const char* format, va_list ap);
 
 extern LogHandler* SetLogHandler(LogHandler* new_handler);

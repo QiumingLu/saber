@@ -10,9 +10,9 @@
 
 #include <voyager/core/buffer.h>
 #include <voyager/core/eventloop.h>
-#include <voyager/core/tcp_server.h>
-#include <voyager/core/tcp_connection.h>
 #include <voyager/core/sockaddr.h>
+#include <voyager/core/tcp_connection.h>
+#include <voyager/core/tcp_server.h>
 
 #include <skywalker/node.h>
 

@@ -6,9 +6,9 @@
 #define SABER_UTIL_TIMERLIST_H_
 
 #include <stdint.h>
+#include <functional>
 #include <set>
 #include <utility>
-#include <functional>
 
 #include "saber/util/runloop.h"
 

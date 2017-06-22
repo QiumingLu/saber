@@ -8,8 +8,8 @@
 #include <string.h>
 #include <sys/time.h>
 
-#include "saber/util/timeops.h"
 #include "saber/util/logging.h"
+#include "saber/util/timeops.h"
 
 namespace saber {
 
@@ -44,8 +44,7 @@ Condition::~Condition() {
 }
 
 void Condition::Wait() {
-  PthreadCall("pthread_cond_wait",
-              pthread_cond_wait(&cond_, &mutex_->mutex_));
+  PthreadCall("pthread_cond_wait", pthread_cond_wait(&cond_, &mutex_->mutex_));
 }
 
 bool Condition::Wait(uint64_t micros) {

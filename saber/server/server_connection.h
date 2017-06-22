@@ -11,20 +11,18 @@
 #include <voyager/core/eventloop.h>
 #include <voyager/core/tcp_connection.h>
 
-#include "saber/server/saber_db.h"
-#include "saber/server/committer.h"
-#include "saber/service/watcher.h"
-#include "saber/proto/saber.pb.h"
 #include "saber/net/messager.h"
+#include "saber/proto/saber.pb.h"
+#include "saber/server/committer.h"
+#include "saber/server/saber_db.h"
+#include "saber/service/watcher.h"
 
 namespace saber {
 
 class ServerConnection : public Watcher {
  public:
-  ServerConnection(uint64_t session_id,
-                   const voyager::TcpConnectionPtr& p,
-                   SaberDB* db,
-                   skywalker::Node* node);
+  ServerConnection(uint64_t session_id, const voyager::TcpConnectionPtr& p,
+                   SaberDB* db, skywalker::Node* node);
   virtual ~ServerConnection();
 
   uint64_t session_id() const { return session_id_; }
@@ -35,8 +33,6 @@ class ServerConnection : public Watcher {
   virtual void Process(const WatchedEvent& event);
 
  private:
-  static const int kHeaderSize = 4;
-
   bool HandleMessage(std::unique_ptr<SaberMessage> message);
 
   bool closed_;

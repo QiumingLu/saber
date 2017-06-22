@@ -5,19 +5,19 @@
 #ifndef SABER_CLIENT_SABER_CLIENT_H_
 #define SABER_CLIENT_SABER_CLIENT_H_
 
+#include <deque>
 #include <memory>
 #include <queue>
-#include <deque>
 #include <string>
 
-#include <voyager/core/eventloop.h>
 #include <voyager/core/bg_eventloop.h>
+#include <voyager/core/eventloop.h>
 #include <voyager/core/tcp_client.h>
 
 #include "saber/client/callbacks.h"
-#include "saber/client/server_manager.h"
-#include "saber/client/request.h"
 #include "saber/client/client_options.h"
+#include "saber/client/request.h"
+#include "saber/client/server_manager.h"
 #include "saber/service/watcher.h"
 #include "saber/util/runloop_thread.h"
 
@@ -28,8 +28,7 @@ class ClientWatchManager;
 
 class SaberClient {
  public:
-  SaberClient(const ClientOptions& options,
-              voyager::EventLoop* send_loop,
+  SaberClient(const ClientOptions& options, voyager::EventLoop* send_loop,
               RunLoop* event_loop);
   ~SaberClient();
 

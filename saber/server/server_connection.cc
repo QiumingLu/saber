@@ -12,8 +12,7 @@ namespace saber {
 
 ServerConnection::ServerConnection(uint64_t session_id,
                                    const voyager::TcpConnectionPtr& p,
-                                   SaberDB* db,
-                                   skywalker::Node* node)
+                                   SaberDB* db, skywalker::Node* node)
     : closed_(false),
       last_finished_(true),
       session_id_(session_id),
@@ -22,18 +21,15 @@ ServerConnection::ServerConnection(uint64_t session_id,
       messager_(new Messager()),
       committer_(new Committer(this, p->OwnerEventLoop(), db, node)) {
   messager_->SetTcpConnection(p);
-  messager_->SetMessageCallback(
-      [this](std::unique_ptr<SaberMessage> message) {
+  messager_->SetMessageCallback([this](std::unique_ptr<SaberMessage> message) {
     return HandleMessage(std::move(message));
   });
 }
 
-ServerConnection::~ServerConnection() {
-  db_->RemoveWatcher(this);
-}
+ServerConnection::~ServerConnection() { db_->RemoveWatcher(this); }
 
-void ServerConnection::OnMessage(
-    const voyager::TcpConnectionPtr& p, voyager::Buffer* buf) {
+void ServerConnection::OnMessage(const voyager::TcpConnectionPtr& p,
+                                 voyager::Buffer* buf) {
   messager_->OnMessage(p, buf);
 }
 
@@ -52,8 +48,7 @@ bool ServerConnection::HandleMessage(std::unique_ptr<SaberMessage> message) {
   return true;
 }
 
-void ServerConnection::OnCommitComplete(
-    std::unique_ptr<SaberMessage> message) {
+void ServerConnection::OnCommitComplete(std::unique_ptr<SaberMessage> message) {
   messager_->SendMessage(*message);
   assert(!pending_messages_.empty());
   pending_messages_.pop();

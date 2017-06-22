@@ -5,14 +5,14 @@
 #ifndef SABER_DEFAULT_MAIN_WATCHER_H
 #define SABER_DEFAULT_MAIN_WATCHER_H
 
-#include "saber/service/watcher.h"
 #include "saber/main/to_string.h"
+#include "saber/service/watcher.h"
 
 namespace saber {
 
 class DefaultWatcher : public saber::Watcher {
  public:
-  DefaultWatcher() { }
+  DefaultWatcher() {}
 
   virtual void Process(const saber::WatchedEvent& event) {
     printf("------------------------------------------------------------\n");

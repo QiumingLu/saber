@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <saber/util/logging.h>
+#include <skywalker/node.h>
 #include <voyager/core/eventloop.h>
 #include <voyager/util/string_util.h>
-#include <skywalker/node.h>
-#include <saber/util/logging.h>
 #include "saber/server/saber_server.h"
 
 int main(int argc, char** argv) {
@@ -32,7 +32,6 @@ int main(int argc, char** argv) {
   server_message.host = server[1];
   server_message.client_port = atoi(server[2].data());
   server_message.paxos_port = atoi(server[3].data());
-
 
   voyager::SplitStringUsing(std::string(argv[2]), ",", &servers);
   for (auto& s : servers) {

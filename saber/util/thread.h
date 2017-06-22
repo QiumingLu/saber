@@ -5,14 +5,14 @@
 #ifndef SABER_UTIL_THREAD_H_
 #define SABER_UTIL_THREAD_H_
 
-#include <stdint.h>
 #include <pthread.h>
+#include <stdint.h>
 
 namespace saber {
 
 namespace CurrentThread {
 
-extern __thread uint64_t  cached_tid;
+extern __thread uint64_t cached_tid;
 
 extern uint64_t Tid();
 

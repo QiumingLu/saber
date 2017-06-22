@@ -6,10 +6,8 @@
 
 namespace saber {
 
-DB::DB() {
-}
+DB::DB() {}
 
-DB::~DB() {
-}
+DB::~DB() {}
 
 }  // namespace saber

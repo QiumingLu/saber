@@ -6,10 +6,11 @@
 #define SABER_UTIL_RUNLOOP_H_
 
 #include <stdint.h>
-#include <memory>
-#include <vector>
+
 #include <functional>
+#include <memory>
 #include <utility>
+#include <vector>
 
 #include "saber/util/mutex.h"
 
@@ -19,11 +20,11 @@ class Timer;
 class TimerList;
 
 typedef std::pair<uint64_t, Timer*> TimerId;
-typedef std::function<void ()> TimerProcCallback;
+typedef std::function<void()> TimerProcCallback;
 
 class RunLoop {
  public:
-  typedef std::function<void ()> Func;
+  typedef std::function<void()> Func;
 
   RunLoop();
   ~RunLoop();

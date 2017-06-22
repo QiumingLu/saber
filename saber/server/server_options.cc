@@ -7,11 +7,7 @@
 namespace saber {
 
 ServerMessage::ServerMessage()
-    : id(1),
-      host("127.0.0.1"),
-      client_port(6666),
-      paxos_port(5666) {
-}
+    : id(1), host("127.0.0.1"), client_port(6666), paxos_port(5666) {}
 
 ServerOptions::ServerOptions()
     : paxos_group_size(3),
@@ -24,7 +20,6 @@ ServerOptions::ServerOptions()
       keep_log_count(1000000),
       log_sync_interval(10),
       keep_checkpoint_count(3),
-      make_checkpoint_interval(100000) {
-}
+      make_checkpoint_interval(100000) {}
 
 }  // namespace saber

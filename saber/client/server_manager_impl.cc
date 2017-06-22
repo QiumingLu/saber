@@ -6,6 +6,7 @@
 
 #include <assert.h>
 #include <unistd.h>
+
 #include <voyager/util/string_util.h>
 
 #include "saber/util/logging.h"
@@ -13,8 +14,7 @@
 
 namespace saber {
 
-ServerManagerImpl::ServerManagerImpl() {
-}
+ServerManagerImpl::ServerManagerImpl() {}
 
 void ServerManagerImpl::UpdateServers(const std::string& servers) {
   MutexLock lock(&mutex_);
@@ -46,7 +46,6 @@ voyager::SockAddr ServerManagerImpl::GetNext() {
   return servers_[next_++];
 }
 
-void ServerManagerImpl::OnConnection() {
-}
+void ServerManagerImpl::OnConnection() {}
 
 }  // namespace saber

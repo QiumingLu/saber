@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <iostream>
 #include <saber/client/saber.h>
 #include <saber/util/runloop.h>
+#include <iostream>
 
 void CreateCallback(const std::string& path, void* ctx,
                     const saber::CreateResponse& response) {
@@ -13,8 +13,8 @@ void CreateCallback(const std::string& path, void* ctx,
 
 void GetDataCallback(const std::string& path, void* context,
                      const saber::GetDataResponse& response) {
-  std::cout << "get data: " << response.code()
-            << " data: " << response.data() << std::endl;
+  std::cout << "get data: " << response.code() << " data: " << response.data()
+            << std::endl;
 }
 
 void SetDataCallback(const std::string& path, void* context,
@@ -23,11 +23,11 @@ void SetDataCallback(const std::string& path, void* context,
 }
 
 class DefaultWatcher : public saber::Watcher {
-  public:
-   DefaultWatcher() { }
-   virtual void Process(const saber::WatchedEvent& event) {
-     std::cout << "watch event: " << event.path() << std::endl;
-   }
+ public:
+  DefaultWatcher() {}
+  virtual void Process(const saber::WatchedEvent& event) {
+    std::cout << "watch event: " << event.path() << std::endl;
+  }
 };
 
 int main() {

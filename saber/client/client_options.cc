@@ -10,7 +10,6 @@ ClientOptions::ClientOptions()
     : auto_watch_reset(true),
       group_size(1),
       servers(),
-      server_manager(nullptr) {
-}
+      server_manager(nullptr) {}
 
 }  // namespace saber

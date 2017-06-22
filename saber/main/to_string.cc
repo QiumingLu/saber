@@ -243,7 +243,7 @@ std::string ToString(const GetChildrenResponse& response) {
   s += ToString(response.stat());
   s += "children:\n";
   for (int i = 0; i < response.children_size(); ++i) {
-    s += std::to_string(i+1);
+    s += std::to_string(i + 1);
     s += ": ";
     s += response.children(i);
     s += "\n";

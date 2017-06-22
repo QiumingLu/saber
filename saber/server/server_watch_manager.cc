@@ -10,16 +10,13 @@
 
 namespace saber {
 
-ServerWatchManager::ServerWatchManager() {
-}
+ServerWatchManager::ServerWatchManager() {}
 
-ServerWatchManager::~ServerWatchManager() {
-}
+ServerWatchManager::~ServerWatchManager() {}
 
-void ServerWatchManager::AddWatcher(
-    const std::string& path, Watcher* watcher) {
+void ServerWatchManager::AddWatcher(const std::string& path, Watcher* watcher) {
   MutexLock lock(&mutex_);
-  auto i  = path_to_watches_.find(path);
+  auto i = path_to_watches_.find(path);
   if (i != path_to_watches_.end()) {
     i->second->insert(watcher);
   } else {
@@ -43,7 +40,7 @@ void ServerWatchManager::RemoveWatcher(Watcher* watcher) {
   auto i = watch_to_paths_.find(watcher);
   if (i != watch_to_paths_.end()) {
     for (auto& j : *(i->second)) {
-      auto k =  path_to_watches_.find(j);
+      auto k = path_to_watches_.find(j);
       k->second->erase(watcher);
       if (k->second->empty()) {
         path_to_watches_.erase(j);
@@ -53,13 +50,14 @@ void ServerWatchManager::RemoveWatcher(Watcher* watcher) {
   }
 }
 
-WatcherSetPtr ServerWatchManager::TriggerWatcher(
-    const std::string& path, EventType type) {
+WatcherSetPtr ServerWatchManager::TriggerWatcher(const std::string& path,
+                                                 EventType type) {
   return TriggerWatcher(path, type, nullptr);
 }
 
-WatcherSetPtr ServerWatchManager::TriggerWatcher(
-    const std::string& path, EventType type, WatcherSetPtr p) {
+WatcherSetPtr ServerWatchManager::TriggerWatcher(const std::string& path,
+                                                 EventType type,
+                                                 WatcherSetPtr p) {
   WatcherSetPtr watches;
   MutexLock lock(&mutex_);
   auto i = path_to_watches_.find(path);

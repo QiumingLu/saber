@@ -11,10 +11,7 @@ namespace saber {
 
 class MutexLock {
  public:
-  explicit MutexLock(Mutex* mutex)
-      : mutex_(mutex) {
-    mutex_->Lock();
-  }
+  explicit MutexLock(Mutex* mutex) : mutex_(mutex) { mutex_->Lock(); }
 
   ~MutexLock() { mutex_->UnLock(); }
 

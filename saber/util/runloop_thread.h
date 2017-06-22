@@ -6,8 +6,8 @@
 #define SABER_UTIL_RUNLOOP_THREAD_H_
 
 #include "saber/util/mutex.h"
-#include "saber/util/thread.h"
 #include "saber/util/runloop.h"
+#include "saber/util/thread.h"
 
 namespace saber {
 
@@ -23,7 +23,7 @@ class RunLoopThread {
 
   void ThreadFunc();
 
-  RunLoop *loop_;
+  RunLoop* loop_;
   Mutex mu_;
   Condition cond_;
   Thread thread_;

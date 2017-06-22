@@ -3,9 +3,9 @@
 // found in the LICENSE file.
 
 #include <stdio.h>
+#include "saber/main/mysaber.h"
 #include "saber/util/logging.h"
 #include "saber/util/runloop.h"
-#include "saber/main/mysaber.h"
 
 int main(int argc, char** argv) {
   if (argc != 2) {

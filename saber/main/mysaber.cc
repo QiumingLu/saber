@@ -11,12 +11,9 @@
 namespace saber {
 
 MySaber::MySaber(RunLoop* loop, const ClientOptions& options)
-    : loop_(loop),
-      saber_(options) {
-}
+    : loop_(loop), saber_(options) {}
 
-MySaber::~MySaber() {
-}
+MySaber::~MySaber() {}
 
 void MySaber::Start() {
   saber_.Start();
@@ -108,20 +105,17 @@ void MySaber::Create() {
   request.set_data(v[1]);
   int node_type = atoi(v[2].c_str());
   request.set_type(static_cast<NodeType>(node_type));
-  saber_.Create(
-      request, nullptr,
-      [this](const std::string& path, void* context,
-             const CreateResponse& response) {
-    OnCreateReply(path, context, response);
-  });
+  saber_.Create(request, nullptr,
+                [this](const std::string& path, void* context,
+                       const CreateResponse& response) {
+                  OnCreateReply(path, context, response);
+                });
 }
 
 void MySaber::OnCreateReply(const std::string& path, void* context,
                             const CreateResponse& response) {
   printf("%s\n", ToString(response).c_str());
-  loop_->RunInLoop([this]() {
-    GetLine();
-  });
+  loop_->RunInLoop([this]() { GetLine(); });
 }
 
 void MySaber::Delete() {
@@ -138,20 +132,17 @@ void MySaber::Delete() {
   DeleteRequest request;
   request.set_path(v[0]);
   request.set_version(atoi(v[1].c_str()));
-  saber_.Delete(
-      request, nullptr,
-      [this](const std::string& path, void* context,
-             const DeleteResponse& response) {
-    OnDeleteReply(path, context, response);
-  });
+  saber_.Delete(request, nullptr,
+                [this](const std::string& path, void* context,
+                       const DeleteResponse& response) {
+                  OnDeleteReply(path, context, response);
+                });
 }
 
 void MySaber::OnDeleteReply(const std::string& path, void* context,
                             const DeleteResponse& response) {
   printf("%s\n", ToString(response).c_str());
-  loop_->RunInLoop([this]() {
-    GetLine();
-  });
+  loop_->RunInLoop([this]() { GetLine(); });
 }
 
 void MySaber::Exists() {
@@ -177,20 +168,17 @@ void MySaber::Exists() {
     Exists();
     return;
   }
-  saber_.Exists(
-      request, watcher, nullptr,
-      [this](const std::string& path, void* context,
-             const ExistsResponse& response) {
-    OnExistsReply(path, context, response);
-  });
+  saber_.Exists(request, watcher, nullptr,
+                [this](const std::string& path, void* context,
+                       const ExistsResponse& response) {
+                  OnExistsReply(path, context, response);
+                });
 }
 
 void MySaber::OnExistsReply(const std::string& path, void* context,
                             const ExistsResponse& response) {
   printf("%s\n", ToString(response).c_str());
-  loop_->RunInLoop([this]() {
-    GetLine();
-  });
+  loop_->RunInLoop([this]() { GetLine(); });
 }
 
 void MySaber::GetData() {
@@ -216,20 +204,17 @@ void MySaber::GetData() {
     GetData();
     return;
   }
-  saber_.GetData(
-      request, watcher, nullptr,
-      [this](const std::string& path, void* context,
-             const GetDataResponse& response) {
-    OnGetDataReply(path, context, response);
-  });
+  saber_.GetData(request, watcher, nullptr,
+                 [this](const std::string& path, void* context,
+                        const GetDataResponse& response) {
+                   OnGetDataReply(path, context, response);
+                 });
 }
 
 void MySaber::OnGetDataReply(const std::string& path, void* context,
                              const GetDataResponse& response) {
   printf("%s\n", ToString(response).c_str());
-  loop_->RunInLoop([this]() {
-    GetLine();
-  });
+  loop_->RunInLoop([this]() { GetLine(); });
 }
 
 void MySaber::SetData() {
@@ -247,20 +232,17 @@ void MySaber::SetData() {
   request.set_path(v[0]);
   request.set_data(v[1]);
   request.set_version(atoi(v[2].c_str()));
-  saber_.SetData(
-      request, nullptr,
-      [this](const std::string& path, void* context,
-             const SetDataResponse& response) {
-    OnSetDataReply(path, context, response);
-  });
+  saber_.SetData(request, nullptr,
+                 [this](const std::string& path, void* context,
+                        const SetDataResponse& response) {
+                   OnSetDataReply(path, context, response);
+                 });
 }
 
 void MySaber::OnSetDataReply(const std::string& path, void* context,
                              const SetDataResponse& response) {
   printf("%s\n", ToString(response).c_str());
-  loop_->RunInLoop([this]() {
-    GetLine();
-  });
+  loop_->RunInLoop([this]() { GetLine(); });
 }
 
 void MySaber::GetACL() {
@@ -270,20 +252,17 @@ void MySaber::GetACL() {
   std::getline(std::cin, s);
   GetACLRequest request;
   request.set_path(s);
-  saber_.GetACL(
-      request, nullptr,
-      [this](const std::string& path, void* context,
-             const GetACLResponse& response) {
-    OnGetACLReply(path, context, response);
-  });
+  saber_.GetACL(request, nullptr,
+                [this](const std::string& path, void* context,
+                       const GetACLResponse& response) {
+                  OnGetACLReply(path, context, response);
+                });
 }
 
 void MySaber::OnGetACLReply(const std::string& path, void* context,
                             const GetACLResponse& response) {
   printf("%s\n", ToString(response).c_str());
-  loop_->RunInLoop([this]() {
-    GetLine();
-  });
+  loop_->RunInLoop([this]() { GetLine(); });
 }
 
 void MySaber::SetACL() {
@@ -309,7 +288,7 @@ void MySaber::SetACL() {
       return;
     }
     ACL one;
-    Id *id = new Id();
+    Id* id = new Id();
     one.set_perms(atoi(v[0].c_str()));
     id->set_scheme(v[1]);
     id->set_id(v[2]);
@@ -317,20 +296,17 @@ void MySaber::SetACL() {
     *(request.add_acl()) = one;
   }
   request.set_version(atoi(v[2].c_str()));
-  saber_.SetACL(
-      request, nullptr,
-      [this](const std::string& path, void* context,
-             const SetACLResponse& response) {
-    OnSetACLReply(path, context, response);
-  });
+  saber_.SetACL(request, nullptr,
+                [this](const std::string& path, void* context,
+                       const SetACLResponse& response) {
+                  OnSetACLReply(path, context, response);
+                });
 }
 
 void MySaber::OnSetACLReply(const std::string& path, void* context,
                             const SetACLResponse& response) {
   printf("%s\n", ToString(response).c_str());
-  loop_->RunInLoop([this]() {
-    GetLine();
-  });
+  loop_->RunInLoop([this]() { GetLine(); });
 }
 
 void MySaber::GetChildren() {
@@ -356,20 +332,17 @@ void MySaber::GetChildren() {
     GetChildren();
     return;
   }
-  saber_.GetChildren(
-      request, watcher, nullptr,
-      [this](const std::string& path, void* context,
-             const GetChildrenResponse& response) {
-    OnGetChildrenReply(path, context, response);
-  });
+  saber_.GetChildren(request, watcher, nullptr,
+                     [this](const std::string& path, void* context,
+                            const GetChildrenResponse& response) {
+                       OnGetChildrenReply(path, context, response);
+                     });
 }
 
 void MySaber::OnGetChildrenReply(const std::string& path, void* context,
                                  const GetChildrenResponse& response) {
   printf("%s\n", ToString(response).c_str());
-  loop_->RunInLoop([this]() {
-    GetLine();
-  });
+  loop_->RunInLoop([this]() { GetLine(); });
 }
 
 }  // namespace saber

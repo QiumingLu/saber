@@ -6,23 +6,17 @@
 
 #include <utility>
 
+#include "saber/proto/server.pb.h"
 #include "saber/server/server_connection.h"
 #include "saber/util/logging.h"
 #include "saber/util/murmurhash3.h"
 #include "saber/util/timeops.h"
-#include "saber/proto/server.pb.h"
 
 namespace saber {
 
-Committer::Committer(ServerConnection* conn,
-                     voyager::EventLoop* loop,
-                     SaberDB* db,
-                     skywalker::Node* node)
-    : conn_(conn),
-      loop_(loop),
-      db_(db),
-      node_(node) {
-}
+Committer::Committer(ServerConnection* conn, voyager::EventLoop* loop,
+                     SaberDB* db, skywalker::Node* node)
+    : conn_(conn), loop_(loop), db_(db), node_(node) {}
 
 void Committer::Commit(SaberMessage* message) {
   uint32_t group_id = Shard(message->extra_data());
@@ -101,8 +95,8 @@ void Committer::Commit(uint32_t group_id, SaberMessage* message) {
   }
 }
 
-bool Committer::Propose(uint32_t group_id,
-                        SaberMessage* message, SaberMessage* reply_message) {
+bool Committer::Propose(uint32_t group_id, SaberMessage* message,
+                        SaberMessage* reply_message) {
   Transaction txn;
   txn.set_session_id(conn_->session_id());
   txn.set_time(NowMicros());
@@ -112,18 +106,17 @@ bool Committer::Propose(uint32_t group_id,
   bool res = node_->Propose(
       group_id, message->SerializeAsString(), db_->machine_id(), reply_message,
       [ptr](void* context, const skywalker::Status& s, uint64_t instance_id) {
-    if (!ptr.unique()) {
-      ptr->OnProposeComplete(context, s, instance_id);
-    }
-  });
+        if (!ptr.unique()) {
+          ptr->OnProposeComplete(context, s, instance_id);
+        }
+      });
   if (!res) {
     SetFailedState(reply_message);
   }
   return res;
 }
 
-void Committer::OnProposeComplete(void* context,
-                                  const skywalker::Status& s,
+void Committer::OnProposeComplete(void* context, const skywalker::Status& s,
                                   uint64_t instance_id) {
   SaberMessage* reply_message = reinterpret_cast<SaberMessage*>(context);
   assert(reply_message);

@@ -6,13 +6,16 @@
 #define SABER_MAIN_MYSABER_H_
 
 #include <stdio.h>
+
 #include <iostream>
 #include <string>
+
 #include <voyager/util/string_util.h>
-#include "saber/util/runloop.h"
-#include "saber/client/saber.h"
+
 #include "saber/client/client_options.h"
+#include "saber/client/saber.h"
 #include "saber/main/default_watcher.h"
+#include "saber/util/runloop.h"
 
 namespace saber {
 
@@ -60,7 +63,7 @@ class MySaber {
                      const SetACLResponse& response);
   void GetChildren();
   void OnGetChildrenReply(const std::string& path, void* context,
-                           const GetChildrenResponse& response);
+                          const GetChildrenResponse& response);
 
   RunLoop* loop_;
   Saber saber_;

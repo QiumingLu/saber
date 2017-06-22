@@ -6,11 +6,9 @@
 
 namespace saber {
 
-DataNode::DataNode() {
-}
+DataNode::DataNode() {}
 
-DataNode::~DataNode() {
-}
+DataNode::~DataNode() {}
 
 bool DataNode::AddChild(const std::string& child, uint64_t children_id) {
   auto it = children_.insert(child);
