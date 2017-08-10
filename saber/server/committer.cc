@@ -104,10 +104,10 @@ bool Committer::Propose(uint32_t group_id, SaberMessage* message,
 
   CommitterPtr ptr(shared_from_this());
   bool res = node_->Propose(
-      group_id, message->SerializeAsString(), db_->machine_id(), reply_message,
-      [ptr](void* context, const skywalker::Status& s, uint64_t instance_id) {
+      group_id, db_->machine_id(), message->SerializeAsString(), reply_message,
+      [ptr](uint64_t instance_id, const skywalker::Status& s, void* context) {
         if (!ptr.unique()) {
-          ptr->OnProposeComplete(context, s, instance_id);
+          ptr->OnProposeComplete(instance_id, s, context);
         }
       });
   if (!res) {
@@ -116,8 +116,8 @@ bool Committer::Propose(uint32_t group_id, SaberMessage* message,
   return res;
 }
 
-void Committer::OnProposeComplete(void* context, const skywalker::Status& s,
-                                  uint64_t instance_id) {
+void Committer::OnProposeComplete(uint64_t instance_id,
+                                  const skywalker::Status& s, void* context) {
   SaberMessage* reply_message = reinterpret_cast<SaberMessage*>(context);
   assert(reply_message);
   if (!s.ok()) {

@@ -29,8 +29,8 @@ class Committer : public std::enable_shared_from_this<Committer> {
   void Commit(uint32_t group_id, SaberMessage* message);
   bool Propose(uint32_t group_id, SaberMessage* message,
                SaberMessage* reply_message);
-  void OnProposeComplete(void* context, const skywalker::Status& s,
-                         uint64_t instance_id);
+  void OnProposeComplete(uint64_t instance_id, const skywalker::Status& s,
+                         void* context);
   void SetFailedState(SaberMessage* reply_message);
   uint32_t Shard(const std::string& s);
 
