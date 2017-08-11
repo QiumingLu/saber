@@ -9,6 +9,7 @@
 #include <list>
 #include <memory>
 #include <unordered_set>
+#include <vector>
 
 #include <voyager/core/buffer.h>
 #include <voyager/core/eventloop.h>
@@ -42,6 +43,8 @@ class SaberServer {
   void OnTimer();
   uint64_t GetNextSessionId() const;
 
+  struct Context;
+
   ServerOptions options_;
 
   const int server_id_;
@@ -52,14 +55,17 @@ class SaberServer {
   std::unique_ptr<ConnectionMonitor> monitor_;
 
   typedef std::shared_ptr<ServerConnection> ServerConnectionPtr;
-  struct Context {
-    Context(ServerConnectionPtr& p) : conn_wp(p) {}
-    std::weak_ptr<ServerConnection> conn_wp;
-  };
-
   typedef std::unordered_set<ServerConnectionPtr> Bucket;
-  typedef std::list<Bucket> BucketList;
-  std::map<voyager::EventLoop*, BucketList> buckets_;
+  typedef std::vector<Bucket> BucketList;
+
+  // 每个循环队列所含的桶的个数。
+  int idle_;
+
+  // 分桶策略
+  // 每个EventLoop都有一个会话清理的循环队列。
+  // Key表示每个EventLoop。
+  // Value的first值表示循环队列，second值表示该队列最后一个元素，即最后一个桶。
+  std::map<voyager::EventLoop*, std::pair<BucketList, int> > buckets_;
 
   voyager::TcpServer server_;
 
