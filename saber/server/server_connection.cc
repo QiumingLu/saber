@@ -16,7 +16,7 @@ ServerConnection::ServerConnection(uint64_t session_id,
     : closed_(false),
       last_finished_(true),
       session_id_(session_id),
-      conn_(p),
+      conn_wp_(p),
       db_(db),
       messager_(new Messager()),
       committer_(new Committer(this, p->OwnerEventLoop(), db, node)) {
@@ -26,7 +26,10 @@ ServerConnection::ServerConnection(uint64_t session_id,
   });
 }
 
-ServerConnection::~ServerConnection() { db_->RemoveWatcher(this); }
+ServerConnection::~ServerConnection() {
+  db_->RemoveWatcher(this);
+  ShutDown();
+}
 
 void ServerConnection::OnMessage(const voyager::TcpConnectionPtr& p,
                                  voyager::Buffer* buf) {
@@ -60,8 +63,7 @@ void ServerConnection::OnCommitComplete(std::unique_ptr<SaberMessage> message) {
       last_finished_ = true;
     }
   } else {
-    closed_ = true;
-    conn_->ShutDown();
+    ShutDown();
   }
 }
 
@@ -70,6 +72,14 @@ void ServerConnection::Process(const WatchedEvent& event) {
   message.set_type(MT_NOTIFICATION);
   message.set_data(event.SerializeAsString());
   messager_->SendMessage(message);
+}
+
+void ServerConnection::ShutDown() {
+  closed_ = true;
+  voyager::TcpConnectionPtr p = conn_wp_.lock();
+  if (p) {
+    p->ShutDown();
+  }
 }
 
 }  // namespace saber

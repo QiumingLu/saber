@@ -66,7 +66,19 @@ bool SaberServer::Start() {
         [this](const voyager::TcpConnectionPtr& p) { OnConnection(p); });
     server_.SetCloseCallback(
         [this](const voyager::TcpConnectionPtr& p) { OnClose(p); });
+    server_.SetMessageCallback(
+        [this](const voyager::TcpConnectionPtr& p, voyager::Buffer* buf) {
+          OnMessage(p, buf);
+        });
     server_.Start();
+
+    int idle = options_.max_session_timeout / options_.tick_time;
+    const std::vector<voyager::EventLoop*>* loops = server_.AllLoops();
+    for (auto& loop : *loops) {
+      loop->RunEvery(1000 * options_.tick_time,
+                    std::bind(&SaberServer::OnTimer, this));
+      buckets_.insert(std::make_pair(loop, BucketList(idle, Bucket())));
+    }
   } else {
     LOG_ERROR("Skywalker start failed!");
   }
@@ -77,19 +89,35 @@ void SaberServer::OnConnection(const voyager::TcpConnectionPtr& p) {
   bool result = monitor_->OnConnection(p);
   if (result) {
     // FIXME check session id is unique or not?
-    ServerConnection* conn =
-        new ServerConnection(GetNextSessionId(), p, db_.get(), node_.get());
-    p->SetContext(conn);
-    p->SetMessageCallback(
-        [conn](const voyager::TcpConnectionPtr& ptr, voyager::Buffer* buf) {
-          conn->OnMessage(ptr, buf);
-        });
+    ServerConnectionPtr conn(
+        new ServerConnection(GetNextSessionId(), p, db_.get(), node_.get()));
+    buckets_[p->OwnerEventLoop()].back().insert(conn);
+    p->SetContext(new Context(conn));
   }
 }
 
 void SaberServer::OnClose(const voyager::TcpConnectionPtr& p) {
   monitor_->OnClose(p);
-  delete reinterpret_cast<ServerConnection*>(p->Context());
+  Context* context = reinterpret_cast<Context*>(p->Context());
+  delete context;
+}
+
+void SaberServer::OnMessage(const voyager::TcpConnectionPtr& p,
+                            voyager::Buffer* buf) {
+  Context* context = reinterpret_cast<Context*>(p->Context());
+  assert(!context);
+  ServerConnectionPtr conn = (context->conn_wp).lock();
+  assert(conn);
+  if (conn) {
+    conn->OnMessage(p, buf);
+    buckets_[p->OwnerEventLoop()].back().insert(conn);
+  }
+}
+
+void SaberServer::OnTimer() {
+  voyager::EventLoop* loop = voyager::EventLoop::RunLoop();
+  buckets_[loop].pop_front();
+  buckets_[loop].push_back(Bucket());
 }
 
 uint64_t SaberServer::GetNextSessionId() const {

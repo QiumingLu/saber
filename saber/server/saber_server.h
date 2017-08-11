@@ -6,7 +6,9 @@
 #define SABER_SERVER_SABER_SERVER_H_
 
 #include <atomic>
+#include <list>
 #include <memory>
+#include <unordered_set>
 
 #include <voyager/core/buffer.h>
 #include <voyager/core/eventloop.h>
@@ -36,6 +38,8 @@ class SaberServer {
  private:
   void OnConnection(const voyager::TcpConnectionPtr& p);
   void OnClose(const voyager::TcpConnectionPtr& p);
+  void OnMessage(const voyager::TcpConnectionPtr& p, voyager::Buffer* buf);
+  void OnTimer();
   uint64_t GetNextSessionId() const;
 
   ServerOptions options_;
@@ -46,6 +50,17 @@ class SaberServer {
   std::unique_ptr<SaberDB> db_;
   std::unique_ptr<skywalker::Node> node_;
   std::unique_ptr<ConnectionMonitor> monitor_;
+
+  typedef std::shared_ptr<ServerConnection> ServerConnectionPtr;
+  struct Context {
+    Context(ServerConnectionPtr& p) : conn_wp(p) {}
+    std::weak_ptr<ServerConnection> conn_wp;
+  };
+
+  typedef std::unordered_set<ServerConnectionPtr> Bucket;
+  typedef std::list<Bucket> BucketList;
+  std::map<voyager::EventLoop*, BucketList> buckets_;
+
   voyager::TcpServer server_;
 
   // No copying allowed

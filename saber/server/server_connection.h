@@ -33,12 +33,13 @@ class ServerConnection : public Watcher {
   virtual void Process(const WatchedEvent& event);
 
  private:
+  void ShutDown();
   bool HandleMessage(std::unique_ptr<SaberMessage> message);
 
   bool closed_;
   bool last_finished_;
   const uint64_t session_id_;
-  voyager::TcpConnectionPtr conn_;
+  std::weak_ptr<voyager::TcpConnection> conn_wp_;
   SaberDB* db_;
   std::unique_ptr<Messager> messager_;
   std::queue<std::unique_ptr<SaberMessage> > pending_messages_;
