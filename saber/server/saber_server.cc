@@ -23,9 +23,9 @@ SaberServer::SaberServer(voyager::EventLoop* loop, const ServerOptions& options)
       server_id_(options_.my_server_message.id),
       addr_(options.my_server_message.host,
             options.my_server_message.client_port),
-      monitor_(new ConnectionMonitor(options.max_ip_connections)),
-      server_(loop, addr_, "SaberServer", options.paxos_group_size,
-              options.max_all_connections) {}
+      monitor_(new ConnectionMonitor(options.max_all_connections,
+                                     options.max_ip_connections)),
+      server_(loop, addr_, "SaberServer", options.server_thread_size) {}
 
 SaberServer::~SaberServer() {}
 
@@ -46,8 +46,8 @@ bool SaberServer::Start() {
     group_options.membership.push_back(member);
   }
 
-  db_.reset(new SaberDB(3));
-  db_->set_machine_id(6);
+  db_.reset(new SaberDB(options_.paxos_group_size));
+  db_->set_machine_id(10);
 
   group_options.checkpoint = db_.get();
   group_options.machines.push_back(db_.get());
@@ -57,7 +57,7 @@ bool SaberServer::Start() {
   skywalker_options.my.host = options_.my_server_message.host;
   skywalker_options.my.port = options_.my_server_message.paxos_port;
 
-  for (int i = 0; i < options_.paxos_group_size; ++i) {
+  for (uint32_t i = 0; i < options_.paxos_group_size; ++i) {
     group_options.group_id = i;
     skywalker_options.groups.push_back(group_options);
   }
@@ -78,15 +78,15 @@ bool SaberServer::Start() {
         });
     server_.Start();
 
-    idle_ = options_.max_session_timeout / options_.tick_time;
-    assert(idle_ > 0);
+    idle_ticks_ = options_.max_session_timeout / options_.tick_time;
+    assert(idle_ticks_ > 0);
 
     const std::vector<voyager::EventLoop*>* loops = server_.AllLoops();
     for (auto& loop : *loops) {
       loop->RunEvery(1000 * options_.tick_time,
                      std::bind(&SaberServer::OnTimer, this));
       buckets_.insert(
-          std::make_pair(loop, std::make_pair(BucketList(idle_, Bucket()), 0)));
+          std::make_pair(loop, std::make_pair(BucketList(idle_ticks_), 0)));
     }
   } else {
     LOG_ERROR("Skywalker start failed!");
@@ -131,7 +131,7 @@ void SaberServer::OnMessage(const voyager::TcpConnectionPtr& p,
 void SaberServer::OnTimer() {
   auto it = buckets_.find(voyager::EventLoop::RunLoop());
   assert(it != buckets_.end());
-  if (++(it->second.second) == idle_) {
+  if (++(it->second.second) == idle_ticks_) {
     it->second.second = 0;
   }
   it->second.first.at(it->second.second).clear();

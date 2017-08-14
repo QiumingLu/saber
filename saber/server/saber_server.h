@@ -6,7 +6,6 @@
 #define SABER_SERVER_SABER_SERVER_H_
 
 #include <atomic>
-#include <list>
 #include <memory>
 #include <unordered_set>
 #include <vector>
@@ -47,7 +46,7 @@ class SaberServer {
 
   ServerOptions options_;
 
-  const int server_id_;
+  const uint64_t server_id_;
   voyager::SockAddr addr_;
 
   std::unique_ptr<SaberDB> db_;
@@ -59,7 +58,7 @@ class SaberServer {
   typedef std::vector<Bucket> BucketList;
 
   // 每个循环队列所含的桶的个数。
-  int idle_;
+  int idle_ticks_;
 
   // 分桶策略
   // 每个EventLoop都有一个会话清理的循环队列。

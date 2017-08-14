@@ -23,7 +23,9 @@ class SequencenNumber {
   T max_;
   T num_;
 
-  // intentionally copy
+  // No copying allowed
+  SequencenNumber(const SequencenNumber&);
+  void operator=(const SequencenNumber&);
 };
 
 }  // namespace saber

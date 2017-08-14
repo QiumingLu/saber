@@ -10,7 +10,8 @@ ServerMessage::ServerMessage()
     : id(1), host("127.0.0.1"), client_port(6666), paxos_port(5666) {}
 
 ServerOptions::ServerOptions()
-    : paxos_group_size(3),
+    : server_thread_size(4),
+      paxos_group_size(10),
       tick_time(3000),
       min_session_timeout(2 * tick_time),
       max_session_timeout(20 * tick_time),
@@ -20,6 +21,6 @@ ServerOptions::ServerOptions()
       keep_log_count(1000000),
       log_sync_interval(10),
       keep_checkpoint_count(3),
-      make_checkpoint_interval(100000) {}
+      make_checkpoint_interval(200000) {}
 
 }  // namespace saber

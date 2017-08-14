@@ -5,8 +5,8 @@
 #ifndef SABER_SERVER_CONNECTION_MONITOR_H_
 #define SABER_SERVER_CONNECTION_MONITOR_H_
 
-#include <map>
 #include <string>
+#include <unordered_map>
 
 #include <voyager/core/eventloop.h>
 #include <voyager/core/tcp_connection.h>
@@ -18,17 +18,19 @@ namespace saber {
 
 class ConnectionMonitor {
  public:
-  ConnectionMonitor(int max_ip_connections);
+  ConnectionMonitor(int max_all_connections, int max_ip_connections);
   ~ConnectionMonitor();
 
   bool OnConnection(const voyager::TcpConnectionPtr& p);
   void OnClose(const voyager::TcpConnectionPtr& p);
 
  private:
-  const int max_ip_connections_;
+  const int kMaxAllConnections;
+  const int kMaxIpConnections;
 
   Mutex mutex_;
-  std::map<std::string, int> ip_counter_;
+  int counter_;
+  std::unordered_map<std::string, int> ip_counter_;
 
   // No copying allowed
   ConnectionMonitor(const ConnectionMonitor&);
