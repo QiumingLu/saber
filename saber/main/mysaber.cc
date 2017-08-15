@@ -11,7 +11,7 @@
 namespace saber {
 
 MySaber::MySaber(RunLoop* loop, const ClientOptions& options)
-    : loop_(loop), saber_(options) {}
+    : loop_(loop), saber_(options, &watcher_) {}
 
 MySaber::~MySaber() {}
 

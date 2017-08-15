@@ -3,19 +3,41 @@
 // found in the LICENSE file.
 
 #include "saber/server/saber_server.h"
+#include "saber/net/messager.h"
 #include "saber/server/connection_monitor.h"
 #include "saber/server/saber_db.h"
 #include "saber/server/server_connection.h"
 #include "saber/util/logging.h"
+#include "saber/util/mutexlock.h"
 #include "saber/util/sequence_number.h"
 #include "saber/util/timeops.h"
 
 namespace saber {
 
 struct SaberServer::Context {
-  Context(int idx, const ServerConnectionPtr& p) : index(idx), conn_wp(p) {}
+  Context(int idx, const EntryPtr& e) : index(idx), entry_wp(e) {}
   int index;
-  std::weak_ptr<ServerConnection> conn_wp;
+  std::weak_ptr<Entry> entry_wp;
+};
+
+struct SaberServer::Entry {
+  Entry(SaberServer* owner, const voyager::TcpConnectionPtr& p)
+      : owner_(owner), wp(p) {}
+
+  ~Entry() {
+    if (conn.unique()) {
+      MutexLock(&owner_->mutex_);
+      owner_->conns_.erase(conn->session_id());
+    }
+    voyager::TcpConnectionPtr p = wp.lock();
+    if (p) {
+      p->ShutDown();
+    }
+  }
+
+  SaberServer* owner_;
+  std::weak_ptr<voyager::TcpConnection> wp;
+  std::shared_ptr<saber::ServerConnection> conn;
 };
 
 SaberServer::SaberServer(voyager::EventLoop* loop, const ServerOptions& options)
@@ -97,13 +119,11 @@ bool SaberServer::Start() {
 void SaberServer::OnConnection(const voyager::TcpConnectionPtr& p) {
   bool result = monitor_->OnConnection(p);
   if (result) {
-    // FIXME check session id is unique or not?
-    ServerConnectionPtr conn(
-        new ServerConnection(GetNextSessionId(), p, db_.get(), node_.get()));
+    EntryPtr entry(new Entry(this, p));
     auto it = buckets_.find(p->OwnerEventLoop());
     assert(it != buckets_.end());
-    it->second.first.at(it->second.second).insert(conn);
-    p->SetContext(new Context(it->second.second, conn));
+    it->second.first.at(it->second.second).insert(entry);
+    p->SetContext(new Context(it->second.second, entry));
   }
 }
 
@@ -117,15 +137,18 @@ void SaberServer::OnMessage(const voyager::TcpConnectionPtr& p,
                             voyager::Buffer* buf) {
   Context* context = reinterpret_cast<Context*>(p->Context());
   assert(context);
-  ServerConnectionPtr conn = (context->conn_wp).lock();
-  assert(conn);
-  conn->OnMessage(p, buf);
+  EntryPtr entry = (context->entry_wp).lock();
+  assert(entry);
   auto it = buckets_.find(p->OwnerEventLoop());
   assert(it != buckets_.end());
   if (context->index != it->second.second) {
-    it->second.first.at(it->second.second).insert(conn);
+    it->second.first.at(it->second.second).insert(entry);
     context->index = it->second.second;
   }
+
+  Messager::OnMessage(p, buf, [this, entry](std::unique_ptr<SaberMessage> s) {
+    return HandleMessage(entry, std::move(s));
+  });
 }
 
 void SaberServer::OnTimer() {
@@ -135,6 +158,45 @@ void SaberServer::OnTimer() {
     it->second.second = 0;
   }
   it->second.first.at(it->second.second).clear();
+}
+
+bool SaberServer::HandleMessage(const EntryPtr& entry,
+                                std::unique_ptr<SaberMessage> message) {
+  if (message->type() != MT_CONNECT) {
+    if (entry->conn) {
+      return entry->conn->OnMessage(std::move(message));
+    }
+    return false;
+  }
+  ConnectRequest request;
+  request.ParseFromString(message->data());
+  uint64_t session_id = request.session_id();
+
+  mutex_.Lock();
+  auto it = conns_.find(session_id);
+  if (it != conns_.end()) {
+    entry->conn = it->second.lock();
+    if (entry->conn) {
+      entry->conn->SetTcpConnection(entry->wp.lock());
+    } else {
+      entry->conn.reset(new ServerConnection(session_id, entry->wp.lock(),
+                                             db_.get(), node_.get()));
+      it->second = entry->conn;
+    }
+  } else {
+    entry->conn.reset(new ServerConnection(GetNextSessionId(), entry->wp.lock(),
+                                           db_.get(), node_.get()));
+    conns_.insert(std::make_pair(entry->conn->session_id(), entry->conn));
+  }
+  mutex_.UnLock();
+
+  ConnectResponse response;
+  response.set_session_id(entry->conn->session_id());
+  SaberMessage reply_msg;
+  reply_msg.set_type(MT_CONNECT);
+  reply_msg.set_data(response.SerializeAsString());
+  Messager::SendMessage(entry->wp.lock(), reply_msg);
+  return true;
 }
 
 uint64_t SaberServer::GetNextSessionId() const {

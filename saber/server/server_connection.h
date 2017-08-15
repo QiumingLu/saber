@@ -11,7 +11,6 @@
 #include <voyager/core/eventloop.h>
 #include <voyager/core/tcp_connection.h>
 
-#include "saber/net/messager.h"
 #include "saber/proto/saber.pb.h"
 #include "saber/server/committer.h"
 #include "saber/server/saber_db.h"
@@ -26,23 +25,22 @@ class ServerConnection : public Watcher {
   virtual ~ServerConnection();
 
   uint64_t session_id() const { return session_id_; }
+  void SetTcpConnection(const voyager::TcpConnectionPtr& p);
 
-  void OnMessage(const voyager::TcpConnectionPtr& p, voyager::Buffer* buf);
+  bool OnMessage(std::unique_ptr<SaberMessage> message);
   void OnCommitComplete(std::unique_ptr<SaberMessage> message);
 
   virtual void Process(const WatchedEvent& event);
 
  private:
   void ShutDown();
-  bool HandleMessage(std::unique_ptr<SaberMessage> message);
 
   bool closed_;
   bool last_finished_;
   const uint64_t session_id_;
   std::weak_ptr<voyager::TcpConnection> conn_wp_;
   SaberDB* db_;
-  std::unique_ptr<Messager> messager_;
-  std::queue<std::unique_ptr<SaberMessage> > pending_messages_;
+  std::queue<std::unique_ptr<SaberMessage>> pending_messages_;
   CommitterPtr committer_;
 
   // No copying allowed

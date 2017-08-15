@@ -4,30 +4,26 @@
 
 #include "saber/client/saber_client.h"
 
-#include <utility>
 #include <set>
+#include <utility>
 
-#include "saber/client/server_manager_impl.h"
 #include "saber/client/client_watch_manager.h"
+#include "saber/client/server_manager_impl.h"
 #include "saber/net/messager.h"
 #include "saber/util/logging.h"
 #include "saber/util/timeops.h"
 
 namespace saber {
 
-SaberClient::SaberClient(const ClientOptions& options,
-                         voyager::EventLoop* send_loop,
-                         RunLoop* event_loop)
+SaberClient::SaberClient(const ClientOptions& options, Watcher* watcher,
+                         voyager::EventLoop* send_loop, RunLoop* event_loop)
     : has_started_(false),
       server_manager_(options.server_manager),
       send_loop_(send_loop),
       event_loop_(event_loop),
-      messager_(new Messager()),
+      session_id_(0),
       watch_manager_(new ClientWatchManager(options.auto_watch_reset)) {
-  messager_->SetMessageCallback(
-      [this](std::unique_ptr<SaberMessage> message) {
-    return OnMessage(std::move(message));
-  });
+  watch_manager_->SetDefaultWatcher(watcher);
 }
 
 SaberClient::~SaberClient() {
@@ -54,8 +50,7 @@ void SaberClient::Stop() {
   }
 }
 
-void SaberClient::Create(const std::string& root,
-                         const CreateRequest& request,
+void SaberClient::Create(const std::string& root, const CreateRequest& request,
                          void* context, const CreateCallback& cb) {
   SaberMessage* message = new SaberMessage();
   message->set_type(MT_CREATE);
@@ -71,8 +66,7 @@ void SaberClient::Create(const std::string& root,
   });
 }
 
-void SaberClient::Delete(const std::string& root,
-                         const DeleteRequest& request,
+void SaberClient::Delete(const std::string& root, const DeleteRequest& request,
                          void* context, const DeleteCallback& cb) {
   SaberMessage* message = new SaberMessage();
   message->set_type(MT_DELETE);
@@ -88,9 +82,9 @@ void SaberClient::Delete(const std::string& root,
   });
 }
 
-void SaberClient::Exists(const std::string& root,
-                         const ExistsRequest& request, Watcher* watcher,
-                         void* context, const ExistsCallback& cb) {
+void SaberClient::Exists(const std::string& root, const ExistsRequest& request,
+                         Watcher* watcher, void* context,
+                         const ExistsCallback& cb) {
   SaberMessage* message = new SaberMessage();
   message->set_type(MT_EXISTS);
   message->set_data(request.SerializeAsString());
@@ -123,8 +117,8 @@ void SaberClient::GetData(const std::string& root,
 }
 
 void SaberClient::SetData(const std::string& root,
-                          const SetDataRequest& request,
-                          void* context, const SetDataCallback& cb) {
+                          const SetDataRequest& request, void* context,
+                          const SetDataCallback& cb) {
   SaberMessage* message = new SaberMessage();
   message->set_type(MT_SETDATA);
   message->set_data(request.SerializeAsString());
@@ -139,8 +133,7 @@ void SaberClient::SetData(const std::string& root,
   });
 }
 
-void SaberClient::GetACL(const std::string& root,
-                         const GetACLRequest& request,
+void SaberClient::GetACL(const std::string& root, const GetACLRequest& request,
                          void* context, const GetACLCallback& cb) {
   SaberMessage* message = new SaberMessage();
   message->set_type(MT_GETACL);
@@ -156,8 +149,7 @@ void SaberClient::GetACL(const std::string& root,
   });
 }
 
-void SaberClient::SetACL(const std::string& root,
-                         const SetACLRequest& request,
+void SaberClient::SetACL(const std::string& root, const SetACLRequest& request,
                          void* context, const SetACLCallback& cb) {
   SaberMessage* message = new SaberMessage();
   message->set_type(MT_SETACL);
@@ -192,22 +184,16 @@ void SaberClient::GetChildren(const std::string& root,
 }
 
 void SaberClient::Connect(const voyager::SockAddr& addr) {
-  client_.reset( new voyager::TcpClient(send_loop_, addr));
+  client_.reset(new voyager::TcpClient(send_loop_, addr));
   client_->SetConnectionCallback(
-      [this](const voyager::TcpConnectionPtr& p) {
-    OnConnection(p);
-  });
-  client_->SetConnectFailureCallback([this]() {
-    OnFailue();
-  });
+      [this](const voyager::TcpConnectionPtr& p) { OnConnection(p); });
+  client_->SetConnectFailureCallback([this]() { OnFailue(); });
   client_->SetCloseCallback(
-      [this](const voyager::TcpConnectionPtr& p) {
-    OnClose(p);
-  });
+      [this](const voyager::TcpConnectionPtr& p) { OnClose(p); });
   client_->SetMessageCallback(
       [this](const voyager::TcpConnectionPtr& p, voyager::Buffer* buf) {
-    messager_->OnMessage(p, buf);
-  });
+        OnMessage(p, buf);
+      });
   client_->Connect(false);
 }
 
@@ -219,16 +205,23 @@ void SaberClient::Close() {
 }
 
 void SaberClient::TrySendInLoop(SaberMessage* message) {
-  messager_->SendMessage(*message);
+  Messager::SendMessage(conn_wp_.lock(), *message);
   outgoing_queue_.push_back(std::unique_ptr<SaberMessage>(message));
 }
 
 void SaberClient::OnConnection(const voyager::TcpConnectionPtr& p) {
   LOG_DEBUG("SaberClient::OnConnection - connect successfully!");
-  messager_->SetTcpConnection(p);
+  conn_wp_ = p;
   server_manager_->OnConnection();
+  ConnectRequest request;
+  request.set_session_id(session_id_);
+  request.set_timeout(0);
+  SaberMessage message;
+  message.set_type(MT_CONNECT);
+  message.set_data(request.SerializeAsString());
+  Messager::SendMessage(p, message);
   for (auto& i : outgoing_queue_) {
-    messager_->SendMessage(*i);
+    Messager::SendMessage(p, *i);
   }
 }
 
@@ -243,8 +236,8 @@ void SaberClient::OnClose(const voyager::TcpConnectionPtr& p) {
   LOG_DEBUG("SaberClient::OnClose - connect close!");
   if (has_started_) {
     if (master_.host().empty() == false) {
-      voyager::SockAddr addr(
-          master_.host(), static_cast<uint16_t>(master_.port()));
+      voyager::SockAddr addr(master_.host(),
+                             static_cast<uint16_t>(master_.port()));
       Connect(addr);
       master_.clear_host();
     } else {
@@ -254,27 +247,31 @@ void SaberClient::OnClose(const voyager::TcpConnectionPtr& p) {
   }
 }
 
-bool SaberClient::OnMessage(std::unique_ptr<SaberMessage> message) {
+void SaberClient::OnMessage(const voyager::TcpConnectionPtr& p,
+                            voyager::Buffer* buf) {
+  Messager::OnMessage(
+      p, buf,
+      std::bind(&SaberClient::HandleMessage, this, std::placeholders::_1));
+}
+
+bool SaberClient::HandleMessage(std::unique_ptr<SaberMessage> message) {
   bool res = true;
   MessageType type = message->type();
   switch (type) {
     case MT_NOTIFICATION: {
       WatchedEvent* event = new WatchedEvent();
       event->ParseFromString(message->data());
-      WatcherSetPtr result = watch_manager_->Trigger(*event);
-      // FIXME
-      // Use std::shared_ptr to replace native pointer, which can avoid
-      // memory leaks occur?
-      std::set<Watcher*>* watchers = result.release();
-      event_loop_->RunInLoop([watchers, event]() {
-        if (watchers) {
-          for (auto& it : *watchers) {
-            it->Process(*event);
-          }
-          delete watchers;
-        }
-        delete event;
-      });
+      TriggerWatchers(event);
+      break;
+    }
+    case MT_CONNECT: {
+      ConnectResponse response;
+      response.ParseFromString(message->data());
+      session_id_ = response.session_id();
+      WatchedEvent* event = new WatchedEvent();
+      event->set_state(SS_CONNECTED);
+      event->set_type(ET_NONE);
+      TriggerWatchers(event);
       break;
     }
     case MT_CREATE: {
@@ -321,7 +318,7 @@ bool SaberClient::OnMessage(std::unique_ptr<SaberMessage> message) {
         delete request;
         delete response;
       });
-     break;
+      break;
     }
     case MT_GETDATA: {
       GetDataResponse* response = new GetDataResponse();
@@ -397,8 +394,7 @@ bool SaberClient::OnMessage(std::unique_ptr<SaberMessage> message) {
     case MT_MASTER: {
       res = false;
       master_.ParseFromString(message->data());
-      LOG_DEBUG("The master is %s:%d.",
-                master_.host().c_str(), master_.port());
+      LOG_DEBUG("The master is %s:%d.", master_.host().c_str(), master_.port());
       Close();
       break;
     }
@@ -411,11 +407,29 @@ bool SaberClient::OnMessage(std::unique_ptr<SaberMessage> message) {
       break;
     }
   }
-  if (type != MT_NOTIFICATION && type != MT_MASTER && type != MT_PING) {
+  if (type != MT_NOTIFICATION && type != MT_MASTER && type != MT_PING &&
+      type != MT_CONNECT) {
     assert(!outgoing_queue_.empty());
     outgoing_queue_.pop_front();
   }
   return res;
+}
+
+void SaberClient::TriggerWatchers(WatchedEvent* event) {
+  WatcherSetPtr result = watch_manager_->Trigger(*event);
+  // FIXME
+  // Use std::shared_ptr to replace native pointer, which can avoid
+  // memory leaks occur?
+  std::set<Watcher*>* watchers = result.release();
+  event_loop_->RunInLoop([watchers, event]() {
+    if (watchers) {
+      for (auto& it : *watchers) {
+        it->Process(*event);
+      }
+      delete watchers;
+    }
+    delete event;
+  });
 }
 
 }  // namespace saber

@@ -12,13 +12,9 @@
 
 namespace saber {
 
-Messager::Messager() {}
-
-Messager::~Messager() {}
-
-bool Messager::SendMessage(const SaberMessage& message) {
+bool Messager::SendMessage(const voyager::TcpConnectionPtr& p,
+                           const SaberMessage& message) {
   bool res = false;
-  voyager::TcpConnectionPtr p = conn_wp_.lock();
   if (p) {
     std::string s;
     char buf[kHeaderSize];
@@ -38,9 +34,7 @@ bool Messager::SendMessage(const SaberMessage& message) {
 }
 
 void Messager::OnMessage(const voyager::TcpConnectionPtr& p,
-                         voyager::Buffer* buf) {
-  assert(conn_wp_.lock() == p);
-
+                         voyager::Buffer* buf, const MessageCallback& cb) {
   bool res = true;
   while (res) {
     if (buf->ReadableSize() >= kHeaderSize) {
@@ -49,9 +43,7 @@ void Messager::OnMessage(const voyager::TcpConnectionPtr& p,
       if (buf->ReadableSize() >= static_cast<size_t>(size)) {
         SaberMessage* message = new SaberMessage();
         message->ParseFromArray(buf->Peek() + kHeaderSize, size - kHeaderSize);
-        if (cb_) {
-          res = cb_(std::unique_ptr<SaberMessage>(message));
-        }
+        res = cb(std::unique_ptr<SaberMessage>(message));
         buf->Retrieve(size);
         continue;
       }

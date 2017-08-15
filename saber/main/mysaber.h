@@ -66,8 +66,8 @@ class MySaber {
                           const GetChildrenResponse& response);
 
   RunLoop* loop_;
-  Saber saber_;
   DefaultWatcher watcher_;
+  Saber saber_;
 
   // No copying allowed
   MySaber(const MySaber&);

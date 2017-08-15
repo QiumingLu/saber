@@ -18,8 +18,9 @@
 
 #include <skywalker/node.h>
 
+#include "saber/proto/saber.pb.h"
 #include "saber/server/server_options.h"
-#include "saber/util/concurrent_map.h"
+#include "saber/util/mutex.h"
 #include "saber/util/sequence_number.h"
 
 namespace saber {
@@ -36,13 +37,18 @@ class SaberServer {
   bool Start();
 
  private:
+  struct Context;
+  struct Entry;
+  typedef std::shared_ptr<Entry> EntryPtr;
+  typedef std::unordered_set<EntryPtr> Bucket;
+  typedef std::vector<Bucket> BucketList;
+
   void OnConnection(const voyager::TcpConnectionPtr& p);
   void OnClose(const voyager::TcpConnectionPtr& p);
   void OnMessage(const voyager::TcpConnectionPtr& p, voyager::Buffer* buf);
   void OnTimer();
+  bool HandleMessage(const EntryPtr& p, std::unique_ptr<SaberMessage> message);
   uint64_t GetNextSessionId() const;
-
-  struct Context;
 
   ServerOptions options_;
 
@@ -53,10 +59,6 @@ class SaberServer {
   std::unique_ptr<skywalker::Node> node_;
   std::unique_ptr<ConnectionMonitor> monitor_;
 
-  typedef std::shared_ptr<ServerConnection> ServerConnectionPtr;
-  typedef std::unordered_set<ServerConnectionPtr> Bucket;
-  typedef std::vector<Bucket> BucketList;
-
   // 每个循环队列所含的桶的个数。
   int idle_ticks_;
 
@@ -64,7 +66,10 @@ class SaberServer {
   // 每个EventLoop都有一个会话清理的循环队列。
   // Key表示每个EventLoop。
   // Value的first值表示循环队列，second值表示该队列最后一个元素，即最后一个桶。
-  std::map<voyager::EventLoop*, std::pair<BucketList, int> > buckets_;
+  std::map<voyager::EventLoop*, std::pair<BucketList, int>> buckets_;
+
+  Mutex mutex_;
+  std::unordered_map<uint64_t, std::weak_ptr<ServerConnection>> conns_;
 
   voyager::TcpServer server_;
 

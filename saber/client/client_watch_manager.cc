@@ -57,6 +57,9 @@ WatcherSetPtr ClientWatchManager::Trigger(const WatchedEvent& event) {
   switch (event.type()) {
     case ET_NONE: {
       result.reset(new std::set<Watcher*>());
+      if (watcher_) {
+        result->insert(watcher_);
+      }
       for (auto& i : data_watches_) {
         result->insert(i.second->begin(), i.second->end());
       }

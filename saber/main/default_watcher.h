@@ -15,9 +15,9 @@ class DefaultWatcher : public saber::Watcher {
   DefaultWatcher() {}
 
   virtual void Process(const saber::WatchedEvent& event) {
-    printf("------------------------------------------------------------\n");
-    printf("%s\n", ToString(event).c_str());
-    printf("------------------------------------------------------------\n");
+    printf("\n------------------------------------------------------------\n");
+    printf("%s", ToString(event).c_str());
+    printf("\n------------------------------------------------------------\n");
   }
 };
 

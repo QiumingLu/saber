@@ -69,9 +69,13 @@ message ACL {
 }
 
 message ConnectRequest {
+  uint64 session_id = 1;
+  uint64 timeout = 2;
 }
 
 message ConnectResponse {
+  uint64 session_id = 1;
+  uint64 timeout = 2;
 }
 
 message CreateRequest {
@@ -166,16 +170,17 @@ message Master {
 
 enum MessageType {
   MT_NOTIFICATION = 0;
-  MT_CREATE = 1;
-  MT_DELETE = 2;
-  MT_EXISTS = 3;
-  MT_GETDATA = 4;
-  MT_SETDATA = 5;
-  MT_GETACL = 6;
-  MT_SETACL = 7;
-  MT_GETCHILDREN = 8;
-  MT_MASTER = 9;
-  MT_PING = 10;
+  MT_CONNECT = 1;
+  MT_CREATE = 2;
+  MT_DELETE = 3;
+  MT_EXISTS = 4;
+  MT_GETDATA = 5;
+  MT_SETDATA = 6;
+  MT_GETACL = 7;
+  MT_SETACL = 8;
+  MT_GETCHILDREN = 9;
+  MT_MASTER = 10;
+  MT_PING = 11;
 }
 
 message SaberMessage {

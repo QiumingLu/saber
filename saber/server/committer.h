@@ -23,6 +23,8 @@ class Committer : public std::enable_shared_from_this<Committer> {
   Committer(ServerConnection* conn, voyager::EventLoop* loop, SaberDB* db,
             skywalker::Node* node);
 
+  void SetEventLoop(voyager::EventLoop* loop) { loop_ = loop; }
+
   void Commit(SaberMessage* message);
 
  private:

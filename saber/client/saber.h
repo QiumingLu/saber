@@ -27,7 +27,7 @@ class ServerManager;
 
 class Saber {
  public:
-  explicit Saber(const ClientOptions& options);
+  explicit Saber(const ClientOptions& options, Watcher* watcher = nullptr);
   ~Saber();
 
   bool Start();
@@ -64,6 +64,7 @@ class Saber {
   uint32_t Shard(const std::string& root);
 
   ClientOptions options_;
+  Watcher* watcher_;
   std::atomic<bool> has_connected_;
   std::unique_ptr<ServerManager> server_manager_;
   std::vector<std::unique_ptr<SaberClient> > clients_;

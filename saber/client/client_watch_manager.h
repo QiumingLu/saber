@@ -17,6 +17,8 @@ class ClientWatchManager {
   explicit ClientWatchManager(bool auto_watch_reset = false);
   ~ClientWatchManager();
 
+  void SetDefaultWatcher(Watcher* watcher) { watcher_ = watcher; }
+
   void AddDataWatch(const std::string& path, Watcher* watcher);
   void AddExistWatch(const std::string& path, Watcher* watcher);
   void AddChildWatch(const std::string& path, Watcher* watcher);
@@ -25,6 +27,7 @@ class ClientWatchManager {
 
  private:
   bool auto_watch_reset_;
+  Watcher* watcher_;
   std::unordered_map<std::string, WatcherSetPtr> data_watches_;
   std::unordered_map<std::string, WatcherSetPtr> exist_watches_;
   std::unordered_map<std::string, WatcherSetPtr> child_watches_;

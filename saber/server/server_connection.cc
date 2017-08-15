@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include "saber/net/messager.h"
 #include "saber/util/logging.h"
 
 namespace saber {
@@ -18,25 +19,16 @@ ServerConnection::ServerConnection(uint64_t session_id,
       session_id_(session_id),
       conn_wp_(p),
       db_(db),
-      messager_(new Messager()),
-      committer_(new Committer(this, p->OwnerEventLoop(), db, node)) {
-  messager_->SetTcpConnection(p);
-  messager_->SetMessageCallback([this](std::unique_ptr<SaberMessage> message) {
-    return HandleMessage(std::move(message));
-  });
+      committer_(new Committer(this, p->OwnerEventLoop(), db, node)) {}
+
+ServerConnection::~ServerConnection() { db_->RemoveWatcher(this); }
+
+void ServerConnection::SetTcpConnection(const voyager::TcpConnectionPtr& p) {
+  conn_wp_ = p;
+  committer_->SetEventLoop(p->OwnerEventLoop());
 }
 
-ServerConnection::~ServerConnection() {
-  db_->RemoveWatcher(this);
-  ShutDown();
-}
-
-void ServerConnection::OnMessage(const voyager::TcpConnectionPtr& p,
-                                 voyager::Buffer* buf) {
-  messager_->OnMessage(p, buf);
-}
-
-bool ServerConnection::HandleMessage(std::unique_ptr<SaberMessage> message) {
+bool ServerConnection::OnMessage(std::unique_ptr<SaberMessage> message) {
   if (closed_) {
     return false;
   }
@@ -52,7 +44,7 @@ bool ServerConnection::HandleMessage(std::unique_ptr<SaberMessage> message) {
 }
 
 void ServerConnection::OnCommitComplete(std::unique_ptr<SaberMessage> message) {
-  messager_->SendMessage(*message);
+  Messager::SendMessage(conn_wp_.lock(), *message);
   assert(!pending_messages_.empty());
   pending_messages_.pop();
   if (message->type() != MT_MASTER) {
@@ -71,7 +63,10 @@ void ServerConnection::Process(const WatchedEvent& event) {
   SaberMessage message;
   message.set_type(MT_NOTIFICATION);
   message.set_data(event.SerializeAsString());
-  messager_->SendMessage(message);
+  voyager::TcpConnectionPtr p = conn_wp_.lock();
+  if (p) {
+    Messager::SendMessage(p, message);
+  }
 }
 
 void ServerConnection::ShutDown() {

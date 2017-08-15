@@ -10,8 +10,9 @@
 
 namespace saber {
 
-Saber::Saber(const ClientOptions& options)
+Saber::Saber(const ClientOptions& options, Watcher* watcher)
     : options_(options),
+      watcher_(watcher),
       has_connected_(false),
       server_manager_(options.server_manager),
       send_loop_(nullptr),
@@ -29,8 +30,8 @@ bool Saber::Start() {
   send_loop_ = send_thread_.Loop();
   event_loop_ = event_thread_.Loop();
   for (uint32_t i = 0; i < options_.group_size; ++i) {
-    SaberClient* one = new SaberClient(options_, send_loop_, event_loop_);
-    clients_.push_back(std::unique_ptr<SaberClient>(one));
+    clients_.push_back(std::unique_ptr<SaberClient>(
+        new SaberClient(options_, watcher_, send_loop_, event_loop_)));
   }
   return true;
 }
