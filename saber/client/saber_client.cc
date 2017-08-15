@@ -230,6 +230,7 @@ void SaberClient::OnFailue() {
   if (has_started_) {
     Connect(server_manager_->GetNext());
   }
+  master_.clear_host();
 }
 
 void SaberClient::OnClose(const voyager::TcpConnectionPtr& p) {
@@ -239,7 +240,6 @@ void SaberClient::OnClose(const voyager::TcpConnectionPtr& p) {
       voyager::SockAddr addr(master_.host(),
                              static_cast<uint16_t>(master_.port()));
       Connect(addr);
-      master_.clear_host();
     } else {
       SleepForMicroseconds(1000);
       Connect(server_manager_->GetNext());
@@ -249,9 +249,8 @@ void SaberClient::OnClose(const voyager::TcpConnectionPtr& p) {
 
 void SaberClient::OnMessage(const voyager::TcpConnectionPtr& p,
                             voyager::Buffer* buf) {
-  Messager::OnMessage(
-      p, buf,
-      std::bind(&SaberClient::HandleMessage, this, std::placeholders::_1));
+  Messager::OnMessage(p, buf, std::bind(&SaberClient::HandleMessage, this,
+                                        std::placeholders::_1));
 }
 
 bool SaberClient::HandleMessage(std::unique_ptr<SaberMessage> message) {
