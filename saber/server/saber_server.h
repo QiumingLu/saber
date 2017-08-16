@@ -45,8 +45,10 @@ class SaberServer {
 
   void OnConnection(const voyager::TcpConnectionPtr& p);
   void OnClose(const voyager::TcpConnectionPtr& p);
+  void OnWriteComplete(const voyager::TcpConnectionPtr& p);
   void OnMessage(const voyager::TcpConnectionPtr& p, voyager::Buffer* buf);
   void OnTimer();
+  void UpdateBuckets(const voyager::TcpConnectionPtr& p, const EntryPtr& entry);
   bool HandleMessage(const EntryPtr& p, std::unique_ptr<SaberMessage> message);
   uint64_t GetNextSessionId() const;
 

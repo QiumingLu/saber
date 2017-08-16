@@ -78,6 +78,7 @@ class SaberClient {
   RunLoop* event_loop_;
 
   uint64_t session_id_;
+  uint64_t timeout_;
   std::weak_ptr<voyager::TcpConnection> conn_wp_;
 
   std::unique_ptr<voyager::TcpClient> client_;

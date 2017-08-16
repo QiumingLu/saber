@@ -121,6 +121,24 @@ bool SaberDB::Execute(uint32_t group_id, uint64_t instance_id,
       }
       break;
     }
+    case MT_CREATE_SESSION: {
+      CreateSessionRequest request;
+      CreateSessionResponse response;
+      request.ParseFromString(message.data());
+      response.set_code(RC_OK);
+      response.set_session_id(request.session_id());
+      response.set_timeout(request.timeout());
+      if (reply_message) {
+        reply_message->set_data(response.SerializeAsString());
+      }
+      break;
+    }
+    case MT_CLOSE_SESSION: {
+      CloseSessionRequest request;
+      request.ParseFromString(message.data());
+      KillSession(request.session_id(), txn);
+      break;
+    }
     default: {
       assert(false);
       LOG_ERROR("Invalid message type.");

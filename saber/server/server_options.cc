@@ -10,8 +10,8 @@ ServerMessage::ServerMessage()
     : id(1), host("127.0.0.1"), client_port(6666), paxos_port(5666) {}
 
 ServerOptions::ServerOptions()
-    : server_thread_size(4),
-      paxos_group_size(10),
+    : server_thread_size(0),
+      paxos_group_size(1),
       tick_time(3000),
       min_session_timeout(2 * tick_time),
       max_session_timeout(20 * tick_time),

@@ -15,17 +15,22 @@
 namespace saber {
 
 struct SaberServer::Context {
-  Context(int idx, const EntryPtr& e) : index(idx), entry_wp(e) {}
-  int index;
+  explicit Context(const EntryPtr& e) : entry_wp(e) {}
   std::weak_ptr<Entry> entry_wp;
 };
 
 struct SaberServer::Entry {
   Entry(SaberServer* owner, const voyager::TcpConnectionPtr& p)
-      : owner_(owner), wp(p) {}
+      : owner_(owner), index(-1), wp(p) {}
 
   ~Entry() {
     if (conn.unique()) {
+      CloseSessionRequest request;
+      request.set_session_id(conn->session_id());
+      std::unique_ptr<SaberMessage> message(new SaberMessage());
+      message->set_type(MT_CLOSE_SESSION);
+      message->set_data(request.SerializeAsString());
+      conn->OnMessage(std::move(message));
       MutexLock(&owner_->mutex_);
       owner_->conns_.erase(conn->session_id());
     }
@@ -36,6 +41,7 @@ struct SaberServer::Entry {
   }
 
   SaberServer* owner_;
+  int index;
   std::weak_ptr<voyager::TcpConnection> wp;
   std::shared_ptr<saber::ServerConnection> conn;
 };
@@ -94,6 +100,8 @@ bool SaberServer::Start() {
         [this](const voyager::TcpConnectionPtr& p) { OnConnection(p); });
     server_.SetCloseCallback(
         [this](const voyager::TcpConnectionPtr& p) { OnClose(p); });
+    server_.SetWriteCompleteCallback(
+        [this](const voyager::TcpConnectionPtr& p) { OnWriteComplete(p); });
     server_.SetMessageCallback(
         [this](const voyager::TcpConnectionPtr& p, voyager::Buffer* buf) {
           OnMessage(p, buf);
@@ -120,10 +128,8 @@ void SaberServer::OnConnection(const voyager::TcpConnectionPtr& p) {
   bool result = monitor_->OnConnection(p);
   if (result) {
     EntryPtr entry(new Entry(this, p));
-    auto it = buckets_.find(p->OwnerEventLoop());
-    assert(it != buckets_.end());
-    it->second.first.at(it->second.second).insert(entry);
-    p->SetContext(new Context(it->second.second, entry));
+    UpdateBuckets(p, entry);
+    p->SetContext(new Context(entry));
   }
 }
 
@@ -133,22 +139,24 @@ void SaberServer::OnClose(const voyager::TcpConnectionPtr& p) {
   delete context;
 }
 
+void SaberServer::OnWriteComplete(const voyager::TcpConnectionPtr& p) {
+  Context* context = reinterpret_cast<Context*>(p->Context());
+  assert(context);
+  EntryPtr entry = (context->entry_wp).lock();
+  assert(entry);
+  UpdateBuckets(p, entry);
+}
+
 void SaberServer::OnMessage(const voyager::TcpConnectionPtr& p,
                             voyager::Buffer* buf) {
   Context* context = reinterpret_cast<Context*>(p->Context());
   assert(context);
   EntryPtr entry = (context->entry_wp).lock();
   assert(entry);
-  auto it = buckets_.find(p->OwnerEventLoop());
-  assert(it != buckets_.end());
-  if (context->index != it->second.second) {
-    it->second.first.at(it->second.second).insert(entry);
-    context->index = it->second.second;
-  }
-
   Messager::OnMessage(p, buf, [this, entry](std::unique_ptr<SaberMessage> s) {
     return HandleMessage(entry, std::move(s));
   });
+  UpdateBuckets(p, entry);
 }
 
 void SaberServer::OnTimer() {
@@ -160,15 +168,26 @@ void SaberServer::OnTimer() {
   it->second.first.at(it->second.second).clear();
 }
 
+void SaberServer::UpdateBuckets(const voyager::TcpConnectionPtr& p,
+                                const EntryPtr& entry) {
+  auto it = buckets_.find(p->OwnerEventLoop());
+  assert(it != buckets_.end());
+  if (entry->index != it->second.second) {
+    it->second.first.at(it->second.second).insert(entry);
+    entry->index = it->second.second;
+  }
+}
+
 bool SaberServer::HandleMessage(const EntryPtr& entry,
                                 std::unique_ptr<SaberMessage> message) {
-  if (message->type() != MT_CONNECT) {
+  if (message->type() != MT_CREATE_SESSION) {
     if (entry->conn) {
       return entry->conn->OnMessage(std::move(message));
     }
     return false;
   }
-  ConnectRequest request;
+
+  CreateSessionRequest request;
   request.ParseFromString(message->data());
   uint64_t session_id = request.session_id();
 
@@ -190,12 +209,10 @@ bool SaberServer::HandleMessage(const EntryPtr& entry,
   }
   mutex_.UnLock();
 
-  ConnectResponse response;
-  response.set_session_id(entry->conn->session_id());
-  SaberMessage reply_msg;
-  reply_msg.set_type(MT_CONNECT);
-  reply_msg.set_data(response.SerializeAsString());
-  Messager::SendMessage(entry->wp.lock(), reply_msg);
+  request.set_session_id(entry->conn->session_id());
+  request.set_timeout(options_.max_session_timeout);
+  message->set_data(request.SerializeAsString());
+  entry->conn->OnMessage(std::move(message));
   return true;
 }
 

@@ -213,11 +213,10 @@ void SaberClient::OnConnection(const voyager::TcpConnectionPtr& p) {
   LOG_DEBUG("SaberClient::OnConnection - connect successfully!");
   conn_wp_ = p;
   server_manager_->OnConnection();
-  ConnectRequest request;
+  CreateSessionRequest request;
   request.set_session_id(session_id_);
-  request.set_timeout(0);
   SaberMessage message;
-  message.set_type(MT_CONNECT);
+  message.set_type(MT_CREATE_SESSION);
   message.set_data(request.SerializeAsString());
   Messager::SendMessage(p, message);
   for (auto& i : outgoing_queue_) {
@@ -249,8 +248,9 @@ void SaberClient::OnClose(const voyager::TcpConnectionPtr& p) {
 
 void SaberClient::OnMessage(const voyager::TcpConnectionPtr& p,
                             voyager::Buffer* buf) {
-  Messager::OnMessage(p, buf, std::bind(&SaberClient::HandleMessage, this,
-                                        std::placeholders::_1));
+  Messager::OnMessage(
+      p, buf,
+      std::bind(&SaberClient::HandleMessage, this, std::placeholders::_1));
 }
 
 bool SaberClient::HandleMessage(std::unique_ptr<SaberMessage> message) {
@@ -263,10 +263,11 @@ bool SaberClient::HandleMessage(std::unique_ptr<SaberMessage> message) {
       TriggerWatchers(event);
       break;
     }
-    case MT_CONNECT: {
-      ConnectResponse response;
+    case MT_CREATE_SESSION: {
+      CreateSessionResponse response;
       response.ParseFromString(message->data());
       session_id_ = response.session_id();
+      timeout_ = response.timeout();
       WatchedEvent* event = new WatchedEvent();
       event->set_state(SS_CONNECTED);
       event->set_type(ET_NONE);
@@ -407,7 +408,7 @@ bool SaberClient::HandleMessage(std::unique_ptr<SaberMessage> message) {
     }
   }
   if (type != MT_NOTIFICATION && type != MT_MASTER && type != MT_PING &&
-      type != MT_CONNECT) {
+      type != MT_CREATE_SESSION) {
     assert(!outgoing_queue_.empty());
     outgoing_queue_.pop_front();
   }

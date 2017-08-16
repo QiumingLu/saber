@@ -80,7 +80,9 @@ void Committer::Commit(uint32_t group_id, SaberMessage* message) {
     case MT_CREATE:
     case MT_DELETE:
     case MT_SETDATA:  // FIXME check version here may be more effective?
-    case MT_SETACL: {
+    case MT_SETACL:
+    case MT_CREATE_SESSION:
+    case MT_CLOSE_SESSION: {
       wait = Propose(group_id, message, reply_message);
       break;
     }
@@ -156,6 +158,18 @@ void Committer::SetFailedState(SaberMessage* reply_message) {
     }
     case MT_SETACL: {
       SetACLResponse response;
+      response.set_code(RC_FAILED);
+      reply_message->set_data(response.SerializeAsString());
+      break;
+    }
+    case MT_CREATE_SESSION: {
+      CreateSessionResponse response;
+      response.set_code(RC_FAILED);
+      reply_message->set_data(response.SerializeAsString());
+      break;
+    }
+    case MT_CLOSE_SESSION: {
+      CloseSessionResponse response;
       response.set_code(RC_FAILED);
       reply_message->set_data(response.SerializeAsString());
       break;

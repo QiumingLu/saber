@@ -32,8 +32,7 @@ bool ServerConnection::OnMessage(std::unique_ptr<SaberMessage> message) {
   if (closed_) {
     return false;
   }
-  if (message->type() == MT_PING) {
-  } else {
+  if (message->type() != MT_PING) {
     pending_messages_.push(std::move(message));
     if (last_finished_) {
       last_finished_ = false;
@@ -46,8 +45,10 @@ bool ServerConnection::OnMessage(std::unique_ptr<SaberMessage> message) {
 void ServerConnection::OnCommitComplete(std::unique_ptr<SaberMessage> message) {
   Messager::SendMessage(conn_wp_.lock(), *message);
   assert(!pending_messages_.empty());
+  std::unique_ptr<SaberMessage> front = std::move(pending_messages_.front());
   pending_messages_.pop();
-  if (message->type() != MT_MASTER) {
+  if (front->type() == MT_CLOSE_SESSION) {
+  } else if (message->type() != MT_MASTER) {
     if (!pending_messages_.empty() && !closed_) {
       assert(!last_finished_);
       committer_->Commit(pending_messages_.front().get());
