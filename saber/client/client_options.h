@@ -12,7 +12,7 @@ namespace saber {
 
 struct ClientOptions {
   bool auto_watch_reset;
-  uint32_t group_size;
+  std::string root;
   std::string servers;
   ServerManager* server_manager;
 

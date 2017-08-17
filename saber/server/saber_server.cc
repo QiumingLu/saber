@@ -24,13 +24,8 @@ struct SaberServer::Entry {
       : owner_(owner), index(-1), wp(p) {}
 
   ~Entry() {
-    if (conn.unique()) {
-      CloseSessionRequest request;
-      request.set_session_id(conn->session_id());
-      std::unique_ptr<SaberMessage> message(new SaberMessage());
-      message->set_type(MT_CLOSE_SESSION);
-      message->set_data(request.SerializeAsString());
-      conn->OnMessage(std::move(message));
+    if (conn) {
+      assert(conn.unique());
       MutexLock(&owner_->mutex_);
       owner_->conns_.erase(conn->session_id());
     }
@@ -180,14 +175,14 @@ void SaberServer::UpdateBuckets(const voyager::TcpConnectionPtr& p,
 
 bool SaberServer::HandleMessage(const EntryPtr& entry,
                                 std::unique_ptr<SaberMessage> message) {
-  if (message->type() != MT_CREATE_SESSION) {
+  if (message->type() != MT_CONNECT) {
     if (entry->conn) {
       return entry->conn->OnMessage(std::move(message));
     }
     return false;
   }
 
-  CreateSessionRequest request;
+  ConnectRequest request;
   request.ParseFromString(message->data());
   uint64_t session_id = request.session_id();
 

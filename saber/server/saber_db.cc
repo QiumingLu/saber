@@ -61,18 +61,14 @@ void SaberDB::RemoveWatcher(Watcher* watcher) {
   }
 }
 
-void SaberDB::KillSession(uint64_t session_id, const Transaction& txn) {
-  for (auto& tree : trees_) {
-    tree->KillSession(session_id, txn);
-  }
-}
-
 bool SaberDB::Execute(uint32_t group_id, uint64_t instance_id,
                       const std::string& value, void* context) {
   SaberMessage message;
   message.ParseFromString(value);
+  char* end;
+  uint64_t timestamp = strtoull(message.extra_data().c_str(), &end, 10);
   Transaction txn;
-  txn.ParseFromString(message.extra_data());
+  txn.set_time(timestamp);
   txn.set_group_id(group_id);
   txn.set_instance_id(instance_id);
   SaberMessage* reply_message = nullptr;
@@ -119,24 +115,6 @@ bool SaberDB::Execute(uint32_t group_id, uint64_t instance_id,
       if (reply_message) {
         reply_message->set_data(response.SerializeAsString());
       }
-      break;
-    }
-    case MT_CREATE_SESSION: {
-      CreateSessionRequest request;
-      CreateSessionResponse response;
-      request.ParseFromString(message.data());
-      response.set_code(RC_OK);
-      response.set_session_id(request.session_id());
-      response.set_timeout(request.timeout());
-      if (reply_message) {
-        reply_message->set_data(response.SerializeAsString());
-      }
-      break;
-    }
-    case MT_CLOSE_SESSION: {
-      CloseSessionRequest request;
-      request.ParseFromString(message.data());
-      KillSession(request.session_id(), txn);
       break;
     }
     default: {

@@ -19,7 +19,6 @@
 #include "saber/client/request.h"
 #include "saber/client/server_manager.h"
 #include "saber/service/watcher.h"
-#include "saber/util/runloop_thread.h"
 
 namespace saber {
 
@@ -28,37 +27,36 @@ class ClientWatchManager;
 
 class SaberClient {
  public:
-  SaberClient(const ClientOptions& options, Watcher* watcher,
-              voyager::EventLoop* send_loop, RunLoop* event_loop);
+  SaberClient(voyager::EventLoop* loop, const ClientOptions& options,
+              Watcher* watcher);
   ~SaberClient();
 
   void Start();
   void Stop();
 
-  void Create(const std::string& root, const CreateRequest& request,
-              void* context, const CreateCallback& cb);
+  void Create(const CreateRequest& request, void* context,
+              const CreateCallback& cb);
 
-  void Delete(const std::string& root, const DeleteRequest& request,
-              void* context, const DeleteCallback& cb);
+  void Delete(const DeleteRequest& request, void* context,
+              const DeleteCallback& cb);
 
-  void Exists(const std::string& root, const ExistsRequest& request,
-              Watcher* watcher, void* context, const ExistsCallback& cb);
+  void Exists(const ExistsRequest& request, Watcher* watcher, void* context,
+              const ExistsCallback& cb);
 
-  void GetData(const std::string& root, const GetDataRequest& request,
-               Watcher* watcher, void* context, const GetDataCallback& cb);
+  void GetData(const GetDataRequest& request, Watcher* watcher, void* context,
+               const GetDataCallback& cb);
 
-  void SetData(const std::string& root, const SetDataRequest& request,
-               void* context, const SetDataCallback& cb);
+  void SetData(const SetDataRequest& request, void* context,
+               const SetDataCallback& cb);
 
-  void GetACL(const std::string& root, const GetACLRequest& request,
-              void* context, const GetACLCallback& cb);
+  void GetACL(const GetACLRequest& request, void* context,
+              const GetACLCallback& cb);
 
-  void SetACL(const std::string& root, const SetACLRequest& request,
-              void* context, const SetACLCallback& cb);
+  void SetACL(const SetACLRequest& request, void* context,
+              const SetACLCallback& cb);
 
-  void GetChildren(const std::string& root, const GetChildrenRequest& request,
-                   Watcher* watcher, void* context,
-                   const GetChildrenCallback& cb);
+  void GetChildren(const GetChildrenRequest& request, Watcher* watcher,
+                   void* context, const GetChildrenCallback& cb);
 
  private:
   void Connect(const voyager::SockAddr& addr);
@@ -72,10 +70,10 @@ class SaberClient {
   void TriggerWatchers(WatchedEvent* event);
 
   std::atomic<bool> has_started_;
+  const std::string root_;
 
   ServerManager* server_manager_;
-  voyager::EventLoop* send_loop_;
-  RunLoop* event_loop_;
+  voyager::EventLoop* loop_;
 
   uint64_t session_id_;
   uint64_t timeout_;

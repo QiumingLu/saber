@@ -27,8 +27,6 @@ message WatchedEvent {
 enum NodeType {
   NT_PERSISTENT = 0;
   NT_PERSISTENT_SEQUENTIAL = 1;
-  NT_EPHEMERAL = 2;
-  NT_EPHEMERAL_SEQUENTIAL = 3;
 }
 
 enum ResponseCode {
@@ -52,10 +50,9 @@ message Stat {
   int32 version = 6;
   int32 children_version = 7;
   int32 acl_version = 8;
-  uint64 ephemeral_id = 9;
-  uint32 data_len = 10;
-  uint32 children_num = 11;
-  uint64 children_id = 12;
+  uint32 data_len = 9;
+  uint32 children_num = 10;
+  uint64 children_id = 11;
 }
 
 message Id {
@@ -68,23 +65,15 @@ message ACL {
   Id id = 2;
 }
 
-message CreateSessionRequest {
+message ConnectRequest {
   uint64 session_id = 1;
   uint64 timeout = 2;
 }
 
-message CreateSessionResponse {
+message ConnectResponse {
   ResponseCode code = 1;
   uint64 session_id = 2;
   uint64 timeout = 3;
-}
-
-message CloseSessionRequest {
-  uint64 session_id = 1;
-}
-
-message CloseSessionResponse {
-  ResponseCode code = 1;
 }
 
 message CreateRequest {
@@ -189,8 +178,7 @@ enum MessageType {
   MT_GETCHILDREN = 8;
   MT_MASTER = 9;
   MT_PING = 10;
-  MT_CREATE_SESSION = 11;
-  MT_CLOSE_SESSION = 12;
+  MT_CONNECT= 11;
 }
 
 message SaberMessage {

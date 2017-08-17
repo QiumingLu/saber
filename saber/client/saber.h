@@ -17,8 +17,6 @@
 #include "saber/client/client_options.h"
 #include "saber/proto/saber.pb.h"
 #include "saber/service/watcher.h"
-#include "saber/util/runloop.h"
-#include "saber/util/runloop_thread.h"
 
 namespace saber {
 
@@ -60,20 +58,13 @@ class Saber {
                    void* context, const GetChildrenCallback& cb);
 
  private:
-  std::string GetRoot(const std::string& path);
-  uint32_t Shard(const std::string& root);
-
   ClientOptions options_;
   Watcher* watcher_;
-  std::atomic<bool> has_connected_;
   std::unique_ptr<ServerManager> server_manager_;
-  std::vector<std::unique_ptr<SaberClient> > clients_;
+  std::unique_ptr<SaberClient> client_;
 
-  voyager::EventLoop* send_loop_;
-  RunLoop* event_loop_;
-
-  voyager::BGEventLoop send_thread_;
-  RunLoopThread event_thread_;
+  voyager::EventLoop* loop_;
+  voyager::BGEventLoop thread_;
 
   // No copying allowed
   Saber(const Saber&);

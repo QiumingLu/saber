@@ -15,7 +15,7 @@ int main(int argc, char** argv) {
 
   saber::SetLogHandler(nullptr);
   saber::ClientOptions options;
-  options.group_size = 1;
+  options.root = "/ls";
   options.servers = argv[1];
   saber::RunLoop loop;
   saber::MySaber mysaber(&loop, options);

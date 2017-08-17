@@ -139,9 +139,6 @@ std::string ToString(const Stat& stat) {
   s += "acl_version: ";
   s += std::to_string(stat.acl_version());
   s += "\n";
-  s += "ephemeral_id: ";
-  s += std::to_string(stat.ephemeral_id());
-  s += "\n";
   s += "data_len: ";
   s += std::to_string(stat.data_len());
   s += "\n";

@@ -5,8 +5,8 @@
 #ifndef SABER_SERVER_SERVER_CONNECTION_H_
 #define SABER_SERVER_SERVER_CONNECTION_H_
 
+#include <deque>
 #include <memory>
-#include <queue>
 
 #include <voyager/core/eventloop.h>
 #include <voyager/core/tcp_connection.h>
@@ -40,7 +40,7 @@ class ServerConnection : public Watcher {
   const uint64_t session_id_;
   std::weak_ptr<voyager::TcpConnection> conn_wp_;
   SaberDB* db_;
-  std::queue<std::unique_ptr<SaberMessage>> pending_messages_;
+  std::deque<std::unique_ptr<SaberMessage>> pending_messages_;
   CommitterPtr committer_;
 
   // No copying allowed

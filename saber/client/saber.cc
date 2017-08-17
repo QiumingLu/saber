@@ -13,10 +13,8 @@ namespace saber {
 Saber::Saber(const ClientOptions& options, Watcher* watcher)
     : options_(options),
       watcher_(watcher),
-      has_connected_(false),
       server_manager_(options.server_manager),
-      send_loop_(nullptr),
-      event_loop_(nullptr) {}
+      loop_(nullptr) {}
 
 Saber::~Saber() {}
 
@@ -27,104 +25,53 @@ bool Saber::Start() {
   }
   server_manager_->UpdateServers(options_.servers);
 
-  send_loop_ = send_thread_.Loop();
-  event_loop_ = event_thread_.Loop();
-  for (uint32_t i = 0; i < options_.group_size; ++i) {
-    clients_.push_back(std::unique_ptr<SaberClient>(
-        new SaberClient(options_, watcher_, send_loop_, event_loop_)));
-  }
+  loop_ = thread_.Loop();
+  client_.reset(new SaberClient(loop_, options_, watcher_));
   return true;
 }
 
-void Saber::Connect() {
-  bool expected = false;
-  if (has_connected_.compare_exchange_strong(expected, true)) {
-    for (auto& i : clients_) {
-      i->Start();
-    }
-  } else {
-    LOG_WARN("Saber has connected, don't call it again!");
-  }
-}
+void Saber::Connect() { client_->Start(); }
 
-void Saber::Close() {
-  bool expected = true;
-  if (has_connected_.compare_exchange_strong(expected, false)) {
-    for (auto& i : clients_) {
-      i->Stop();
-    }
-  } else {
-    LOG_WARN("Saber has closed, don't call it again!");
-  }
-}
+void Saber::Close() { client_->Stop(); }
 
 void Saber::Create(const CreateRequest& request, void* context,
                    const CreateCallback& cb) {
-  std::string root = GetRoot(request.path());
-  clients_[Shard(root)]->Create(root, request, context, cb);
+  client_->Create(request, context, cb);
 }
 
 void Saber::Delete(const DeleteRequest& request, void* context,
                    const DeleteCallback& cb) {
-  std::string root = GetRoot(request.path());
-  clients_[Shard(root)]->Delete(root, request, context, cb);
+  client_->Delete(request, context, cb);
 }
 
 void Saber::Exists(const ExistsRequest& request, Watcher* watcher,
                    void* context, const ExistsCallback& cb) {
-  std::string root = GetRoot(request.path());
-  clients_[Shard(root)]->Exists(root, request, watcher, context, cb);
+  client_->Exists(request, watcher, context, cb);
 }
 
 void Saber::GetData(const GetDataRequest& request, Watcher* watcher,
                     void* context, const GetDataCallback& cb) {
-  std::string root = GetRoot(request.path());
-  clients_[Shard(root)]->GetData(root, request, watcher, context, cb);
+  client_->GetData(request, watcher, context, cb);
 }
 
 void Saber::SetData(const SetDataRequest& request, void* context,
                     const SetDataCallback& cb) {
-  std::string root = GetRoot(request.path());
-  clients_[Shard(root)]->SetData(root, request, context, cb);
+  client_->SetData(request, context, cb);
 }
 
 void Saber::GetACL(const GetACLRequest& request, void* context,
                    const GetACLCallback& cb) {
-  std::string root = GetRoot(request.path());
-  clients_[Shard(root)]->GetACL(root, request, context, cb);
+  client_->GetACL(request, context, cb);
 }
 
 void Saber::SetACL(const SetACLRequest& request, void* context,
                    const SetACLCallback& cb) {
-  std::string root = GetRoot(request.path());
-  clients_[Shard(root)]->SetACL(root, request, context, cb);
+  client_->SetACL(request, context, cb);
 }
 
 void Saber::GetChildren(const GetChildrenRequest& request, Watcher* watcher,
                         void* context, const GetChildrenCallback& cb) {
-  std::string root = GetRoot(request.path());
-  clients_[Shard(root)]->GetChildren(root, request, watcher, context, cb);
-}
-
-std::string Saber::GetRoot(const std::string& path) {
-  size_t i = 0;
-  for (i = 1; i < path.size(); ++i) {
-    if (path[i] == '/') {
-      break;
-    }
-  }
-  assert(i > 1);
-  return path.substr(0, i);
-}
-
-uint32_t Saber::Shard(const std::string& root) {
-  if (options_.group_size == 1) {
-    return 0;
-  } else {
-    uint32_t h;
-    MurmurHash3_x86_32(root.data(), static_cast<int>(root.size()), 0, &h);
-    return (h % options_.group_size);
-  }
+  client_->GetChildren(request, watcher, context, cb);
 }
 
 }  // namespace saber

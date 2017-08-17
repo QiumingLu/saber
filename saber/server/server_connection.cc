@@ -24,6 +24,7 @@ ServerConnection::ServerConnection(uint64_t session_id,
 ServerConnection::~ServerConnection() { db_->RemoveWatcher(this); }
 
 void ServerConnection::SetTcpConnection(const voyager::TcpConnectionPtr& p) {
+  pending_messages_.clear();
   conn_wp_ = p;
   committer_->SetEventLoop(p->OwnerEventLoop());
 }
@@ -33,7 +34,7 @@ bool ServerConnection::OnMessage(std::unique_ptr<SaberMessage> message) {
     return false;
   }
   if (message->type() != MT_PING) {
-    pending_messages_.push(std::move(message));
+    pending_messages_.push_back(std::move(message));
     if (last_finished_) {
       last_finished_ = false;
       committer_->Commit(pending_messages_.front().get());
@@ -45,10 +46,8 @@ bool ServerConnection::OnMessage(std::unique_ptr<SaberMessage> message) {
 void ServerConnection::OnCommitComplete(std::unique_ptr<SaberMessage> message) {
   Messager::SendMessage(conn_wp_.lock(), *message);
   assert(!pending_messages_.empty());
-  std::unique_ptr<SaberMessage> front = std::move(pending_messages_.front());
-  pending_messages_.pop();
-  if (front->type() == MT_CLOSE_SESSION) {
-  } else if (message->type() != MT_MASTER) {
+  pending_messages_.pop_front();
+  if (message->type() != MT_MASTER) {
     if (!pending_messages_.empty() && !closed_) {
       assert(!last_finished_);
       committer_->Commit(pending_messages_.front().get());
