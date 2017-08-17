@@ -21,6 +21,8 @@ class DataTree {
   DataTree();
   ~DataTree();
 
+  void Recover();
+
   void Create(const CreateRequest& request, const Transaction& txn,
               CreateResponse* response);
 

@@ -19,6 +19,8 @@ DataTree::DataTree() {
 
 DataTree::~DataTree() {}
 
+void DataTree::Recover() {}
+
 void DataTree::Create(const CreateRequest& request, const Transaction& txn,
                       CreateResponse* response) {
   const std::string& path = request.path();

@@ -15,7 +15,8 @@ namespace saber {
 
 class ServerManagerImpl : public ServerManager {
  public:
-  ServerManagerImpl();
+  ServerManagerImpl() {}
+  virtual ~ServerManagerImpl() {}
 
   virtual void UpdateServers(const std::string& servers);
 

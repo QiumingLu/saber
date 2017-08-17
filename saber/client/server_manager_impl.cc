@@ -14,8 +14,6 @@
 
 namespace saber {
 
-ServerManagerImpl::ServerManagerImpl() {}
-
 void ServerManagerImpl::UpdateServers(const std::string& servers) {
   MutexLock lock(&mutex_);
   std::vector<std::string> v;

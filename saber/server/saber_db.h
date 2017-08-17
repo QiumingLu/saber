@@ -5,6 +5,7 @@
 #ifndef SABER_SERVER_SABER_DB_H_
 #define SABER_SERVER_SABER_DB_H_
 
+#include <atomic>
 #include <memory>
 #include <string>
 #include <vector>
@@ -13,13 +14,19 @@
 
 #include "saber/proto/server.pb.h"
 #include "saber/server/data_tree.h"
+#include "saber/server/server_options.h"
+#include "saber/util/mutex.h"
+#include "saber/util/runloop.h"
+#include "saber/util/runloop_thread.h"
 
 namespace saber {
 
 class SaberDB : public skywalker::StateMachine, public skywalker::Checkpoint {
  public:
-  explicit SaberDB(uint32_t group_size);
+  explicit SaberDB(const ServerOptions& options);
   virtual ~SaberDB();
+
+  bool Recover();
 
   void Exists(uint32_t group_id, const ExistsRequest& request, Watcher* watcher,
               ExistsResponse* response);
@@ -64,7 +71,18 @@ class SaberDB : public skywalker::StateMachine, public skywalker::Checkpoint {
   void SetACL(uint32_t group_id, const SetACLRequest& request,
               const Transaction& txn, SetACLResponse* response);
 
-  std::vector<std::unique_ptr<DataTree> > trees_;
+  void MakeCheckpoint(uint32_t group_id, uint64_t instance_id);
+  void CleanCheckpoint();
+
+  std::atomic<bool> lock_;
+  const uint32_t keep_checkpoint_count_;
+  const uint32_t make_checkpoint_interval_;
+  const std::string checkpoint_storage_path_;
+  std::vector<std::atomic<uint64_t>> checkpoints_;
+  std::vector<std::unique_ptr<DataTree>> trees_;
+
+  RunLoop* loop_;
+  RunLoopThread thread_;
 
   // No copying allowed
   SaberDB(const SaberDB&);

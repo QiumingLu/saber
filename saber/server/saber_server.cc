@@ -69,8 +69,16 @@ bool SaberServer::Start() {
     group_options.membership.push_back(member);
   }
 
-  db_.reset(new SaberDB(options_.paxos_group_size));
+  db_.reset(new SaberDB(options_));
   db_->set_machine_id(10);
+
+  bool res = db_->Recover();
+  if (res) {
+    LOG_INFO("Saber database recover successful!");
+  } else {
+    LOG_ERROR("Saber database recover failed!");
+    return false;
+  }
 
   group_options.checkpoint = db_.get();
   group_options.machines.push_back(db_.get());
@@ -86,7 +94,7 @@ bool SaberServer::Start() {
   }
 
   skywalker::Node* node;
-  bool res = skywalker::Node::Start(skywalker_options, &node);
+  res = skywalker::Node::Start(skywalker_options, &node);
   if (res) {
     LOG_INFO("Skywalker start successful!");
     node_.reset(node);

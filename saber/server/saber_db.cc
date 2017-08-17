@@ -4,16 +4,29 @@
 
 #include "saber/server/saber_db.h"
 #include "saber/util/logging.h"
+#include "saber/util/mutexlock.h"
 
 namespace saber {
 
-SaberDB::SaberDB(uint32_t group_size) {
-  for (uint32_t i = 0; i < group_size; ++i) {
+SaberDB::SaberDB(const ServerOptions& options)
+    : lock_(false),
+      keep_checkpoint_count_(options.keep_checkpoint_count),
+      make_checkpoint_interval_(options.make_checkpoint_interval),
+      checkpoint_storage_path_(options.checkpoint_storage_path) {
+  for (uint32_t i = 0; i < options.paxos_group_size; ++i) {
     trees_.push_back(std::unique_ptr<DataTree>(new DataTree()));
   }
 }
 
 SaberDB::~SaberDB() {}
+
+bool SaberDB::Recover() {
+  for (uint32_t i = 0; i < trees_.size(); ++i) {
+    checkpoints_[i] = UINTMAX_MAX;
+    trees_[i]->Recover();
+  }
+  return true;
+}
 
 void SaberDB::Create(uint32_t group_id, const CreateRequest& request,
                      const Transaction& txn, CreateResponse* response) {
@@ -123,14 +136,39 @@ bool SaberDB::Execute(uint32_t group_id, uint64_t instance_id,
       break;
     }
   }
+
+  uint64_t i = checkpoints_[group_id];
+  if ((i == UINTMAX_MAX && instance_id > make_checkpoint_interval_) ||
+      (instance_id - i > make_checkpoint_interval_)) {
+    loop_->QueueInLoop([this, group_id, instance_id]() {
+      MakeCheckpoint(group_id, instance_id);
+    });
+  }
   return true;
 }
 
-uint64_t SaberDB::GetCheckpointInstanceId(uint32_t group_id) { return -1; }
+void SaberDB::MakeCheckpoint(uint32_t group_id, uint64_t instance_id) {
+  if (LockCheckpoint(group_id)) {
+    CleanCheckpoint();
+    UnLockCheckpoint(group_id);
+  }
+}
 
-bool SaberDB::LockCheckpoint(uint32_t group_id) { return true; }
+void SaberDB::CleanCheckpoint() {}
 
-bool SaberDB::UnLockCheckpoint(uint32_t group_id) { return true; }
+uint64_t SaberDB::GetCheckpointInstanceId(uint32_t group_id) {
+  return checkpoints_[group_id];
+}
+
+bool SaberDB::LockCheckpoint(uint32_t group_id) {
+  bool expected = false;
+  return lock_.compare_exchange_strong(expected, true);
+}
+
+bool SaberDB::UnLockCheckpoint(uint32_t group_id) {
+  bool expected = true;
+  return lock_.compare_exchange_strong(expected, false);
+}
 
 bool SaberDB::GetCheckpoint(uint32_t group_id, uint32_t machine_id,
                             std::string* dir, std::vector<std::string>* files) {
