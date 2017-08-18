@@ -13,7 +13,7 @@ SaberDB::SaberDB(const ServerOptions& options)
       keep_checkpoint_count_(options.keep_checkpoint_count),
       make_checkpoint_interval_(options.make_checkpoint_interval),
       checkpoint_storage_path_(options.checkpoint_storage_path),
-      checkpoints_(options.paxos_group_size) {
+      checkpoints_(options.paxos_group_size, UINTMAX_MAX) {
   for (uint32_t i = 0; i < options.paxos_group_size; ++i) {
     trees_.push_back(std::unique_ptr<DataTree>(new DataTree()));
   }
@@ -23,7 +23,6 @@ SaberDB::~SaberDB() {}
 
 bool SaberDB::Recover() {
   for (uint32_t i = 0; i < trees_.size(); ++i) {
-    checkpoints_[i] = UINTMAX_MAX;
     trees_[i]->Recover();
   }
   loop_ = thread_.Loop();

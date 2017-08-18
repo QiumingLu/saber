@@ -78,7 +78,7 @@ class SaberDB : public skywalker::StateMachine, public skywalker::Checkpoint {
   const uint32_t keep_checkpoint_count_;
   const uint32_t make_checkpoint_interval_;
   const std::string checkpoint_storage_path_;
-  std::vector<std::atomic<uint64_t>> checkpoints_;
+  std::vector<uint64_t> checkpoints_;
   std::vector<std::unique_ptr<DataTree>> trees_;
 
   RunLoop* loop_;
