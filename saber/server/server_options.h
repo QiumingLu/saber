@@ -28,8 +28,11 @@ struct ServerMessage {
 };
 
 struct ServerOptions {
-  // Default: 4
+  // Default: 2
   uint32_t server_thread_size;
+
+  // Default: 2
+  uint32_t paxos_io_thread_size;
 
   // Default: 10
   uint32_t paxos_group_size;
