@@ -88,11 +88,7 @@ bool SaberServer::Start() {
   skywalker_options.my.host = options_.my_server_message.host;
   skywalker_options.my.port = options_.my_server_message.paxos_port;
   skywalker_options.io_thread_size = options_.paxos_io_thread_size;
-
-  for (uint32_t i = 0; i < options_.paxos_group_size; ++i) {
-    group_options.group_id = i;
-    skywalker_options.groups.push_back(group_options);
-  }
+  skywalker_options.groups.resize(options_.paxos_group_size, group_options);
 
   skywalker::Node* node;
   res = skywalker::Node::Start(skywalker_options, &node);
