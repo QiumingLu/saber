@@ -8,9 +8,6 @@
 #include <utility>
 #include <vector>
 
-#include <google/protobuf/map.h>
-#include <voyager/util/string_util.h>
-
 #include "saber/util/logging.h"
 #include "saber/util/mutexlock.h"
 
@@ -31,16 +28,16 @@ void DataTree::Recover(const std::string& data) {
     memcpy(&size, data.c_str() + index, 8);
     DataNode* node = new DataNode();
     node->ParseFromArray(data.c_str() + index + 8, static_cast<int>(size));
-    nodes_.insert(
-        std::make_pair(node->name(), std::unique_ptr<DataNode>(node)));
-    if (!(node->children().empty())) {
-      result.clear();
-      voyager::SplitStringUsing(node->children(), "\r\n", &result);
-      childrens_.insert(std::make_pair(
-          node->name(), std::set<std::string>(result.begin(), result.end())));
-      node->release_children();
+    if (node->children_size() > 0) {
+      std::set<std::string>& children = childrens_[node->name()];
+      for (int i = 0; i < node->children_size(); ++i) {
+        children.insert(node->children(i));
+      }
+      node->clear_children();
     }
     node->release_name();
+    nodes_.insert(
+        std::make_pair(node->name(), std::unique_ptr<DataNode>(node)));
     index = 8 + size;
   }
   assert(index == data.size());
@@ -297,18 +294,9 @@ void DataTree::SerializeToString(std::string* data) const {
     it.second->set_name(it.first);
     auto children = childrens_.find(it.first);
     if (children != childrens_.end()) {
-      std::string s;
-      size_t length = 0;
       for (auto& child : children->second) {
-        length += child.size();
-        length += 2;
+        it.second->add_children(child);
       }
-      s.reserve(length);
-      for (auto& child : children->second) {
-        s.append(child);
-        s.append("\r\n");
-      }
-      it.second->set_children(std::move(s));
     }
     uint64_t size = static_cast<uint64_t>(it.second->ByteSize());
     memset(buf, 0, 8);

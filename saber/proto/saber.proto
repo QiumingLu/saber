@@ -24,16 +24,14 @@ message WatchedEvent {
   bytes path = 3;
 }
 
-enum NodeType {
-  NT_PERSISTENT = 0;
-}
+enum NodeType { NT_PERSISTENT = 0; }
 
 enum ResponseCode {
   RC_OK = 0;
   RC_FAILED = 1;
   RC_NO_NODE = 2;
   RC_NO_PARENT = 3;
-  RC_NODE_EXISTS =4;
+  RC_NODE_EXISTS = 4;
   RC_CHILDREN_EXISTS = 5;
   RC_BAD_VERSION = 6;
   RC_NO_AUTH = 7;
@@ -92,9 +90,7 @@ message DeleteRequest {
   int32 version = 2;
 }
 
-message DeleteResponse {
-  ResponseCode code = 1;
-}
+message DeleteResponse { ResponseCode code = 1; }
 
 message ExistsRequest {
   bytes path = 1;
@@ -128,9 +124,7 @@ message SetDataResponse {
   Stat stat = 2;
 }
 
-message GetACLRequest {
-  bytes path = 1;
-}
+message GetACLRequest { bytes path = 1; }
 
 message GetACLResponse {
   ResponseCode code = 1;
@@ -162,7 +156,7 @@ message GetChildrenResponse {
 
 message Master {
   bytes host = 1;
-  int32  port = 2;
+  int32 port = 2;
 }
 
 enum MessageType {
@@ -177,7 +171,7 @@ enum MessageType {
   MT_GETCHILDREN = 8;
   MT_MASTER = 9;
   MT_PING = 10;
-  MT_CONNECT= 11;
+  MT_CONNECT = 11;
 }
 
 message SaberMessage {
@@ -188,8 +182,8 @@ message SaberMessage {
 
 message DataNode {
   Stat stat = 1;
-  bytes data = 2;
-  repeated ACL acl = 3;
-  bytes name = 4;
-  bytes children = 5;
+  bytes name = 2;
+  bytes data = 3;
+  repeated ACL acl = 4;
+  repeated bytes children = 5;
 }
