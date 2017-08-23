@@ -303,6 +303,8 @@ void DataTree::SerializeToString(std::string* data) const {
     memcpy(buf, &size, 8);
     data->append(buf, 8);
     it.second->AppendToString(data);
+    it.second->clear_children();
+    it.second->release_name();
   }
 }
 
