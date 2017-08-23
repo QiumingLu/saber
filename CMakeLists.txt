@@ -14,6 +14,14 @@ set(SABER_VERSION_MAJOR 1)
 set(SABER_VERSION_MINOR 0)
 set(SABER_VERSION_STRING ${SABER_VERSION_MAJOR}.${SABER_VERSION_MINOR})
 
+function(exclude OUTPUT INPUT)
+  set(EXCLUDES ${ARGN})
+  foreach(EXCLUDE ${EXCLUDES})
+    list(REMOVE_ITEM INPUT "${EXCLUDE}")
+  endforeach()
+  set(${OUTPUT} ${INPUT} PARENT_SCOPE)
+endfunction(exclude)
+
 enable_testing()
 
 if(NOT CMAKE_BUILD_TYPE)

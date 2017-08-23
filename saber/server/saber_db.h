@@ -6,6 +6,7 @@
 #define SABER_SERVER_SABER_DB_H_
 
 #include <atomic>
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -54,8 +55,8 @@ class SaberDB : public skywalker::StateMachine, public skywalker::Checkpoint {
   virtual bool GetCheckpoint(uint32_t group_id, uint32_t machine_id,
                              std::string* dir, std::vector<std::string>* files);
 
-  virtual bool LoadCheckpoint(uint32_t group_id, uint32_t machine_id,
-                              const std::string& dir,
+  virtual bool LoadCheckpoint(uint32_t group_id, uint64_t instance_id,
+                              uint32_t machine_id, const std::string& dir,
                               const std::vector<std::string>& files);
 
  private:
@@ -71,15 +72,19 @@ class SaberDB : public skywalker::StateMachine, public skywalker::Checkpoint {
   void SetACL(uint32_t group_id, const SetACLRequest& request,
               const Transaction& txn, SetACLResponse* response);
 
-  void MakeCheckpoint(uint32_t group_id, uint64_t instance_id);
-  void CleanCheckpoint();
+  void MakeCheckpoint(uint32_t group_id);
+  void CleanCheckpoint(uint32_t group_id);
+
+  const uint32_t kKeepCheckpointCount;
+  const uint32_t kMakeCheckpointInterval;
 
   std::atomic<bool> lock_;
-  const uint32_t keep_checkpoint_count_;
-  const uint32_t make_checkpoint_interval_;
-  const std::string checkpoint_storage_path_;
-  std::vector<uint64_t> checkpoints_;
+  std::atomic<bool> doing_;
+
+  std::string checkpoint_storage_path_;
+  std::vector<uint64_t> instances_;
   std::vector<std::unique_ptr<DataTree>> trees_;
+  std::vector<std::map<uint64_t, uint64_t>> file_map_;
 
   RunLoop* loop_;
   RunLoopThread thread_;

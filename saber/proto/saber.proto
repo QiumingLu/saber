@@ -26,7 +26,6 @@ message WatchedEvent {
 
 enum NodeType {
   NT_PERSISTENT = 0;
-  NT_PERSISTENT_SEQUENTIAL = 1;
 }
 
 enum ResponseCode {
@@ -185,4 +184,12 @@ message SaberMessage {
   MessageType type = 1;
   bytes data = 2;
   bytes extra_data = 3;
+}
+
+message DataNode {
+  Stat stat = 1;
+  bytes data = 2;
+  repeated ACL acl = 3;
+  bytes name = 4;
+  bytes children = 5;
 }

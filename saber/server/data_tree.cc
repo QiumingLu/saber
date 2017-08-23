@@ -8,6 +8,9 @@
 #include <utility>
 #include <vector>
 
+#include <google/protobuf/map.h>
+#include <voyager/util/string_util.h>
+
 #include "saber/util/logging.h"
 #include "saber/util/mutexlock.h"
 
@@ -19,7 +22,29 @@ DataTree::DataTree() {
 
 DataTree::~DataTree() {}
 
-void DataTree::Recover() {}
+void DataTree::Recover(const std::string& data) {
+  size_t index = 0;
+  std::vector<std::string> result;
+
+  while (index < data.size()) {
+    uint64_t size = 0;
+    memcpy(&size, data.c_str() + index, 8);
+    DataNode* node = new DataNode();
+    node->ParseFromArray(data.c_str() + index + 8, static_cast<int>(size));
+    nodes_.insert(
+        std::make_pair(node->name(), std::unique_ptr<DataNode>(node)));
+    if (!(node->children().empty())) {
+      result.clear();
+      voyager::SplitStringUsing(node->children(), "\r\n", &result);
+      childrens_.insert(std::make_pair(
+          node->name(), std::set<std::string>(result.begin(), result.end())));
+      node->release_children();
+    }
+    node->release_name();
+    index = 8 + size;
+  }
+  assert(index == data.size());
+}
 
 void DataTree::Create(const CreateRequest& request, const Transaction& txn,
                       CreateResponse* response) {
@@ -43,17 +68,20 @@ void DataTree::Create(const CreateRequest& request, const Transaction& txn,
   stat->set_children_num(0);
   stat->set_children_id(txn.instance_id());
   node->set_data(request.data());
-  std::vector<ACL>* acl = node->mutable_acl();
-  for (int i = 0; i < request.acl_size(); ++i) {
-    acl->push_back(request.acl(i));
-  }
+  *(node->mutable_acl()) = request.acl();
 
   {
     MutexLock lock(&mutex_);
     auto it = nodes_.find(parent);
     if (it != nodes_.end()) {
-      bool res = it->second->AddChild(child, txn.instance_id());
-      if (res) {
+      std::set<std::string>& children = childrens_[parent];
+      if (children.find(child) == children.end()) {
+        children.insert(child);
+        Stat* tmp = it->second->mutable_stat();
+        tmp->set_children_version(tmp->children_version() + 1);
+        tmp->set_children_num(static_cast<uint32_t>(children.size()));
+        tmp->set_children_id(txn.instance_id());
+
         nodes_.insert(std::make_pair(path, std::unique_ptr<DataNode>(node)));
         response->set_code(RC_OK);
         response->set_path(path);
@@ -88,7 +116,15 @@ void DataTree::Delete(const DeleteRequest& request, const Transaction& txn,
       nodes_.erase(it);
       it = nodes_.find(parent);
       if (it != nodes_.end()) {
-        it->second->RemoveChild(child, txn.instance_id());
+        if (childrens_.find(parent) != childrens_.end()) {
+          std::set<std::string>& children = childrens_[parent];
+          if (children.erase(child)) {
+            Stat* tmp = it->second->mutable_stat();
+            tmp->set_children_version(tmp->children_version() + 1);
+            tmp->set_children_num(static_cast<uint32_t>(children.size()));
+            tmp->set_children_id(txn.instance_id());
+          }
+        }
         response->set_code(RC_OK);
       } else {
         response->set_code(RC_NO_PARENT);
@@ -191,10 +227,7 @@ void DataTree::GetACL(const GetACLRequest& request, GetACLResponse* response) {
     response->set_code(RC_OK);
     Stat* stat = new Stat(it->second->stat());
     response->set_allocated_stat(stat);
-    const std::vector<ACL>& acl = it->second->acl();
-    for (auto& i : acl) {
-      *(response->add_acl()) = i;
-    }
+    *(response->mutable_acl()) = it->second->acl();
   } else {
     response->set_code(RC_NO_NODE);
   }
@@ -211,11 +244,7 @@ void DataTree::SetACL(const SetACLRequest& request, const Transaction& txn,
     if (request.version() != -1 && request.version() != version) {
       response->set_code(RC_BAD_VERSION);
     } else {
-      std::vector<ACL> acl;
-      for (int i = 0; i < request.acl_size(); ++i) {
-        acl.push_back(request.acl(i));
-      }
-      it->second->set_acl(std::move(acl));
+      *(it->second->mutable_acl()) = request.acl();
       it->second->mutable_stat()->set_acl_version(version + 1);
       response->set_code(RC_OK);
       Stat* stat = new Stat(it->second->stat());
@@ -237,9 +266,11 @@ void DataTree::GetChildren(const GetChildrenRequest& request, Watcher* watcher,
       response->set_code(RC_OK);
       Stat* stat = new Stat(it->second->stat());
       response->set_allocated_stat(stat);
-      const std::set<std::string>& children = it->second->children();
-      for (auto& i : children) {
-        response->add_children(i);
+      if (childrens_.find(path) != childrens_.end()) {
+        const std::set<std::string>& children = childrens_[path];
+        for (auto& i : children) {
+          response->add_children(i);
+        }
       }
     } else {
       response->set_code(RC_NO_NODE);
@@ -256,6 +287,35 @@ void DataTree::GetChildren(const GetChildrenRequest& request, Watcher* watcher,
 void DataTree::RemoveWatcher(Watcher* watcher) {
   data_watches_.RemoveWatcher(watcher);
   child_watches_.RemoveWatcher(watcher);
+}
+
+void DataTree::SerializeToString(std::string* data) const {
+  data->reserve(3 * 1024 * 1024);
+  char buf[8];
+  MutexLock lock(&mutex_);
+  for (auto& it : nodes_) {
+    it.second->set_name(it.first);
+    auto children = childrens_.find(it.first);
+    if (children != childrens_.end()) {
+      std::string s;
+      size_t length = 0;
+      for (auto& child : children->second) {
+        length += child.size();
+        length += 2;
+      }
+      s.reserve(length);
+      for (auto& child : children->second) {
+        s.append(child);
+        s.append("\r\n");
+      }
+      it.second->set_children(std::move(s));
+    }
+    uint64_t size = static_cast<uint64_t>(it.second->ByteSize());
+    memset(buf, 0, 8);
+    memcpy(buf, &size, 8);
+    data->append(buf, 8);
+    it.second->AppendToString(data);
+  }
 }
 
 }  // namespace saber

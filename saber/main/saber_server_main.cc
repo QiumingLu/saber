@@ -20,7 +20,9 @@ int main(int argc, char** argv) {
   }
 
   saber::ServerOptions server_options;
-  server_options.log_storage_path = std::string(path);
+  server_options.log_storage_path = std::string(path) + "/log";
+  server_options.checkpoint_storage_path = std::string(path) + "/checkpoint";
+  server_options.make_checkpoint_interval = 5;
 
   std::vector<std::string> server;
   std::vector<std::string> servers;

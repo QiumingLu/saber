@@ -10,7 +10,6 @@
 #include <unordered_map>
 
 #include "saber/proto/server.pb.h"
-#include "saber/server/data_node.h"
 #include "saber/server/server_watch_manager.h"
 #include "saber/util/mutex.h"
 
@@ -21,7 +20,7 @@ class DataTree {
   DataTree();
   ~DataTree();
 
-  void Recover();
+  void Recover(const std::string& data);
 
   void Create(const CreateRequest& request, const Transaction& txn,
               CreateResponse* response);
@@ -48,9 +47,12 @@ class DataTree {
 
   void RemoveWatcher(Watcher* watcher);
 
+  void SerializeToString(std::string* data) const;
+
  private:
-  Mutex mutex_;
+  mutable Mutex mutex_;
   std::unordered_map<std::string, std::unique_ptr<DataNode> > nodes_;
+  std::unordered_map<std::string, std::set<std::string> > childrens_;
 
   ServerWatchManager data_watches_;
   ServerWatchManager child_watches_;
