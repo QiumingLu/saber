@@ -180,7 +180,7 @@ void SaberClient::GetChildren(const GetChildrenRequest& request,
 }
 
 void SaberClient::Connect(const voyager::SockAddr& addr) {
-  client_.reset(new voyager::TcpClient(loop_, addr));
+  client_.reset(new voyager::TcpClient(loop_, addr, "SaberClient"));
   client_->SetConnectionCallback(
       [this](const voyager::TcpConnectionPtr& p) { OnConnection(p); });
   client_->SetConnectFailureCallback([this]() { OnFailue(); });

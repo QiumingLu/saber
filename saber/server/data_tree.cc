@@ -20,9 +20,7 @@ DataTree::DataTree() {
 DataTree::~DataTree() {}
 
 void DataTree::Recover(const std::string& data) {
-  size_t index = 0;
-  std::vector<std::string> result;
-
+  uint64_t index = 0;
   while (index < data.size()) {
     uint64_t size = 0;
     memcpy(&size, data.c_str() + index, 8);
@@ -35,10 +33,10 @@ void DataTree::Recover(const std::string& data) {
       }
       node->clear_children();
     }
-    node->release_name();
     nodes_.insert(
         std::make_pair(node->name(), std::unique_ptr<DataNode>(node)));
-    index = 8 + size;
+    node->clear_name();
+    index = index + 8 + size;
   }
   assert(index == data.size());
 }
@@ -51,7 +49,7 @@ void DataTree::Create(const CreateRequest& request, const Transaction& txn,
   std::string parent = path.substr(0, found);
   std::string child = path.substr(found + 1);
 
-  DataNode* node = new DataNode();
+  std::unique_ptr<DataNode> node(new DataNode());
   Stat* stat = node->mutable_stat();
   stat->set_group_id(txn.group_id());
   stat->set_created_id(txn.instance_id());
@@ -66,7 +64,6 @@ void DataTree::Create(const CreateRequest& request, const Transaction& txn,
   stat->set_children_id(txn.instance_id());
   node->set_data(request.data());
   *(node->mutable_acl()) = request.acl();
-
   {
     MutexLock lock(&mutex_);
     auto it = nodes_.find(parent);
@@ -79,7 +76,7 @@ void DataTree::Create(const CreateRequest& request, const Transaction& txn,
         tmp->set_children_num(static_cast<uint32_t>(children.size()));
         tmp->set_children_id(txn.instance_id());
 
-        nodes_.insert(std::make_pair(path, std::unique_ptr<DataNode>(node)));
+        nodes_.insert(std::make_pair(path, std::move(node)));
         response->set_code(RC_OK);
         response->set_path(path);
       } else {
@@ -89,13 +86,10 @@ void DataTree::Create(const CreateRequest& request, const Transaction& txn,
       response->set_code(RC_NO_PARENT);
     }
   }
-
   if (response->code() == RC_OK) {
     data_watches_.TriggerWatcher(path, ET_NODE_CREATED);
     child_watches_.TriggerWatcher(parent.empty() ? "/" : parent,
                                   ET_NODE_CHILDREN_CHANGED);
-  } else {
-    delete node;
   }
 }
 
@@ -109,7 +103,7 @@ void DataTree::Delete(const DeleteRequest& request, const Transaction& txn,
   {
     MutexLock lock(&mutex_);
     auto it = nodes_.find(path);
-    if (it != nodes_.end() && it->second->children().empty()) {
+    if (it != nodes_.end() && childrens_.find(path) == childrens_.end()) {
       nodes_.erase(it);
       it = nodes_.find(parent);
       if (it != nodes_.end()) {
@@ -120,6 +114,9 @@ void DataTree::Delete(const DeleteRequest& request, const Transaction& txn,
             tmp->set_children_version(tmp->children_version() + 1);
             tmp->set_children_num(static_cast<uint32_t>(children.size()));
             tmp->set_children_id(txn.instance_id());
+          }
+          if (children.empty()) {
+            childrens_.erase(parent);
           }
         }
         response->set_code(RC_OK);
@@ -304,7 +301,7 @@ void DataTree::SerializeToString(std::string* data) const {
     data->append(buf, 8);
     it.second->AppendToString(data);
     it.second->clear_children();
-    it.second->release_name();
+    it.second->clear_name();
   }
 }
 

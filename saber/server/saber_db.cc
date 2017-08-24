@@ -92,10 +92,11 @@ bool SaberDB::Recover() {
       if (file_map_[i].back().first != temp.back()) {
         temp.pop_back();
         skywalker::FileManager::Instance()->DeleteFile(
-            std::to_string(temp.back()));
+            dir + "/" + std::to_string(temp.back()));
       }
       ReadFileToString(skywalker::FileManager::Instance(),
-                       std::to_string(file_map_[i].back().first), &s);
+                       dir + "/" + std::to_string(file_map_[i].back().first),
+                       &s);
       trees_[i]->Recover(s);
     }
   }
@@ -240,6 +241,9 @@ void SaberDB::MakeCheckpoint(uint32_t group_id) {
         skywalker::FileManager::Instance(), s, fname);
     if (status.ok()) {
       file_map_[group_id].push_back(std::make_pair(f, id));
+      LOG_INFO(
+          "make checkpoint successful! the file is %s, instance_id is %llu",
+          fname.c_str(), (unsigned long long)id);
       CleanCheckpoint(group_id);
     } else {
       skywalker::FileManager::Instance()->DeleteFile(fname);
@@ -255,8 +259,7 @@ void SaberDB::CleanCheckpoint(uint32_t group_id) {
                       std::to_string(group_id) + "/" +
                       std::to_string(file_map_[group_id].front().first);
     skywalker::FileManager::Instance()->DeleteFile(del);
-    std::swap(file_map_[group_id].front(), file_map_[group_id].back());
-    file_map_[group_id].pop_back();
+    file_map_[group_id].erase(file_map_[group_id].begin());
   }
   std::string s;
   for (auto& file : file_map_[group_id]) {
@@ -291,6 +294,7 @@ bool SaberDB::UnLockCheckpoint(uint32_t group_id) {
 
 bool SaberDB::GetCheckpoint(uint32_t group_id, uint32_t machine_id,
                             std::string* dir, std::vector<std::string>* files) {
+  assert(this->machine_id() == machine_id);
   *dir = checkpoint_storage_path_ + "g" + std::to_string(group_id);
   if (!(file_map_[group_id].empty())) {
     files->push_back(std::to_string(file_map_[group_id].back().first));
@@ -301,6 +305,7 @@ bool SaberDB::GetCheckpoint(uint32_t group_id, uint32_t machine_id,
 bool SaberDB::LoadCheckpoint(uint32_t group_id, uint64_t instance_id,
                              uint32_t machine_id, const std::string& dir,
                              const std::vector<std::string>& files) {
+  assert(this->machine_id() == machine_id);
   std::string d = dir;
   if (d[d.size() - 1] != '/') {
     d.push_back('/');
@@ -328,6 +333,8 @@ bool SaberDB::LoadCheckpoint(uint32_t group_id, uint64_t instance_id,
 
   file_map_[group_id].push_back(std::make_pair(f, instance_id));
 
+  LOG_INFO("load checkpoint successful! the file is %s, instance_id is %llu",
+           fname.c_str(), (unsigned long long)instance_id);
   CleanCheckpoint(group_id);
 
   return true;
