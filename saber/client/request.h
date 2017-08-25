@@ -15,6 +15,7 @@ namespace saber {
 template <typename T>
 class Request {
  public:
+  int message_id;
   std::string path;
   void* context;
   Watcher* watcher;
@@ -25,34 +26,6 @@ class Request {
 
   Request(const std::string& p, void* ctx, Watcher* w, T&& cb)
       : path(p), context(ctx), watcher(w), callback(std::move(cb)) {}
-
-  Request(const Request& r) {
-    path = r.path;
-    context = r.context;
-    watcher = r.watcher;
-    callback = r.callback;
-  }
-
-  Request(Request&& r) {
-    path = std::move(r.path);
-    context = r.context;
-    watcher = r.watcher;
-    callback = std::move(r.callback);
-  }
-
-  void operator=(const Request& r) {
-    path = r.path;
-    context = r.context;
-    watcher = r.watcher;
-    callback = r.callback;
-  }
-
-  void operator=(Request&& r) {
-    path = std::move(r.path);
-    context = r.context;
-    watcher = r.watcher;
-    callback = std::move(r.callback);
-  }
 };
 
 }  // namespace saber

@@ -10,6 +10,7 @@
 
 #include <voyager/core/eventloop.h>
 #include <voyager/core/tcp_connection.h>
+#include <voyager/protobuf/protobuf_codec.h>
 
 #include "saber/proto/saber.pb.h"
 #include "saber/server/committer.h"
@@ -25,7 +26,8 @@ class ServerConnection : public Watcher {
   virtual ~ServerConnection();
 
   uint64_t session_id() const { return session_id_; }
-  void SetTcpConnection(const voyager::TcpConnectionPtr& p);
+
+  void Connect(const voyager::TcpConnectionPtr& p);
 
   bool OnMessage(std::unique_ptr<SaberMessage> message);
   void OnCommitComplete(std::unique_ptr<SaberMessage> message);
@@ -38,6 +40,7 @@ class ServerConnection : public Watcher {
   bool closed_;
   bool last_finished_;
   const uint64_t session_id_;
+  voyager::ProtobufCodec<SaberMessage> codec_;
   std::weak_ptr<voyager::TcpConnection> conn_wp_;
   SaberDB* db_;
   std::deque<std::unique_ptr<SaberMessage>> pending_messages_;

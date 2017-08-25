@@ -176,8 +176,9 @@ enum MessageType {
 
 message SaberMessage {
   MessageType type = 1;
-  bytes data = 2;
-  bytes extra_data = 3;
+  int32 id = 2;
+  bytes data = 3;
+  bytes extra_data = 4;
 }
 
 message DataNode {

@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include "saber/server/saber_server.h"
-#include "saber/net/messager.h"
 #include "saber/server/connection_monitor.h"
 #include "saber/server/saber_db.h"
 #include "saber/server/server_connection.h"
@@ -48,7 +47,14 @@ SaberServer::SaberServer(voyager::EventLoop* loop, const ServerOptions& options)
             options.my_server_message.client_port),
       monitor_(new ConnectionMonitor(options.max_all_connections,
                                      options.max_ip_connections)),
-      server_(loop, addr_, "SaberServer", options.server_thread_size) {}
+      server_(loop, addr_, "SaberServer", options.server_thread_size) {
+  codec_.SetMessageCallback(std::bind(&SaberServer::OnMessage, this,
+                                      std::placeholders::_1,
+                                      std::placeholders::_2));
+  codec_.SetErrorCallback(std::bind(&SaberServer::OnError, this,
+                                    std::placeholders::_1,
+                                    std::placeholders::_2));
+}
 
 SaberServer::~SaberServer() {}
 
@@ -104,7 +110,7 @@ bool SaberServer::Start() {
         [this](const voyager::TcpConnectionPtr& p) { OnWriteComplete(p); });
     server_.SetMessageCallback(
         [this](const voyager::TcpConnectionPtr& p, voyager::Buffer* buf) {
-          OnMessage(p, buf);
+          codec_.OnMessage(p, buf);
         });
     server_.Start();
 
@@ -147,16 +153,26 @@ void SaberServer::OnWriteComplete(const voyager::TcpConnectionPtr& p) {
   UpdateBuckets(p, entry);
 }
 
-void SaberServer::OnMessage(const voyager::TcpConnectionPtr& p,
-                            voyager::Buffer* buf) {
+bool SaberServer::OnMessage(const voyager::TcpConnectionPtr& p,
+                            std::unique_ptr<SaberMessage> message) {
   Context* context = reinterpret_cast<Context*>(p->Context());
   assert(context);
   EntryPtr entry = (context->entry_wp).lock();
   assert(entry);
-  Messager::OnMessage(p, buf, [this, entry](std::unique_ptr<SaberMessage> s) {
-    return HandleMessage(entry, std::move(s));
-  });
-  UpdateBuckets(p, entry);
+  bool b = HandleMessage(entry, std::move(message));
+  if (b) {
+    UpdateBuckets(p, entry);
+  } else {
+    p->ShutDown();
+  }
+  return b;
+}
+
+void SaberServer::OnError(const voyager::TcpConnectionPtr& p,
+                          voyager::ProtoCodecError code) {
+  if (code == voyager::kParseError) {
+    p->StopRead();
+  }
 }
 
 void SaberServer::OnTimer() {
@@ -196,7 +212,7 @@ bool SaberServer::HandleMessage(const EntryPtr& entry,
   if (it != conns_.end()) {
     entry->conn = it->second.lock();
     if (entry->conn) {
-      entry->conn->SetTcpConnection(entry->wp.lock());
+      entry->conn->Connect(entry->wp.lock());
     } else {
       entry->conn.reset(new ServerConnection(session_id, entry->wp.lock(),
                                              db_.get(), node_.get()));

@@ -15,6 +15,7 @@
 #include <voyager/core/sockaddr.h>
 #include <voyager/core/tcp_connection.h>
 #include <voyager/core/tcp_server.h>
+#include <voyager/protobuf/protobuf_codec.h>
 
 #include <skywalker/node.h>
 
@@ -46,7 +47,10 @@ class SaberServer {
   void OnConnection(const voyager::TcpConnectionPtr& p);
   void OnClose(const voyager::TcpConnectionPtr& p);
   void OnWriteComplete(const voyager::TcpConnectionPtr& p);
-  void OnMessage(const voyager::TcpConnectionPtr& p, voyager::Buffer* buf);
+  bool OnMessage(const voyager::TcpConnectionPtr& p,
+                 std::unique_ptr<SaberMessage> message);
+  void OnError(const voyager::TcpConnectionPtr& p,
+               voyager::ProtoCodecError code);
   void OnTimer();
   void UpdateBuckets(const voyager::TcpConnectionPtr& p, const EntryPtr& entry);
   bool HandleMessage(const EntryPtr& p, std::unique_ptr<SaberMessage> message);
@@ -56,6 +60,7 @@ class SaberServer {
 
   const uint64_t server_id_;
   voyager::SockAddr addr_;
+  voyager::ProtobufCodec<SaberMessage> codec_;
 
   std::unique_ptr<SaberDB> db_;
   std::unique_ptr<skywalker::Node> node_;

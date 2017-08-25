@@ -13,6 +13,7 @@
 #include <voyager/core/bg_eventloop.h>
 #include <voyager/core/eventloop.h>
 #include <voyager/core/tcp_client.h>
+#include <voyager/protobuf/protobuf_codec.h>
 
 #include "saber/client/callbacks.h"
 #include "saber/client/client_options.h"
@@ -65,8 +66,10 @@ class SaberClient {
   void OnConnection(const voyager::TcpConnectionPtr& p);
   void OnFailue();
   void OnClose(const voyager::TcpConnectionPtr& p);
-  void OnMessage(const voyager::TcpConnectionPtr& p, voyager::Buffer* buf);
-  bool HandleMessage(std::unique_ptr<SaberMessage> message);
+  bool OnMessage(const voyager::TcpConnectionPtr& p,
+                 std::unique_ptr<SaberMessage> message);
+  void OnError(const voyager::TcpConnectionPtr& p,
+               voyager::ProtoCodecError code);
   void TriggerWatchers(WatchedEvent* event);
 
   std::atomic<bool> has_started_;
@@ -74,6 +77,8 @@ class SaberClient {
 
   ServerManager* server_manager_;
   voyager::EventLoop* loop_;
+
+  voyager::ProtobufCodec<SaberMessage> codec_;
 
   uint64_t session_id_;
   uint64_t timeout_;
@@ -91,6 +96,7 @@ class SaberClient {
   std::queue<std::unique_ptr<Request<SetACLCallback> > > set_acl_queue_;
   std::queue<std::unique_ptr<Request<GetChildrenCallback> > > children_queue_;
 
+  int message_id_;
   std::deque<std::unique_ptr<SaberMessage> > outgoing_queue_;
 
   Master master_;

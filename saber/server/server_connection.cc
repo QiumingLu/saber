@@ -6,7 +6,6 @@
 
 #include <utility>
 
-#include "saber/net/messager.h"
 #include "saber/util/logging.h"
 
 namespace saber {
@@ -23,10 +22,20 @@ ServerConnection::ServerConnection(uint64_t session_id,
 
 ServerConnection::~ServerConnection() { db_->RemoveWatcher(this); }
 
-void ServerConnection::SetTcpConnection(const voyager::TcpConnectionPtr& p) {
+void ServerConnection::Connect(const voyager::TcpConnectionPtr& p) {
+  closed_ = false;
   pending_messages_.clear();
   conn_wp_ = p;
   committer_->SetEventLoop(p->OwnerEventLoop());
+}
+
+void ServerConnection::ShutDown() {
+  closed_ = true;
+  pending_messages_.clear();
+  voyager::TcpConnectionPtr p = conn_wp_.lock();
+  if (p) {
+    p->ShutDown();
+  }
 }
 
 bool ServerConnection::OnMessage(std::unique_ptr<SaberMessage> message) {
@@ -44,9 +53,11 @@ bool ServerConnection::OnMessage(std::unique_ptr<SaberMessage> message) {
 }
 
 void ServerConnection::OnCommitComplete(std::unique_ptr<SaberMessage> message) {
-  Messager::SendMessage(conn_wp_.lock(), *message);
   assert(!pending_messages_.empty());
+  message->set_id(pending_messages_.front()->id());
+  codec_.SendMessage(conn_wp_.lock(), *message);
   pending_messages_.pop_front();
+
   if (message->type() != MT_MASTER) {
     if (!pending_messages_.empty() && !closed_) {
       assert(!last_finished_);
@@ -63,18 +74,7 @@ void ServerConnection::Process(const WatchedEvent& event) {
   SaberMessage message;
   message.set_type(MT_NOTIFICATION);
   message.set_data(event.SerializeAsString());
-  voyager::TcpConnectionPtr p = conn_wp_.lock();
-  if (p) {
-    Messager::SendMessage(p, message);
-  }
-}
-
-void ServerConnection::ShutDown() {
-  closed_ = true;
-  voyager::TcpConnectionPtr p = conn_wp_.lock();
-  if (p) {
-    p->ShutDown();
-  }
+  codec_.SendMessage(conn_wp_.lock(), message);
 }
 
 }  // namespace saber
