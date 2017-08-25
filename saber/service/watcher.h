@@ -8,6 +8,7 @@
 #include <memory>
 #include <set>
 #include <string>
+
 #include "saber/proto/saber.pb.h"
 
 namespace saber {

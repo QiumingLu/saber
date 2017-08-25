@@ -1,7 +1,3 @@
-#include <saber/client/saber_client.h>
+#include <saber/client/saber.h>
 
-int main() {
-  voyager::EventLoop loop;
-  loop.Loop();
-  return 0;
-}
+int main() { return 0; }

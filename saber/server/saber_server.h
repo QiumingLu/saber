@@ -22,7 +22,6 @@
 #include "saber/proto/saber.pb.h"
 #include "saber/server/server_options.h"
 #include "saber/util/mutex.h"
-#include "saber/util/sequence_number.h"
 
 namespace saber {
 

@@ -14,7 +14,7 @@ namespace saber {
 
 void DefaultLogHandler(LogLevel level, const char* filename, int line,
                        const char* format, va_list ap) {
-  static const char* loglevel_names[] = {"DEBUG", "INFO", "WARN", "ERROR",
+  static const char* kLoglevelNames[] = {"DEBUG", "INFO", "WARN", "ERROR",
                                          "FATAL"};
 
   char buffer[500];
@@ -40,7 +40,7 @@ void DefaultLogHandler(LogLevel level, const char* filename, int line,
                   "[%04d/%02d/%02d-%02d:%02d:%02d.%06d][%s %s:%d] ",
                   t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, t.tm_hour,
                   t.tm_min, t.tm_sec, static_cast<int>(now_tv.tv_usec),
-                  loglevel_names[level], filename, line);
+                  kLoglevelNames[level], filename, line);
 
     if (p < limit) {
       va_list backup_ap;
