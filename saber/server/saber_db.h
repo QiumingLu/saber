@@ -16,7 +16,6 @@
 #include "saber/proto/server.pb.h"
 #include "saber/server/data_tree.h"
 #include "saber/server/server_options.h"
-#include "saber/util/mutex.h"
 #include "saber/util/runloop.h"
 #include "saber/util/runloop_thread.h"
 

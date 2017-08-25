@@ -6,9 +6,7 @@
 #define SABER_CLIENT_CALLBACKS_H_
 
 #include <functional>
-#include <memory>
 #include <string>
-#include <vector>
 
 #include "saber/proto/saber.pb.h"
 

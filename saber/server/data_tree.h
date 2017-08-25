@@ -6,6 +6,7 @@
 #define SABER_SERVER_DATA_TREE_H_
 
 #include <memory>
+#include <set>
 #include <string>
 #include <unordered_map>
 

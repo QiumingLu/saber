@@ -5,10 +5,7 @@
 #ifndef SABER_CLIENT_SABER_H_
 #define SABER_CLIENT_SABER_H_
 
-#include <atomic>
 #include <memory>
-#include <string>
-#include <vector>
 
 #include <voyager/core/bg_eventloop.h>
 #include <voyager/core/eventloop.h>

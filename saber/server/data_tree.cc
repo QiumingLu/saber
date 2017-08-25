@@ -4,11 +4,8 @@
 
 #include "saber/server/data_tree.h"
 
-#include <set>
 #include <utility>
-#include <vector>
 
-#include "saber/util/logging.h"
 #include "saber/util/mutexlock.h"
 
 namespace saber {

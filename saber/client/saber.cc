@@ -5,8 +5,6 @@
 #include "saber/client/saber.h"
 #include "saber/client/saber_client.h"
 #include "saber/client/server_manager_impl.h"
-#include "saber/util/logging.h"
-#include "saber/util/murmurhash3.h"
 
 namespace saber {
 

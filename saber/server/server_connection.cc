@@ -6,8 +6,6 @@
 
 #include <utility>
 
-#include "saber/util/logging.h"
-
 namespace saber {
 
 ServerConnection::ServerConnection(uint64_t session_id,

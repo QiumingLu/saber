@@ -12,7 +12,6 @@
 #include <voyager/util/string_util.h>
 
 #include "saber/util/logging.h"
-#include "saber/util/mutexlock.h"
 #include "saber/util/timeops.h"
 
 namespace saber {
@@ -242,8 +241,9 @@ void SaberDB::MakeCheckpoint(uint32_t group_id) {
     if (status.ok()) {
       file_map_[group_id].push_back(std::make_pair(f, id));
       LOG_INFO(
-          "make checkpoint successful! the file is %s, instance_id is %llu",
-          fname.c_str(), (unsigned long long)id);
+          "Group %u : make checkpoint successful, the file is %s, instance_id "
+          "is %llu",
+          group_id, fname.c_str(), (unsigned long long)id);
       CleanCheckpoint(group_id);
     } else {
       skywalker::FileManager::Instance()->DeleteFile(fname);
@@ -333,8 +333,11 @@ bool SaberDB::LoadCheckpoint(uint32_t group_id, uint64_t instance_id,
 
   file_map_[group_id].push_back(std::make_pair(f, instance_id));
 
-  LOG_INFO("load checkpoint successful! the file is %s, instance_id is %llu",
-           fname.c_str(), (unsigned long long)instance_id);
+  LOG_INFO(
+      "Group %u : load checkpoint successful! the file is %s, instance_id is "
+      "%llu",
+      group_id, fname.c_str(), (unsigned long long)instance_id);
+
   CleanCheckpoint(group_id);
 
   return true;

@@ -4,8 +4,6 @@
 
 #include "saber/util/runloop.h"
 
-#include <assert.h>
-
 #include <algorithm>
 #include <utility>
 

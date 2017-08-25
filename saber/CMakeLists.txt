@@ -14,7 +14,6 @@ if (BUILD_SERVER_LIBS)
   add_subdirectory(server)
 endif()
 add_subdirectory(service)
-add_subdirectory(storage)
 add_subdirectory(util)
 
 if(BUILD_SHARED_LIBS AND BUILD_CLIENT_LIBS)
