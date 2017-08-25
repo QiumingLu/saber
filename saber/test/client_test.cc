@@ -2,9 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <iostream>
+
 #include <saber/client/saber.h>
 #include <saber/util/runloop.h>
-#include <iostream>
 
 void CreateCallback(const std::string& path, void* ctx,
                     const saber::CreateResponse& response) {

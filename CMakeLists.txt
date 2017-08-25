@@ -25,7 +25,7 @@ endfunction(exclude)
 enable_testing()
 
 if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE "debug")
+  set(CMAKE_BUILD_TYPE "release")
 endif()
 
 if(NOT CMAKE_INSTALL_DIR)
@@ -100,6 +100,5 @@ saber_set_saber_server_link()
 add_subdirectory(saber)
 
 if(BUILD_EXAMPLES AND BUILD_CLIENT_LIBS)
-  add_subdirectory(examples/wars)
   add_subdirectory(examples/echo)
 endif()

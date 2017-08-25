@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include "saber/proto/saber.pb.h"
+#include <saber/proto/saber.pb.h>
 
 namespace saber {
 
