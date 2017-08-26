@@ -6,14 +6,20 @@
 #define SABER_CLIENT_SABER_CLIENT_OPTIONS_H_
 
 #include <string>
+
 #include "saber/client/server_manager.h"
+#include "saber/service/watcher.h"
 
 namespace saber {
 
 struct ClientOptions {
-  bool auto_watch_reset;
   std::string root;
   std::string servers;
+
+  // Default: nullptr
+  Watcher* watcher;
+
+  // Default: nullptr
   ServerManager* server_manager;
 
   ClientOptions();

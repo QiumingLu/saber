@@ -48,12 +48,6 @@ std::string ToString(EventType type) {
     case ET_NODE_CHILDREN_CHANGED:
       s = "Node Children Changed";
       break;
-    case ET_DATA_WATCH_REMOVED:
-      s = "Data Watch Removed";
-      break;
-    case ET_CHILD_WATCH_REMOVED:
-      s = "Child Watch Removed";
-      break;
     default:
       s = "Unknown";
       assert(false);

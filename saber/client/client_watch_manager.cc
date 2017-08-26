@@ -11,8 +11,7 @@
 
 namespace saber {
 
-ClientWatchManager::ClientWatchManager(bool auto_watch_reset)
-    : auto_watch_reset_(auto_watch_reset) {}
+ClientWatchManager::ClientWatchManager(Watcher* watcher) : watcher_(watcher) {}
 
 ClientWatchManager::~ClientWatchManager() {}
 
@@ -69,7 +68,7 @@ WatcherSetPtr ClientWatchManager::Trigger(const WatchedEvent& event) {
       for (auto& i : child_watches_) {
         result->insert(i.second->begin(), i.second->end());
       }
-      if (event.state() != SS_CONNECTED && !auto_watch_reset_) {
+      if (event.state() != SS_CONNECTED) {
         data_watches_.clear();
         exist_watches_.clear();
         child_watches_.clear();
@@ -119,13 +118,8 @@ WatcherSetPtr ClientWatchManager::Trigger(const WatchedEvent& event) {
       }
       break;
     }
-    case ET_DATA_WATCH_REMOVED: {
-      break;
-    }
-    case ET_CHILD_WATCH_REMOVED: {
-      break;
-    }
     default: {
+      assert(false);
       LOG_ERROR("Invalid watched event type.");
       break;
     }

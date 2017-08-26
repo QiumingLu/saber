@@ -14,10 +14,8 @@ namespace saber {
 
 class ClientWatchManager {
  public:
-  explicit ClientWatchManager(bool auto_watch_reset = false);
+  explicit ClientWatchManager(Watcher* watcher = nullptr);
   ~ClientWatchManager();
-
-  void SetDefaultWatcher(Watcher* watcher) { watcher_ = watcher; }
 
   void AddDataWatch(const std::string& path, Watcher* watcher);
   void AddExistWatch(const std::string& path, Watcher* watcher);
@@ -26,7 +24,6 @@ class ClientWatchManager {
   WatcherSetPtr Trigger(const WatchedEvent& event);
 
  private:
-  bool auto_watch_reset_;
   Watcher* watcher_;
   std::unordered_map<std::string, WatcherSetPtr> data_watches_;
   std::unordered_map<std::string, WatcherSetPtr> exist_watches_;

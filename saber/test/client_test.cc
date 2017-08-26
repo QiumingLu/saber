@@ -4,8 +4,9 @@
 
 #include <iostream>
 
+#include <voyager/core/eventloop.h>
+
 #include "saber/client/saber.h"
-#include "saber/util/runloop.h"
 
 void CreateCallback(const std::string& path, void* ctx,
                     const saber::CreateResponse& response) {
@@ -36,13 +37,14 @@ int main() {
   saber::ClientOptions options;
   options.root = "/ls";
   options.servers = "127.0.0.1:6666,127.0.0.1:6667,127.0.0.1:6668";
-  saber::Saber client(options);
-  client.Start();
+  options.watcher = &watcher;
+  voyager::EventLoop loop;
+  saber::Saber client(&loop, options);
+  client.Connect();
   saber::CreateRequest r1;
   r1.set_path("/ls");
   r1.set_data("saber client test");
   client.Create(r1, nullptr, &CreateCallback);
-  client.Connect();
   saber::GetDataRequest r2;
   r2.set_path("/ls");
   r2.set_watch(true);
@@ -52,7 +54,6 @@ int main() {
   r3.set_data("saber client pass test");
   r3.set_version(-1);
   client.SetData(r3, nullptr, &SetDataCallback);
-  saber::RunLoop loop;
   loop.Loop();
   return 0;
 }

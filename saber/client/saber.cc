@@ -4,33 +4,17 @@
 
 #include "saber/client/saber.h"
 #include "saber/client/saber_client.h"
-#include "saber/client/server_manager_impl.h"
 
 namespace saber {
 
-Saber::Saber(const ClientOptions& options, Watcher* watcher)
-    : options_(options),
-      watcher_(watcher),
-      server_manager_(options.server_manager),
-      loop_(nullptr) {}
+Saber::Saber(voyager::EventLoop* loop, const ClientOptions& options)
+    : client_(new SaberClient(loop, options)) {}
 
 Saber::~Saber() {}
 
-bool Saber::Start() {
-  if (!server_manager_) {
-    server_manager_.reset(new ServerManagerImpl());
-    options_.server_manager = server_manager_.get();
-  }
-  server_manager_->UpdateServers(options_.servers);
+void Saber::Connect() { client_->Connect(); }
 
-  loop_ = thread_.Loop();
-  client_.reset(new SaberClient(loop_, options_, watcher_));
-  return true;
-}
-
-void Saber::Connect() { client_->Start(); }
-
-void Saber::Close() { client_->Stop(); }
+void Saber::Close() { client_->Close(); }
 
 void Saber::Create(const CreateRequest& request, void* context,
                    const CreateCallback& cb) {

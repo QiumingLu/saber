@@ -10,6 +10,7 @@
 #include <string>
 #include <unordered_map>
 
+#include "saber/proto/saber.pb.h"
 #include "saber/proto/server.pb.h"
 #include "saber/server/server_watch_manager.h"
 #include "saber/util/mutex.h"

@@ -1,8 +1,18 @@
 syntax = "proto3";
 package saber;
 
+import "saber.proto";
+
 message Transaction {
-  uint32 group_id = 2;
-  uint64 instance_id = 3;
-  uint64 time = 4;
+  uint32 group_id = 1;
+  uint64 instance_id = 2;
+  uint64 time = 3;
+}
+
+message DataNode {
+  Stat stat = 1;
+  bytes name = 2;
+  bytes data = 3;
+  repeated ACL acl = 4;
+  repeated bytes children = 5;
 }

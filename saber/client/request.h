@@ -15,7 +15,7 @@ namespace saber {
 template <typename T>
 class Request {
  public:
-  int message_id;
+  uint32_t message_id;
   std::string path;
   void* context;
   Watcher* watcher;

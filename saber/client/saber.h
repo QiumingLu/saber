@@ -7,25 +7,20 @@
 
 #include <memory>
 
-#include <voyager/core/bg_eventloop.h>
 #include <voyager/core/eventloop.h>
 
 #include "saber/client/callbacks.h"
 #include "saber/client/client_options.h"
 #include "saber/proto/saber.pb.h"
-#include "saber/service/watcher.h"
 
 namespace saber {
 
 class SaberClient;
-class ServerManager;
 
 class Saber {
  public:
-  explicit Saber(const ClientOptions& options, Watcher* watcher = nullptr);
+  Saber(voyager::EventLoop* loop, const ClientOptions& options);
   ~Saber();
-
-  bool Start();
 
   void Connect();
   void Close();
@@ -55,13 +50,7 @@ class Saber {
                    void* context, const GetChildrenCallback& cb);
 
  private:
-  ClientOptions options_;
-  Watcher* watcher_;
-  std::unique_ptr<ServerManager> server_manager_;
   std::unique_ptr<SaberClient> client_;
-
-  voyager::EventLoop* loop_;
-  voyager::BGEventLoop thread_;
 
   // No copying allowed
   Saber(const Saber&);

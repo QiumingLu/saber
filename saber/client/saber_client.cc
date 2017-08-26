@@ -4,55 +4,58 @@
 
 #include "saber/client/saber_client.h"
 
-#include <set>
 #include <utility>
 
-#include "saber/client/client_watch_manager.h"
-#include "saber/client/server_manager_impl.h"
 #include "saber/util/logging.h"
 #include "saber/util/timeops.h"
 
 namespace saber {
 
-SaberClient::SaberClient(voyager::EventLoop* loop, const ClientOptions& options,
-                         Watcher* watcher)
-    : has_started_(false),
-      root_(options.root),
-      server_manager_(options.server_manager),
-      loop_(loop),
+SaberClient::SaberClient(voyager::EventLoop* loop, const ClientOptions& options)
+    : kRoot(options.root),
+      has_started_(false),
+      message_id_(0),
       session_id_(0),
-      watch_manager_(new ClientWatchManager(options.auto_watch_reset)),
-      message_id_(0) {
-  watch_manager_->SetDefaultWatcher(watcher);
+      loop_(loop),
+      server_manager_(options.server_manager),
+      server_manager_impl_(nullptr),
+      watch_manager_(options.watcher) {
   codec_.SetMessageCallback(std::bind(&SaberClient::OnMessage, this,
                                       std::placeholders::_1,
                                       std::placeholders::_2));
   codec_.SetErrorCallback(std::bind(&SaberClient::OnError, this,
                                     std::placeholders::_1,
                                     std::placeholders::_2));
+  if (!server_manager_) {
+    server_manager_impl_ = new ServerManagerImpl();
+    server_manager_ = server_manager_impl_;
+  }
+  server_manager_->UpdateServers(options.servers);
 }
 
 SaberClient::~SaberClient() {
   if (has_started_) {
-    Stop();
+    Close();
   }
+  delete server_manager_impl_;
 }
 
-void SaberClient::Start() {
+void SaberClient::Connect() {
   bool expected = false;
   if (has_started_.compare_exchange_strong(expected, true)) {
     Connect(server_manager_->GetNext());
   } else {
-    LOG_WARN("SaberClient has started, don't call it again!");
+    LOG_WARN("SaberClient has connected, don't call it again!");
   }
 }
 
-void SaberClient::Stop() {
+void SaberClient::Close() {
   bool expected = true;
   if (has_started_.compare_exchange_strong(expected, false)) {
-    Close();
+    assert(client_);
+    client_->Close();
   } else {
-    LOG_WARN("SaberClient has stoped, don't call it again!");
+    LOG_WARN("SaberClient has closed, don't call it again!");
   }
 }
 
@@ -61,7 +64,7 @@ void SaberClient::Create(const CreateRequest& request, void* context,
   SaberMessage* message = new SaberMessage();
   message->set_type(MT_CREATE);
   message->set_data(request.SerializeAsString());
-  message->set_extra_data(root_);
+  message->set_extra_data(kRoot);
 
   Request<CreateCallback>* r =
       new Request<CreateCallback>(request.path(), context, nullptr, cb);
@@ -79,7 +82,7 @@ void SaberClient::Delete(const DeleteRequest& request, void* context,
   SaberMessage* message = new SaberMessage();
   message->set_type(MT_DELETE);
   message->set_data(request.SerializeAsString());
-  message->set_extra_data(root_);
+  message->set_extra_data(kRoot);
 
   Request<DeleteCallback>* r =
       new Request<DeleteCallback>(request.path(), context, nullptr, cb);
@@ -97,7 +100,7 @@ void SaberClient::Exists(const ExistsRequest& request, Watcher* watcher,
   SaberMessage* message = new SaberMessage();
   message->set_type(MT_EXISTS);
   message->set_data(request.SerializeAsString());
-  message->set_extra_data(root_);
+  message->set_extra_data(kRoot);
 
   Request<ExistsCallback>* r =
       new Request<ExistsCallback>(request.path(), context, watcher, cb);
@@ -115,7 +118,7 @@ void SaberClient::GetData(const GetDataRequest& request, Watcher* watcher,
   SaberMessage* message = new SaberMessage();
   message->set_type(MT_GETDATA);
   message->set_data(request.SerializeAsString());
-  message->set_extra_data(root_);
+  message->set_extra_data(kRoot);
 
   Request<GetDataCallback>* r =
       new Request<GetDataCallback>(request.path(), context, watcher, cb);
@@ -133,7 +136,7 @@ void SaberClient::SetData(const SetDataRequest& request, void* context,
   SaberMessage* message = new SaberMessage();
   message->set_type(MT_SETDATA);
   message->set_data(request.SerializeAsString());
-  message->set_extra_data(root_);
+  message->set_extra_data(kRoot);
 
   Request<SetDataCallback>* r =
       new Request<SetDataCallback>(request.path(), context, nullptr, cb);
@@ -151,7 +154,7 @@ void SaberClient::GetACL(const GetACLRequest& request, void* context,
   SaberMessage* message = new SaberMessage();
   message->set_type(MT_GETACL);
   message->set_data(request.SerializeAsString());
-  message->set_extra_data(root_);
+  message->set_extra_data(kRoot);
 
   Request<GetACLCallback>* r =
       new Request<GetACLCallback>(request.path(), context, nullptr, cb);
@@ -169,7 +172,7 @@ void SaberClient::SetACL(const SetACLRequest& request, void* context,
   SaberMessage* message = new SaberMessage();
   message->set_type(MT_SETACL);
   message->set_data(request.SerializeAsString());
-  message->set_extra_data(root_);
+  message->set_extra_data(kRoot);
 
   Request<SetACLCallback>* r =
       new Request<SetACLCallback>(request.path(), context, nullptr, cb);
@@ -188,7 +191,7 @@ void SaberClient::GetChildren(const GetChildrenRequest& request,
   SaberMessage* message = new SaberMessage();
   message->set_type(MT_GETCHILDREN);
   message->set_data(request.SerializeAsString());
-  message->set_extra_data(root_);
+  message->set_extra_data(kRoot);
 
   Request<GetChildrenCallback>* r =
       new Request<GetChildrenCallback>(request.path(), context, watcher, cb);
@@ -215,33 +218,25 @@ void SaberClient::Connect(const voyager::SockAddr& addr) {
   client_->Connect(false);
 }
 
-void SaberClient::Close() {
-  loop_->RunInLoop([this]() {
-    assert(client_);
-    client_->Close();
-  });
-}
-
 void SaberClient::TrySendInLoop(SaberMessage* message) {
-  codec_.SendMessage(conn_wp_.lock(), *message);
+  codec_.SendMessage(client_->GetTcpConnectionPtr(), *message);
   outgoing_queue_.push_back(std::unique_ptr<SaberMessage>(message));
 }
 
 void SaberClient::OnConnection(const voyager::TcpConnectionPtr& p) {
   LOG_DEBUG("SaberClient::OnConnection - connect successfully!");
-  conn_wp_ = p;
-  server_manager_->OnConnection();
   ConnectRequest request;
   request.set_session_id(session_id_);
   SaberMessage message;
   message.set_id(message_id_++);
   message.set_type(MT_CONNECT);
   message.set_data(request.SerializeAsString());
-  message.set_extra_data(root_);
+  message.set_extra_data(kRoot);
   codec_.SendMessage(p, message);
   for (auto& i : outgoing_queue_) {
     codec_.SendMessage(p, *i);
   }
+  server_manager_->OnConnection();
 }
 
 void SaberClient::OnFailue() {
@@ -263,30 +258,56 @@ void SaberClient::OnClose(const voyager::TcpConnectionPtr& p) {
       SleepForMicroseconds(1000);
       Connect(server_manager_->GetNext());
     }
+  } else {
+    WatchedEvent event;
+    event.set_type(ET_NONE);
+    event.set_state(SS_DISCONNECTED);
+    TriggerWatchers(event);
   }
+  loop_->RemoveTimer(timerid_);
 }
 
 bool SaberClient::OnMessage(const voyager::TcpConnectionPtr& p,
                             std::unique_ptr<SaberMessage> message) {
   bool res = true;
-  int id = message->id();
+  uint32_t id = message->id();
   MessageType type = message->type();
+  if (type != MT_NOTIFICATION && type != MT_MASTER && type != MT_PING &&
+      type != MT_CONNECT) {
+    assert(!outgoing_queue_.empty());
+    assert(outgoing_queue_.front()->id() == id);
+    while (!outgoing_queue_.empty() && id <= outgoing_queue_.front()->id()) {
+      outgoing_queue_.pop_front();
+    }
+  }
   switch (type) {
     case MT_NOTIFICATION: {
-      WatchedEvent* event = new WatchedEvent();
-      event->ParseFromString(message->data());
+      WatchedEvent event;
+      event.ParseFromString(message->data());
       TriggerWatchers(event);
       break;
     }
     case MT_CONNECT: {
       ConnectResponse response;
       response.ParseFromString(message->data());
-      session_id_ = response.session_id();
-      timeout_ = response.timeout();
-      WatchedEvent* event = new WatchedEvent();
-      event->set_state(SS_CONNECTED);
-      event->set_type(ET_NONE);
+      WatchedEvent event;
+      if (response.code() == RC_OK) {
+        if (session_id_ == 0 || response.session_id() == session_id_) {
+          event.set_state(SS_CONNECTED);
+        } else {
+          event.set_state(SS_EXPIRED);
+        }
+        uint64_t timeout = response.timeout();
+        timeout = timeout < 10000 ? (timeout * 4 / 5) : (timeout - 2000);
+        timerid_ = loop_->RunEvery(1000 * timeout,
+                                   std::bind(&SaberClient::OnTime, this));
+      } else {
+        event.set_state(SS_AUTHFAILED);
+        client_->Close();
+      }
+      event.set_type(ET_NONE);
       TriggerWatchers(event);
+      session_id_ = response.session_id();
       break;
     }
     case MT_CREATE: {
@@ -356,9 +377,9 @@ bool SaberClient::OnMessage(const voyager::TcpConnectionPtr& p,
         request->callback(request->path, request->context, response);
         if (request->watcher) {
           if (response.code() == RC_OK) {
-            watch_manager_->AddDataWatch(request->path, request->watcher);
+            watch_manager_.AddDataWatch(request->path, request->watcher);
           } else {
-            watch_manager_->AddExistWatch(request->path, request->watcher);
+            watch_manager_.AddExistWatch(request->path, request->watcher);
           }
         }
         exists_queue_.pop();
@@ -384,7 +405,7 @@ bool SaberClient::OnMessage(const voyager::TcpConnectionPtr& p,
       if (id == request->message_id) {
         response.ParseFromString(message->data());
         if (request->watcher && response.code() == RC_OK) {
-          watch_manager_->AddDataWatch(request->path, request->watcher);
+          watch_manager_.AddDataWatch(request->path, request->watcher);
         }
         request->callback(request->path, request->context, response);
         get_data_queue_.pop();
@@ -479,7 +500,7 @@ bool SaberClient::OnMessage(const voyager::TcpConnectionPtr& p,
       if (id == request->message_id) {
         response.ParseFromString(message->data());
         if (request->watcher && response.code() == RC_OK) {
-          watch_manager_->AddChildWatch(request->path, request->watcher);
+          watch_manager_.AddChildWatch(request->path, request->watcher);
         }
         request->callback(request->path, request->context, response);
         children_queue_.pop();
@@ -490,7 +511,7 @@ bool SaberClient::OnMessage(const voyager::TcpConnectionPtr& p,
       res = false;
       master_.ParseFromString(message->data());
       LOG_DEBUG("The master is %s:%d.", master_.host().c_str(), master_.port());
-      Close();
+      client_->Close();
       break;
     }
     case MT_PING: {
@@ -502,14 +523,7 @@ bool SaberClient::OnMessage(const voyager::TcpConnectionPtr& p,
       break;
     }
   }
-  if (type != MT_NOTIFICATION && type != MT_MASTER && type != MT_PING &&
-      type != MT_CONNECT) {
-    assert(!outgoing_queue_.empty());
-    assert(outgoing_queue_.front()->id() == id);
-    while (!outgoing_queue_.empty() && id <= outgoing_queue_.front()->id()) {
-      outgoing_queue_.pop_front();
-    }
-  }
+
   return res;
 }
 
@@ -520,21 +534,19 @@ void SaberClient::OnError(const voyager::TcpConnectionPtr& p,
   }
 }
 
-void SaberClient::TriggerWatchers(WatchedEvent* event) {
-  WatcherSetPtr result = watch_manager_->Trigger(*event);
-  // FIXME
-  // Use std::shared_ptr to replace native pointer, which can avoid
-  // memory leaks occur?
-  std::set<Watcher*>* watchers = result.release();
-  loop_->RunInLoop([watchers, event]() {
-    if (watchers) {
-      for (auto& it : *watchers) {
-        it->Process(*event);
-      }
-      delete watchers;
+void SaberClient::OnTime() {
+  SaberMessage message;
+  message.set_type(MT_PING);
+  codec_.SendMessage(client_->GetTcpConnectionPtr(), message);
+}
+
+void SaberClient::TriggerWatchers(const WatchedEvent& event) {
+  WatcherSetPtr watchers = watch_manager_.Trigger(event);
+  if (watchers) {
+    for (auto& it : *(watchers.get())) {
+      it->Process(event);
     }
-    delete event;
-  });
+  }
 }
 
 }  // namespace saber

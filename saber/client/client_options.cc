@@ -6,7 +6,6 @@
 
 namespace saber {
 
-ClientOptions::ClientOptions()
-    : auto_watch_reset(true), root(), servers(), server_manager(nullptr) {}
+ClientOptions::ClientOptions() : watcher(nullptr), server_manager(nullptr) {}
 
 }  // namespace saber

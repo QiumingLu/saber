@@ -14,8 +14,6 @@ enum EventType {
   ET_NODE_DELETED = 2;
   ET_NODE_DATA_CHANGED = 3;
   ET_NODE_CHILDREN_CHANGED = 4;
-  ET_DATA_WATCH_REMOVED = 5;
-  ET_CHILD_WATCH_REMOVED = 6;
 }
 
 message WatchedEvent {
@@ -176,15 +174,7 @@ enum MessageType {
 
 message SaberMessage {
   MessageType type = 1;
-  int32 id = 2;
+  uint32 id = 2;
   bytes data = 3;
   bytes extra_data = 4;
-}
-
-message DataNode {
-  Stat stat = 1;
-  bytes name = 2;
-  bytes data = 3;
-  repeated ACL acl = 4;
-  repeated bytes children = 5;
 }

@@ -14,6 +14,7 @@
 #include <saber/client/client_options.h>
 #include <saber/client/saber.h>
 #include <saber/util/runloop.h>
+#include <voyager/core/bg_eventloop.h>
 #include <voyager/util/string_util.h>
 
 #include "saber/main/default_watcher.h"
@@ -68,6 +69,7 @@ class MySaber {
 
   RunLoop* loop_;
   DefaultWatcher watcher_;
+  voyager::BGEventLoop thread_;
   Saber saber_;
 
   // No copying allowed
