@@ -263,6 +263,7 @@ void SaberClient::OnClose(const voyager::TcpConnectionPtr& p) {
     event.set_type(ET_NONE);
     event.set_state(SS_DISCONNECTED);
     TriggerWatchers(event);
+    session_id_ = 0;
   }
   loop_->RemoveTimer(timerid_);
 }

@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <stdio.h>
+
 #include <saber/server/saber_server.h>
 #include <saber/util/logging.h>
 #include <skywalker/logging.h>
@@ -12,27 +14,27 @@
 
 int main(int argc, char** argv) {
   if (argc != 3) {
-    LOG_ERROR("Usage: %s id:ip:port:port id:ip:port:port,...", argv[0]);
+    printf("Usage: %s id:ip:port:port id:ip:port:port,...\n", argv[0]);
     return -1;
   }
   char path[1024];
   if (getcwd(path, sizeof(path)) == nullptr) {
-    LOG_ERROR("getcwd failed.");
+    printf("getcwd failed.\n");
     return -1;
   }
 
   saber::ServerOptions server_options;
   server_options.log_storage_path = std::string(path) + "/log";
   server_options.checkpoint_storage_path = std::string(path) + "/checkpoint";
-  server_options.make_checkpoint_interval = 500;
-  server_options.keep_log_count = 1000;
+  server_options.make_checkpoint_interval = 5;
+  server_options.keep_log_count = 10;
 
   std::vector<std::string> server;
   std::vector<std::string> servers;
 
   voyager::SplitStringUsing(std::string(argv[1]), ":", &server);
   if (server.size() != 4) {
-    LOG_ERROR("Usage: %s id:ip:port:port id:ip:port:port,...", argv[0]);
+    printf("Usage: %s id:ip:port:port id:ip:port:port,...\n", argv[0]);
     return -1;
   }
 
@@ -46,7 +48,7 @@ int main(int argc, char** argv) {
     server.clear();
     voyager::SplitStringUsing(s, ":", &server);
     if (server.size() != 4) {
-      LOG_ERROR("Usage: %s id:ip:port:port id:ip:port:port,...", argv[0]);
+      printf("Usage: %s id:ip:port:port id:ip:port:port,...\n", argv[0]);
       return -1;
     }
 
@@ -68,10 +70,10 @@ int main(int argc, char** argv) {
 
   bool res = saber_server.Start();
   if (res) {
-    LOG_INFO("SaberServer start successful!");
+    printf("SaberServer start successful!\n");
     loop.Loop();
   } else {
-    LOG_ERROR("SaberServer start failed!");
+    printf("SaberServer start failed!\n");
   }
   return 0;
 }
