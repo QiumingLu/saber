@@ -11,9 +11,9 @@
 namespace saber {
 
 template <typename T>
-class SequencenNumber {
+class SequenceNumber {
  public:
-  SequencenNumber(T max) : max_(max), num_(0) {}
+  SequenceNumber(T max) : max_(max), num_(0) {}
   T GetNext() {
     MutexLock lock(&mutex_);
     if (num_ >= max_) {
@@ -28,8 +28,8 @@ class SequencenNumber {
   T num_;
 
   // No copying allowed
-  SequencenNumber(const SequencenNumber&);
-  void operator=(const SequencenNumber&);
+  SequenceNumber(const SequenceNumber&);
+  void operator=(const SequenceNumber&);
 };
 
 }  // namespace saber

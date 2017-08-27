@@ -60,10 +60,7 @@ message ACL {
   Id id = 2;
 }
 
-message ConnectRequest {
-  uint64 session_id = 1;
-  uint64 timeout = 2;
-}
+message ConnectRequest { uint64 session_id = 1; }
 
 message ConnectResponse {
   ResponseCode code = 1;

@@ -293,7 +293,6 @@ void DataTree::SerializeToString(std::string* data) const {
       }
     }
     uint64_t size = static_cast<uint64_t>(it.second->ByteSize());
-    memset(buf, 0, 8);
     memcpy(buf, &size, 8);
     data->append(buf, 8);
     it.second->AppendToString(data);

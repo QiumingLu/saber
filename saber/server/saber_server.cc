@@ -158,12 +158,14 @@ bool SaberServer::OnMessage(const voyager::TcpConnectionPtr& p,
   Context* context = reinterpret_cast<Context*>(p->Context());
   assert(context);
   EntryPtr entry = (context->entry_wp).lock();
-  assert(entry);
-  bool b = HandleMessage(entry, std::move(message));
-  if (b) {
-    UpdateBuckets(p, entry);
-  } else {
-    p->ShutDown();
+  bool b = false;
+  if (entry) {
+    b = HandleMessage(entry, std::move(message));
+    if (b) {
+      UpdateBuckets(p, entry);
+    } else {
+      p->ShutDown();
+    }
   }
   return b;
 }
@@ -225,15 +227,16 @@ bool SaberServer::HandleMessage(const EntryPtr& entry,
   }
   mutex_.UnLock();
 
-  request.set_session_id(entry->conn->session_id());
-  request.set_timeout(options_.max_session_timeout);
-  message->set_data(request.SerializeAsString());
+  ConnectResponse response;
+  response.set_session_id(entry->conn->session_id());
+  response.set_timeout(options_.max_session_timeout);
+  message->set_data(response.SerializeAsString());
   entry->conn->OnMessage(std::move(message));
   return true;
 }
 
 uint64_t SaberServer::GetNextSessionId() const {
-  static SequencenNumber<int> seq_num_(1 << 10);
+  static SequenceNumber<int> seq_num_(1 << 10);
   return (NowMillis() << 22) | (server_id_ << 10) | seq_num_.GetNext();
 }
 

@@ -78,12 +78,7 @@ void Committer::Commit(uint32_t group_id, SaberMessage* message) {
       break;
     }
     case MT_CONNECT: {
-      ConnectRequest request;
-      ConnectResponse response;
-      request.ParseFromString(message->data());
-      response.set_session_id(request.session_id());
-      response.set_timeout(request.timeout());
-      reply_message->set_data(response.SerializeAsString());
+      reply_message->set_data(message->data());
       break;
     }
     case MT_CREATE:

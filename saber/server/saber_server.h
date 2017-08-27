@@ -39,6 +39,8 @@ class SaberServer {
 
   bool Start();
 
+  const skywalker::Node* GetNode() const { return node_.get(); }
+
  private:
   struct Context;
   struct Entry;

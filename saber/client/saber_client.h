@@ -18,7 +18,7 @@
 #include "saber/client/callbacks.h"
 #include "saber/client/client_options.h"
 #include "saber/client/client_watch_manager.h"
-#include "saber/client/request.h"
+#include "saber/client/saber_request.h"
 #include "saber/client/server_manager.h"
 #include "saber/client/server_manager_impl.h"
 #include "saber/service/watcher.h"
@@ -67,7 +67,17 @@ class SaberClient {
                  std::unique_ptr<SaberMessage> message);
   void OnError(const voyager::TcpConnectionPtr& p,
                voyager::ProtoCodecError code);
-  void OnTime();
+  void OnTimer();
+  void OnNotification(SaberMessage* message);
+  void OnConnect(SaberMessage* message);
+  bool OnCreate(SaberMessage* message);
+  bool OnDelete(SaberMessage* message);
+  bool OnExists(SaberMessage* message);
+  bool OnGetData(SaberMessage* message);
+  bool OnSetData(SaberMessage* message);
+  bool OnGetACL(SaberMessage* message);
+  bool OnSetACL(SaberMessage* message);
+  bool OnGetChildren(SaberMessage* message);
   void TriggerWatchers(const WatchedEvent& event);
 
   const std::string kRoot;
@@ -84,18 +94,18 @@ class SaberClient {
   voyager::ProtobufCodec<SaberMessage> codec_;
   std::unique_ptr<voyager::TcpClient> client_;
 
-  std::queue<std::unique_ptr<Request<CreateCallback> > > create_queue_;
-  std::queue<std::unique_ptr<Request<DeleteCallback> > > delete_queue_;
-  std::queue<std::unique_ptr<Request<ExistsCallback> > > exists_queue_;
-  std::queue<std::unique_ptr<Request<GetDataCallback> > > get_data_queue_;
-  std::queue<std::unique_ptr<Request<SetDataCallback> > > set_data_queue_;
-  std::queue<std::unique_ptr<Request<GetACLCallback> > > get_acl_queue_;
-  std::queue<std::unique_ptr<Request<SetACLCallback> > > set_acl_queue_;
-  std::queue<std::unique_ptr<Request<GetChildrenCallback> > > children_queue_;
+  std::queue<std::unique_ptr<CreateRequestT> > create_queue_;
+  std::queue<std::unique_ptr<DeleteRequestT> > delete_queue_;
+  std::queue<std::unique_ptr<ExistsRequestT> > exists_queue_;
+  std::queue<std::unique_ptr<GetDataRequestT> > get_data_queue_;
+  std::queue<std::unique_ptr<SetDataRequestT> > set_data_queue_;
+  std::queue<std::unique_ptr<GetACLRequestT> > get_acl_queue_;
+  std::queue<std::unique_ptr<SetACLRequestT> > set_acl_queue_;
+  std::queue<std::unique_ptr<GetChildrenRequestT> > children_queue_;
 
   std::deque<std::unique_ptr<SaberMessage> > outgoing_queue_;
 
-  voyager::TimerId timerid_;
+  voyager::TimerId timer_;
   Master master_;
 
   // No copying allowed

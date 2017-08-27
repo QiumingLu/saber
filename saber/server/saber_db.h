@@ -6,6 +6,7 @@
 #define SABER_SERVER_SABER_DB_H_
 
 #include <atomic>
+#include <map>
 #include <memory>
 #include <string>
 #include <utility>
@@ -59,6 +60,11 @@ class SaberDB : public skywalker::StateMachine, public skywalker::Checkpoint {
                               const std::vector<std::string>& files);
 
  private:
+  bool GroupFile(uint32_t group_id);
+  bool CheckData(std::string& s);
+  void DeleteFile(uint32_t group_id, uint64_t instance_id);
+  void CheckFiles(uint32_t group_id, std::set<uint64_t>& temp);
+
   void Create(uint32_t group_id, const CreateRequest& request,
               const Transaction& txn, CreateResponse* response);
 
@@ -83,7 +89,7 @@ class SaberDB : public skywalker::StateMachine, public skywalker::Checkpoint {
   std::string checkpoint_storage_path_;
   std::vector<uint64_t> instances_;
   std::vector<std::unique_ptr<DataTree>> trees_;
-  std::vector<std::vector<std::pair<uint64_t, uint64_t>>> file_map_;
+  std::vector<std::map<uint64_t, uint64_t>> file_map_;
 
   RunLoop* loop_;
   RunLoopThread thread_;
