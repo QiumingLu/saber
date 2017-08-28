@@ -9,6 +9,7 @@
 #include <algorithm>
 
 #include <skywalker/file.h>
+#include <voyager/util/coding.h>
 #include <voyager/util/string_util.h>
 
 #include "saber/util/crc32c.h"
@@ -116,8 +117,7 @@ bool SaberDB::GroupFile(uint32_t group_id) {
 bool SaberDB::CheckData(std::string& s) {
   assert(s.size() > 4);
   if (s.size() > 4) {
-    uint32_t c = 0;
-    memcpy(&c, s.c_str() + s.size() - 4, 4);
+    uint32_t c = voyager::DecodeFixed32(s.c_str() + s.size() - 4);
     if (c == crc::crc32(0, s.c_str(), s.size() - 4)) {
       s.erase(s.size() - 4);
       return true;
@@ -286,10 +286,7 @@ void SaberDB::MakeCheckpoint(uint32_t group_id) {
     trees_[group_id]->SerializeToString(&s);
     uint64_t id = instances_[group_id];
     uint64_t f = NowMillis();
-    uint32_t c = crc::crc32(0, s.c_str(), s.size());
-    char b[4];
-    memcpy(b, &c, 4);
-    s.append(b, 4);
+    voyager::PutFixed32(&s, crc::crc32(0, s.c_str(), s.size()));
     std::string fname = checkpoint_storage_path_ + "g" +
                         std::to_string(group_id) + "/" + std::to_string(f);
     skywalker::Status status = skywalker::WriteStringToFileSync(
@@ -323,10 +320,7 @@ void SaberDB::CleanCheckpoint(uint32_t group_id) {
     s.append("\r\n");
   }
   if (!s.empty()) {
-    uint32_t c = crc::crc32(0, s.c_str(), s.size());
-    char b[4];
-    memcpy(b, &c, 4);
-    s.append(b, 4);
+    voyager::PutFixed32(&s, crc::crc32(0, s.c_str(), s.size()));
     std::string dir =
         checkpoint_storage_path_ + "g" + std::to_string(group_id) + "/";
     std::string fname = dir + "g";

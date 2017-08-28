@@ -6,6 +6,8 @@
 
 #include <utility>
 
+#include <voyager/util/coding.h>
+
 #include "saber/util/mutexlock.h"
 
 namespace saber {
@@ -19,10 +21,9 @@ DataTree::~DataTree() {}
 void DataTree::Recover(const std::string& data) {
   uint64_t index = 0;
   while (index < data.size()) {
-    uint64_t size = 0;
-    memcpy(&size, data.c_str() + index, 8);
+    uint32_t size = voyager::DecodeFixed32(data.c_str() + index);
     DataNode* node = new DataNode();
-    node->ParseFromArray(data.c_str() + index + 8, static_cast<int>(size));
+    node->ParseFromArray(data.c_str() + index + 4, static_cast<int>(size));
     if (node->children_size() > 0) {
       std::set<std::string>& children = childrens_[node->name()];
       for (int i = 0; i < node->children_size(); ++i) {
@@ -33,7 +34,7 @@ void DataTree::Recover(const std::string& data) {
     nodes_.insert(
         std::make_pair(node->name(), std::unique_ptr<DataNode>(node)));
     node->clear_name();
-    index = index + 8 + size;
+    index = index + 4 + size;
   }
   assert(index == data.size());
 }
@@ -281,8 +282,7 @@ void DataTree::RemoveWatcher(Watcher* watcher) {
 }
 
 void DataTree::SerializeToString(std::string* data) const {
-  data->reserve(3 * 1024 * 1024);
-  char buf[8];
+  data->reserve(4 * 1024 * 1024);
   MutexLock lock(&mutex_);
   for (auto& it : nodes_) {
     it.second->set_name(it.first);
@@ -292,9 +292,8 @@ void DataTree::SerializeToString(std::string* data) const {
         it.second->add_children(child);
       }
     }
-    uint64_t size = static_cast<uint64_t>(it.second->ByteSize());
-    memcpy(buf, &size, 8);
-    data->append(buf, 8);
+    uint32_t size = static_cast<uint32_t>(it.second->ByteSize());
+    voyager::PutFixed32(data, size);
     it.second->AppendToString(data);
     it.second->clear_children();
     it.second->clear_name();

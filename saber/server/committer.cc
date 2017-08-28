@@ -8,8 +8,8 @@
 
 #include "saber/proto/server.pb.h"
 #include "saber/server/server_connection.h"
+#include "saber/util/hash.h"
 #include "saber/util/logging.h"
-#include "saber/util/murmurhash3.h"
 #include "saber/util/timeops.h"
 
 namespace saber {
@@ -172,9 +172,8 @@ uint32_t Committer::Shard(const std::string& s) {
   if (node_->group_size() == 1) {
     return 0;
   } else {
-    uint32_t h;
-    MurmurHash3_x86_32(s.c_str(), static_cast<int>(s.size()), 0, &h);
-    return (h % static_cast<uint32_t>(node_->group_size()));
+    return (Hash(s.c_str(), s.size(), 0) %
+            static_cast<uint32_t>(node_->group_size()));
   }
 }
 

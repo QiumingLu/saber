@@ -7,15 +7,13 @@ set(Saber_SERVER_SRCS ${Saber_SERVER_SRCS} PARENT_SCOPE)
 
 set(
   Saber_UTIL_HEADERS
-  blocking_queue.h
   crc32c.h
-  concurrent_map.h
+  hash.h
   logging.h
   mutex.h
   mutexlock.h
   runloop.h
   runloop_thread.h
-  slice.h
   thread.h
   timeops.h
   )
