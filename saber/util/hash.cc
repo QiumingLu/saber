@@ -10,7 +10,9 @@
 // between switch labels. The real definition should be provided externally.
 // This one is a fallback version for unsupported compilers.
 #ifndef FALLTHROUGH_INTENDED
-#define FALLTHROUGH_INTENDED do { } while (0)
+#define FALLTHROUGH_INTENDED \
+  do {                       \
+  } while (0)
 #endif
 
 namespace saber {
@@ -20,7 +22,7 @@ uint32_t Hash(const char* data, size_t n, uint32_t seed) {
   const uint32_t m = 0xc6a4a793;
   const uint32_t r = 24;
   const char* limit = data + n;
-  uint32_t h = seed ^ (n * m);
+  uint32_t h = static_cast<uint32_t>(seed ^ (n * m));
 
   // Pick up four bytes at a time
   while (data + 4 <= limit) {
