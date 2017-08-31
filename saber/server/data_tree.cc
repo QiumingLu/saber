@@ -292,8 +292,7 @@ void DataTree::SerializeToString(std::string* data) const {
         it.second->add_children(child);
       }
     }
-    uint32_t size = static_cast<uint32_t>(it.second->ByteSize());
-    voyager::PutFixed32(data, size);
+    voyager::PutFixed32(data, static_cast<uint32_t>(it.second->ByteSize()));
     it.second->AppendToString(data);
     it.second->clear_children();
     it.second->clear_name();
