@@ -8,24 +8,23 @@
 
 #include "saber/proto/server.pb.h"
 #include "saber/server/server_connection.h"
-#include "saber/util/hash.h"
 #include "saber/util/logging.h"
 #include "saber/util/timeops.h"
 
 namespace saber {
 
-Committer::Committer(ServerConnection* conn, voyager::EventLoop* loop,
-                     SaberDB* db, skywalker::Node* node)
-    : conn_(conn), loop_(loop), db_(db), node_(node) {}
+Committer::Committer(uint32_t group_id, ServerConnection* conn,
+                     voyager::EventLoop* loop, SaberDB* db,
+                     skywalker::Node* node)
+    : group_id_(group_id), conn_(conn), loop_(loop), db_(db), node_(node) {}
 
 void Committer::Commit(SaberMessage* message) {
-  uint32_t group_id = Shard(message->extra_data());
-  if (node_->IsMaster(group_id)) {
-    Commit(group_id, message);
+  if (node_->IsMaster(group_id_)) {
+    HandleCommit(message);
   } else {
     skywalker::Member i;
     uint64_t version;
-    node_->GetMaster(group_id, &i, &version);
+    node_->GetMaster(group_id_, &i, &version);
     Master master;
     master.set_host(i.host);
     master.set_port(atoi(i.context.c_str()));
@@ -36,7 +35,7 @@ void Committer::Commit(SaberMessage* message) {
   }
 }
 
-void Committer::Commit(uint32_t group_id, SaberMessage* message) {
+void Committer::HandleCommit(SaberMessage* message) {
   bool wait = false;
   SaberMessage* reply_message = new SaberMessage();
   reply_message->set_type(message->type());
@@ -47,7 +46,7 @@ void Committer::Commit(uint32_t group_id, SaberMessage* message) {
       ExistsResponse response;
       request.ParseFromString(message->data());
       Watcher* watcher = request.watch() ? conn_ : nullptr;
-      db_->Exists(group_id, request, watcher, &response);
+      db_->Exists(group_id_, request, watcher, &response);
       reply_message->set_data(response.SerializeAsString());
       break;
     }
@@ -56,7 +55,7 @@ void Committer::Commit(uint32_t group_id, SaberMessage* message) {
       GetDataResponse response;
       request.ParseFromString(message->data());
       Watcher* watcher = request.watch() ? conn_ : nullptr;
-      db_->GetData(group_id, request, watcher, &response);
+      db_->GetData(group_id_, request, watcher, &response);
       reply_message->set_data(response.SerializeAsString());
       break;
     }
@@ -64,7 +63,7 @@ void Committer::Commit(uint32_t group_id, SaberMessage* message) {
       GetACLRequest request;
       GetACLResponse response;
       request.ParseFromString(message->data());
-      db_->GetACL(group_id, request, &response);
+      db_->GetACL(group_id_, request, &response);
       reply_message->set_data(response.SerializeAsString());
       break;
     }
@@ -73,19 +72,15 @@ void Committer::Commit(uint32_t group_id, SaberMessage* message) {
       GetChildrenResponse response;
       request.ParseFromString(message->data());
       Watcher* watcher = request.watch() ? conn_ : nullptr;
-      db_->GetChildren(group_id, request, watcher, &response);
+      db_->GetChildren(group_id_, request, watcher, &response);
       reply_message->set_data(response.SerializeAsString());
-      break;
-    }
-    case MT_CONNECT: {
-      reply_message->set_data(message->data());
       break;
     }
     case MT_CREATE:
     case MT_DELETE:
     case MT_SETDATA:  // FIXME check version here may be more effective?
     case MT_SETACL: {
-      wait = Propose(group_id, message, reply_message);
+      wait = Propose(message, reply_message);
       break;
     }
     default: {
@@ -99,12 +94,14 @@ void Committer::Commit(uint32_t group_id, SaberMessage* message) {
   }
 }
 
-bool Committer::Propose(uint32_t group_id, SaberMessage* message,
-                        SaberMessage* reply_message) {
-  message->set_extra_data(std::to_string(NowMicros()));
+bool Committer::Propose(SaberMessage* message, SaberMessage* reply_message) {
+  Transaction txn;
+  txn.set_session_id(conn_->session_id());
+  txn.set_time(NowMillis());
+  message->set_extra_data(txn.SerializeAsString());
   CommitterPtr ptr(shared_from_this());
   bool res = node_->Propose(
-      group_id, db_->machine_id(), message->SerializeAsString(), reply_message,
+      group_id_, db_->machine_id(), message->SerializeAsString(), reply_message,
       [ptr](uint64_t instance_id, const skywalker::Status& s, void* context) {
         if (!ptr.unique()) {
           ptr->OnProposeComplete(instance_id, s, context);
@@ -165,15 +162,6 @@ void Committer::SetFailedState(SaberMessage* reply_message) {
       LOG_ERROR("Invalid message type.");
       break;
     }
-  }
-}
-
-uint32_t Committer::Shard(const std::string& s) {
-  if (node_->group_size() == 1) {
-    return 0;
-  } else {
-    return (Hash(s.c_str(), s.size(), 0) %
-            static_cast<uint32_t>(node_->group_size()));
   }
 }
 

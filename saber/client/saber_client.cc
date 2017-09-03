@@ -61,10 +61,10 @@ void SaberClient::Close() {
 
 void SaberClient::Create(const CreateRequest& request, void* context,
                          const CreateCallback& cb) {
+  assert(GetRoot(request.path()) == kRoot);
   SaberMessage* message = new SaberMessage();
   message->set_type(MT_CREATE);
   message->set_data(request.SerializeAsString());
-  message->set_extra_data(kRoot);
 
   CreateRequestT* r = new CreateRequestT(request.path(), nullptr, context, cb);
 
@@ -78,10 +78,10 @@ void SaberClient::Create(const CreateRequest& request, void* context,
 
 void SaberClient::Delete(const DeleteRequest& request, void* context,
                          const DeleteCallback& cb) {
+  assert(GetRoot(request.path()) == kRoot);
   SaberMessage* message = new SaberMessage();
   message->set_type(MT_DELETE);
   message->set_data(request.SerializeAsString());
-  message->set_extra_data(kRoot);
 
   DeleteRequestT* r = new DeleteRequestT(request.path(), nullptr, context, cb);
 
@@ -95,10 +95,10 @@ void SaberClient::Delete(const DeleteRequest& request, void* context,
 
 void SaberClient::Exists(const ExistsRequest& request, Watcher* watcher,
                          void* context, const ExistsCallback& cb) {
+  assert(GetRoot(request.path()) == kRoot);
   SaberMessage* message = new SaberMessage();
   message->set_type(MT_EXISTS);
   message->set_data(request.SerializeAsString());
-  message->set_extra_data(kRoot);
 
   ExistsRequestT* r = new ExistsRequestT(request.path(), watcher, context, cb);
 
@@ -112,10 +112,10 @@ void SaberClient::Exists(const ExistsRequest& request, Watcher* watcher,
 
 void SaberClient::GetData(const GetDataRequest& request, Watcher* watcher,
                           void* context, const GetDataCallback& cb) {
+  assert(GetRoot(request.path()) == kRoot);
   SaberMessage* message = new SaberMessage();
   message->set_type(MT_GETDATA);
   message->set_data(request.SerializeAsString());
-  message->set_extra_data(kRoot);
 
   GetDataRequestT* r =
       new GetDataRequestT(request.path(), watcher, context, cb);
@@ -130,10 +130,10 @@ void SaberClient::GetData(const GetDataRequest& request, Watcher* watcher,
 
 void SaberClient::SetData(const SetDataRequest& request, void* context,
                           const SetDataCallback& cb) {
+  assert(GetRoot(request.path()) == kRoot);
   SaberMessage* message = new SaberMessage();
   message->set_type(MT_SETDATA);
   message->set_data(request.SerializeAsString());
-  message->set_extra_data(kRoot);
 
   SetDataRequestT* r =
       new SetDataRequestT(request.path(), nullptr, context, cb);
@@ -148,10 +148,10 @@ void SaberClient::SetData(const SetDataRequest& request, void* context,
 
 void SaberClient::GetACL(const GetACLRequest& request, void* context,
                          const GetACLCallback& cb) {
+  assert(GetRoot(request.path()) == kRoot);
   SaberMessage* message = new SaberMessage();
   message->set_type(MT_GETACL);
   message->set_data(request.SerializeAsString());
-  message->set_extra_data(kRoot);
 
   GetACLRequestT* r = new GetACLRequestT(request.path(), nullptr, context, cb);
 
@@ -165,10 +165,10 @@ void SaberClient::GetACL(const GetACLRequest& request, void* context,
 
 void SaberClient::SetACL(const SetACLRequest& request, void* context,
                          const SetACLCallback& cb) {
+  assert(GetRoot(request.path()) == kRoot);
   SaberMessage* message = new SaberMessage();
   message->set_type(MT_SETACL);
   message->set_data(request.SerializeAsString());
-  message->set_extra_data(kRoot);
 
   SetACLRequestT* r = new SetACLRequestT(request.path(), nullptr, context, cb);
 
@@ -183,10 +183,10 @@ void SaberClient::SetACL(const SetACLRequest& request, void* context,
 void SaberClient::GetChildren(const GetChildrenRequest& request,
                               Watcher* watcher, void* context,
                               const GetChildrenCallback& cb) {
+  assert(GetRoot(request.path()) == kRoot);
   SaberMessage* message = new SaberMessage();
   message->set_type(MT_GETCHILDREN);
   message->set_data(request.SerializeAsString());
-  message->set_extra_data(kRoot);
 
   GetChildrenRequestT* r =
       new GetChildrenRequestT(request.path(), watcher, context, cb);
@@ -250,7 +250,7 @@ void SaberClient::OnClose(const voyager::TcpConnectionPtr& p) {
                              static_cast<uint16_t>(master_.port()));
       Connect(addr);
     } else {
-      SleepForMicroseconds(1000);
+      SleepForMicroseconds(100000);
       Connect(server_manager_->GetNext());
     }
   } else {
@@ -587,6 +587,17 @@ void SaberClient::TriggerWatchers(const WatchedEvent& event) {
       it->Process(event);
     }
   }
+}
+
+std::string SaberClient::GetRoot(const std::string& path) const {
+  size_t i = 0;
+  for (i = 1; i < path.size(); ++i) {
+    if (path[i] == '/') {
+      break;
+    }
+  }
+  assert(i > 1);
+  return path.substr(0, i);
 }
 
 }  // namespace saber

@@ -21,8 +21,9 @@ namespace saber {
 
 class ServerConnection : public Watcher {
  public:
-  ServerConnection(uint64_t session_id, const voyager::TcpConnectionPtr& p,
-                   SaberDB* db, skywalker::Node* node);
+  ServerConnection(uint32_t group_id, uint64_t session_id,
+                   const voyager::TcpConnectionPtr& p, SaberDB* db,
+                   skywalker::Node* node);
   virtual ~ServerConnection();
 
   uint64_t session_id() const { return session_id_; }
@@ -39,6 +40,7 @@ class ServerConnection : public Watcher {
 
   bool closed_;
   bool last_finished_;
+  const uint32_t group_id_;
   const uint64_t session_id_;
   voyager::ProtobufCodec<SaberMessage> codec_;
   std::weak_ptr<voyager::TcpConnection> conn_wp_;

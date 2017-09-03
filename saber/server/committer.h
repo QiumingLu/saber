@@ -20,22 +20,21 @@ class ServerConnection;
 
 class Committer : public std::enable_shared_from_this<Committer> {
  public:
-  Committer(ServerConnection* conn, voyager::EventLoop* loop, SaberDB* db,
-            skywalker::Node* node);
+  Committer(uint32_t group_id, ServerConnection* conn, voyager::EventLoop* loop,
+            SaberDB* db, skywalker::Node* node);
 
   void SetEventLoop(voyager::EventLoop* loop) { loop_ = loop; }
 
   void Commit(SaberMessage* message);
 
  private:
-  void Commit(uint32_t group_id, SaberMessage* message);
-  bool Propose(uint32_t group_id, SaberMessage* message,
-               SaberMessage* reply_message);
+  void HandleCommit(SaberMessage* message);
+  bool Propose(SaberMessage* message, SaberMessage* reply_message);
   void OnProposeComplete(uint64_t instance_id, const skywalker::Status& s,
                          void* context);
   void SetFailedState(SaberMessage* reply_message);
-  uint32_t Shard(const std::string& s);
 
+  const uint32_t group_id_;
   ServerConnection* conn_;
   voyager::EventLoop* loop_;
   SaberDB* db_;

@@ -79,6 +79,7 @@ class SaberClient {
   bool OnSetACL(SaberMessage* message);
   bool OnGetChildren(SaberMessage* message);
   void TriggerWatchers(const WatchedEvent& event);
+  std::string GetRoot(const std::string& path) const;
 
   const std::string kRoot;
 

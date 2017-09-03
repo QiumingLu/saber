@@ -41,7 +41,7 @@ class SaberDB : public skywalker::StateMachine, public skywalker::Checkpoint {
   void GetChildren(uint32_t group_id, const GetChildrenRequest& request,
                    Watcher* watcher, GetChildrenResponse* response);
 
-  void RemoveWatcher(Watcher* watcher);
+  void RemoveWatcher(uint32_t group_id, Watcher* watcher);
 
   virtual bool Execute(uint32_t group_id, uint64_t instance_id,
                        const std::string& value, void* context);
@@ -76,6 +76,9 @@ class SaberDB : public skywalker::StateMachine, public skywalker::Checkpoint {
 
   void SetACL(uint32_t group_id, const SetACLRequest& request,
               const Transaction& txn, SetACLResponse* response);
+  void CreateSession(uint32_t group_id, uint64_t session_id);
+  void KillSession(uint32_t group_id, uint64_t session_id,
+                   const Transaction& txn);
 
   void MakeCheckpoint(uint32_t group_id);
   void CleanCheckpoint(uint32_t group_id);

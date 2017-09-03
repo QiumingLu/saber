@@ -6,6 +6,7 @@
 #include "saber/server/connection_monitor.h"
 #include "saber/server/saber_db.h"
 #include "saber/server/server_connection.h"
+#include "saber/util/hash.h"
 #include "saber/util/logging.h"
 #include "saber/util/mutexlock.h"
 #include "saber/util/sequence_number.h"
@@ -205,39 +206,86 @@ bool SaberServer::HandleMessage(const EntryPtr& entry,
     return false;
   }
 
-  ConnectRequest request;
-  request.ParseFromString(message->data());
-  uint64_t session_id = request.session_id();
+  uint32_t group_id = Shard(message->extra_data());
+  if (node_->IsMaster(group_id)) {
+    ConnectRequest request;
+    request.ParseFromString(message->data());
+    if (request.session_id() == 0) {
+      request.set_session_id(GetNextSessionId());
+    }
+    message->set_data(request.SerializeAsString());
+    uint32_t id = message->id();
+    uint64_t session_id = request.session_id();
+    bool b = node_->Propose(
+        group_id, db_->machine_id(), message->SerializeAsString(), nullptr,
+        [this, id, group_id, session_id, entry](
+            uint64_t instance_id, const skywalker::Status& s, void* context) {
+          NewConnection(s.ok(), id, group_id, session_id, entry);
+        });
+    if (!b) {
+      NewConnection(false, id, group_id, session_id, entry);
+    }
+    return b;
+  } else {
+    skywalker::Member i;
+    uint64_t version;
+    node_->GetMaster(group_id, &i, &version);
+    Master master;
+    master.set_host(i.host);
+    master.set_port(atoi(i.context.c_str()));
+    SaberMessage reply_message;
+    reply_message.set_type(MT_MASTER);
+    reply_message.set_id(message->id());
+    reply_message.set_data(master.SerializeAsString());
+    codec_.SendMessage(entry->wp.lock(), reply_message);
+    return false;
+  }
+}
 
-  mutex_.Lock();
-  auto it = conns_.find(session_id);
-  if (it != conns_.end()) {
-    entry->conn = it->second.lock();
-    if (entry->conn) {
-      entry->conn->Connect(entry->wp.lock());
+void SaberServer::NewConnection(bool b, uint32_t id, uint32_t group_id,
+                                uint64_t session_id, const EntryPtr& entry) {
+  ConnectResponse response;
+  if (b && entry->wp.lock()) {
+    response.set_session_id(session_id);
+    response.set_timeout(options_.max_session_timeout);
+    MutexLock lock(&mutex_);
+    auto it = conns_.find(session_id);
+    if (it != conns_.end()) {
+      entry->conn = it->second.lock();
+      if (entry->conn) {
+        entry->conn->Connect(entry->wp.lock());
+      } else {
+        entry->conn.reset(new ServerConnection(
+            group_id, session_id, entry->wp.lock(), db_.get(), node_.get()));
+        it->second = entry->conn;
+      }
     } else {
-      entry->conn.reset(new ServerConnection(session_id, entry->wp.lock(),
-                                             db_.get(), node_.get()));
-      it->second = entry->conn;
+      entry->conn.reset(new ServerConnection(
+          group_id, session_id, entry->wp.lock(), db_.get(), node_.get()));
+      conns_.insert(std::make_pair(entry->conn->session_id(), entry->conn));
     }
   } else {
-    entry->conn.reset(new ServerConnection(GetNextSessionId(), entry->wp.lock(),
-                                           db_.get(), node_.get()));
-    conns_.insert(std::make_pair(entry->conn->session_id(), entry->conn));
+    response.set_code(RC_FAILED);
   }
-  mutex_.UnLock();
-
-  ConnectResponse response;
-  response.set_session_id(entry->conn->session_id());
-  response.set_timeout(options_.max_session_timeout);
-  message->set_data(response.SerializeAsString());
-  entry->conn->OnMessage(std::move(message));
-  return true;
+  SaberMessage reply_message;
+  reply_message.set_type(MT_CONNECT);
+  reply_message.set_id(id);
+  reply_message.set_data(response.SerializeAsString());
+  codec_.SendMessage(entry->wp.lock(), reply_message);
 }
 
 uint64_t SaberServer::GetNextSessionId() const {
   static SequenceNumber<int> seq_num_(1 << 10);
   return (NowMillis() << 22) | (server_id_ << 10) | seq_num_.GetNext();
+}
+
+uint32_t SaberServer::Shard(const std::string& s) const {
+  if (node_->group_size() == 1) {
+    return 0;
+  } else {
+    return (Hash(s.c_str(), s.size(), 0) %
+            static_cast<uint32_t>(node_->group_size()));
+  }
 }
 
 }  // namespace saber

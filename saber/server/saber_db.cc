@@ -194,20 +194,23 @@ void SaberDB::GetChildren(uint32_t group_id, const GetChildrenRequest& request,
   trees_[group_id]->GetChildren(request, watcher, response);
 }
 
-void SaberDB::RemoveWatcher(Watcher* watcher) {
-  for (auto& tree : trees_) {
-    tree->RemoveWatcher(watcher);
-  }
+void SaberDB::RemoveWatcher(uint32_t group_id, Watcher* watcher) {
+  trees_[group_id]->RemoveWatcher(watcher);
+}
+
+void SaberDB::CreateSession(uint32_t group_id, uint64_t session_id) {}
+
+void SaberDB::KillSession(uint32_t group_id, uint64_t session_id,
+                          const Transaction& txn) {
+  trees_[group_id]->KillSession(session_id, txn);
 }
 
 bool SaberDB::Execute(uint32_t group_id, uint64_t instance_id,
                       const std::string& value, void* context) {
   SaberMessage message;
   message.ParseFromString(value);
-  char* end;
-  uint64_t timestamp = strtoull(message.extra_data().c_str(), &end, 10);
   Transaction txn;
-  txn.set_time(timestamp);
+  txn.ParseFromString(message.extra_data());
   txn.set_group_id(group_id);
   txn.set_instance_id(instance_id);
   SaberMessage* reply_message = nullptr;
@@ -216,6 +219,18 @@ bool SaberDB::Execute(uint32_t group_id, uint64_t instance_id,
     assert(message.type() == reply_message->type());
   }
   switch (message.type()) {
+    case MT_CONNECT: {
+      ConnectRequest request;
+      request.ParseFromString(message.data());
+      CreateSession(group_id, request.session_id());
+      break;
+    }
+    case MT_CLOSE: {
+      CloseRequest request;
+      request.ParseFromString(message.data());
+      KillSession(group_id, request.session_id(), txn);
+      break;
+    }
     case MT_CREATE: {
       CreateRequest request;
       CreateResponse response;  // FIXME response may be no neccessary here?

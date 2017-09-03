@@ -142,6 +142,9 @@ std::string ToString(const Stat& stat) {
   s += "children_id: ";
   s += std::to_string(stat.children_id());
   s += "\n";
+  s += "ephemeral_id: ";
+  s += std::to_string(stat.ephemeral_id());
+  s += "\n";
   return s;
 }
 

@@ -8,17 +8,19 @@
 
 namespace saber {
 
-ServerConnection::ServerConnection(uint64_t session_id,
+ServerConnection::ServerConnection(uint32_t group_id, uint64_t session_id,
                                    const voyager::TcpConnectionPtr& p,
                                    SaberDB* db, skywalker::Node* node)
     : closed_(false),
       last_finished_(true),
+      group_id_(group_id),
       session_id_(session_id),
       conn_wp_(p),
       db_(db),
-      committer_(new Committer(this, p->OwnerEventLoop(), db, node)) {}
+      committer_(new Committer(group_id, this, p->OwnerEventLoop(), db, node)) {
+}
 
-ServerConnection::~ServerConnection() { db_->RemoveWatcher(this); }
+ServerConnection::~ServerConnection() { db_->RemoveWatcher(group_id_, this); }
 
 void ServerConnection::Connect(const voyager::TcpConnectionPtr& p) {
   closed_ = false;

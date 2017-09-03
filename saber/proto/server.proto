@@ -7,6 +7,7 @@ message Transaction {
   uint32 group_id = 1;
   uint64 instance_id = 2;
   uint64 time = 3;
+  uint64 session_id = 4;
 }
 
 message DataNode {

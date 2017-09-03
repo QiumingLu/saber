@@ -22,7 +22,12 @@ message WatchedEvent {
   bytes path = 3;
 }
 
-enum NodeType { NT_PERSISTENT = 0; }
+enum NodeType {
+  NT_PERSISTENT = 0;
+  NT_PERSISTENT_SEQUENTIAL = 1;
+  NT_EPHEMERAL = 2;
+  NT_EPHEMERAL_SEQUENTIAL = 3;
+}
 
 enum ResponseCode {
   RC_OK = 0;
@@ -48,6 +53,7 @@ message Stat {
   uint32 data_len = 9;
   uint32 children_num = 10;
   uint64 children_id = 11;
+  uint64 ephemeral_id = 12;
 }
 
 message Id {
@@ -67,6 +73,8 @@ message ConnectResponse {
   uint64 session_id = 2;
   uint64 timeout = 3;
 }
+
+message CloseRequest { uint64 session_id = 1; }
 
 message CreateRequest {
   bytes path = 1;
@@ -167,6 +175,7 @@ enum MessageType {
   MT_MASTER = 9;
   MT_PING = 10;
   MT_CONNECT = 11;
+  MT_CLOSE = 12;
 }
 
 message SaberMessage {

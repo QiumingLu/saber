@@ -59,6 +59,9 @@ class SaberServer {
   void UpdateBuckets(const voyager::TcpConnectionPtr& p, const EntryPtr& entry);
   bool HandleMessage(const EntryPtr& p, std::unique_ptr<SaberMessage> message);
   uint64_t GetNextSessionId() const;
+  uint32_t Shard(const std::string& s) const;
+  void NewConnection(bool b, uint32_t id, uint32_t group_id,
+                     uint64_t session_id, const EntryPtr& p);
 
   ServerOptions options_;
 
