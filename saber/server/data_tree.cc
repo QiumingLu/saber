@@ -111,7 +111,7 @@ void DataTree::Delete(const DeleteRequest& request, const Transaction& txn,
     MutexLock lock(&mutex_);
     auto it = nodes_.find(path);
     if (it != nodes_.end()) {
-      if (it->second->stat().ephemeral_id() == 0) {
+      if (it->second->stat().ephemeral_id() != 0) {
         auto e = ephemerals_.find(it->second->stat().ephemeral_id());
         if (e != ephemerals_.end()) {
           e->second.erase(path);
@@ -313,13 +313,12 @@ void DataTree::KillSession(uint64_t session_id, const Transaction& txn) {
             p.c_str(), (unsigned long long)session_id);
       }
     }
-    ephemerals_.erase(it);
   }
 }
 
 void DataTree::SerializeToString(std::string* data) const {
-  data->reserve(4 * 1024 * 1024);
-  MutexLock lock(&mutex_);
+  size_t size = nodes_.size() > 1000 ? 12 * 1024 * 1024 : 4 * 1024 * 1024;
+  data->reserve(size);
   for (auto& it : nodes_) {
     it.second->set_name(it.first);
     auto children = childrens_.find(it.first);

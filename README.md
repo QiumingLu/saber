@@ -1,6 +1,6 @@
 # Saber -- 一个高性能、高可用的分布式服务框架
 ## 简介
-Saber是一个分布式服务框架，主要参考了Google的Chubby和Apache的Zookeeper，在Voyager和Skywalker的基础上实现高效且可靠的分布式协调服务。
+Saber是一个分布式服务框架，主要参考了Google的Chubby和Apache的Zookeeper，在Voyager和Skywalker的基础上实现的分布式锁服务。
 <br/>
 <br/>[![Build Status](https://travis-ci.org/QiumingLu/saber.svg?branch=master)](https://travis-ci.org/QiumingLu/saber)
 <br/>
@@ -10,7 +10,7 @@ Saber是一个分布式服务框架，主要参考了Google的Chubby和Apache的
 <br/>
 <br/>1. **util**: 基础库模块，包括互斥量、条件变量、线程、时间处理等基础工具。
 <br/>2. **proto**: Saber的消息协议，在Google的Protobuf的基础上搭建。 
-<br/>3. **service**: 事件通知机制，对外开放事件通知接口。
+<br/>3. **service**: Saber的事件通知机制，对外开放事件通知接口。
 <br/>4. **client**: Saber的客户端实现，对外提供节点的创建、删除、读写等接口。
 <br/>5. **server**:  Saber的服务端实现，对外提供服务的启动等接口。
 <br/>6. **main**: Saber的可执行程序实现。
@@ -19,6 +19,8 @@ Saber是一个分布式服务框架，主要参考了Google的Chubby和Apache的
 ## 特性
 * 同时提供Client端和Server端。
 * 采用分桶策略来管理会话。
+* 数据节点分为临时节点和持久节点两类。
+* 提供节点的版本控制功能。
 * 提供事件通知机制。
 * 严格地顺序访问控制。
 * 只有Master节点才能处理读写请求。
@@ -27,17 +29,22 @@ Saber是一个分布式服务框架，主要参考了Google的Chubby和Apache的
 * 基于Protobuf来完成消息的序列化和反序列化。
 
 ## 局限
-* 目前只能创建永久节点，不能创建临时节点。
+* 目前还未完全实现临时节点的功能。
 
 ## 使用场景
 * 数据分布/订阅
 * 负载均衡
 * 命名服务
+* 集群管理
+* Master选举
+* 分布式锁
+* 分布式队列
 
 ## 性能
+* 暂无全面的测试报告
 
 ## 兼容性
-Saber只支持Linux，macOS 等类Unix平台，不支持Windows平台。以下是一些曾测试的平台/编译器组合：
+Saber只支持Linux，FreeBSD等类Unix平台，不支持Windows平台。以下是一些曾测试的平台/编译器组合：
 * Linux 4.4.0，GCC 5.4.0 
 * macOS 10.12，Clang 3.6.0
 

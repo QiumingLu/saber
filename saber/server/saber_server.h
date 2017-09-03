@@ -63,7 +63,7 @@ class SaberServer {
   void CreateSession(bool b, uint32_t id, uint32_t group_id,
                      uint64_t session_id, const EntryPtr& p);
   void KillSession(const std::shared_ptr<ServerConnection>& conn);
-  void SyncToAllServer(uint32_t group_id, const std::string& s);
+  void SyncToAllServers(uint32_t group_id, const std::string& s);
 
   ServerOptions options_;
 

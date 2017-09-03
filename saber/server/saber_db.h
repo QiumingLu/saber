@@ -61,7 +61,7 @@ class SaberDB : public skywalker::StateMachine, public skywalker::Checkpoint {
 
  private:
   bool GroupFile(uint32_t group_id);
-  bool CheckData(std::string& s);
+  bool CheckData(std::string* s);
   void DeleteFile(uint32_t group_id, uint64_t instance_id);
   void CheckFiles(uint32_t group_id, std::set<uint64_t>& temp);
 
@@ -80,7 +80,8 @@ class SaberDB : public skywalker::StateMachine, public skywalker::Checkpoint {
   void KillSession(uint32_t group_id, uint64_t session_id,
                    const Transaction& txn);
 
-  void MakeCheckpoint(uint32_t group_id);
+  void MaybeMakeCheckpoint(uint32_t group_id, uint64_t instance_id);
+  void MakeCheckpoint(uint32_t group_id, uint64_t instance_id, std::string* s);
   void CleanCheckpoint(uint32_t group_id);
 
   const uint32_t kKeepCheckpointCount;
@@ -90,7 +91,6 @@ class SaberDB : public skywalker::StateMachine, public skywalker::Checkpoint {
   std::atomic<bool> doing_;
 
   std::string checkpoint_storage_path_;
-  std::vector<uint64_t> instances_;
   std::vector<std::unique_ptr<DataTree>> trees_;
   std::vector<std::map<uint64_t, uint64_t>> file_map_;
 

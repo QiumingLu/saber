@@ -301,19 +301,19 @@ void SaberServer::KillSession(const std::shared_ptr<ServerConnection>& conn) {
   SaberMessage message;
   message.set_type(MT_CLOSE);
   message.set_data(request.SerializeAsString());
-  SyncToAllServer(conn->group_id(), message.SerializeAsString());
+  SyncToAllServers(conn->group_id(), message.SerializeAsString());
 
   MutexLock lock(&mutex_);
   conns_.erase(conn->session_id());
 }
 
-void SaberServer::SyncToAllServer(uint32_t group_id, const std::string& s) {
+void SaberServer::SyncToAllServers(uint32_t group_id, const std::string& s) {
   // FIXME check master?
   node_->Propose(
       group_id, db_->machine_id(), s, nullptr,
       [this, group_id, s](uint64_t, const skywalker::Status& status, void*) {
         if (!status.ok()) {
-          SyncToAllServer(group_id, s);
+          SyncToAllServers(group_id, s);
         }
       });
 }

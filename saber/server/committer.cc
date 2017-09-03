@@ -22,17 +22,17 @@ void Committer::Commit(SaberMessage* message) {
   // FIXME don't check master?
   if (node_->IsMaster(group_id_)) {
     HandleCommit(message);
-    // } else {
-    //   skywalker::Member i;
-    //   uint64_t version;
-    //   node_->GetMaster(group_id_, &i, &version);
-    //   Master master;
-    //   master.set_host(i.host);
-    //   master.set_port(atoi(i.context.c_str()));
-    //   SaberMessage* reply_message = new SaberMessage();
-    //   reply_message->set_type(MT_MASTER);
-    //   reply_message->set_data(master.SerializeAsString());
-    //   conn_->OnCommitComplete(std::unique_ptr<SaberMessage>(reply_message));
+  } else {
+    skywalker::Member i;
+    uint64_t version;
+    node_->GetMaster(group_id_, &i, &version);
+    Master master;
+    master.set_host(i.host);
+    master.set_port(atoi(i.context.c_str()));
+    SaberMessage* reply_message = new SaberMessage();
+    reply_message->set_type(MT_MASTER);
+    reply_message->set_data(master.SerializeAsString());
+    conn_->OnCommitComplete(std::unique_ptr<SaberMessage>(reply_message));
   }
 }
 

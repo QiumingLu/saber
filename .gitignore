@@ -1,4 +1,9 @@
 .DS_Store
 *.swp
 build/
-test/
+test/test1/checkpoint
+test/test2/checkpoint
+test/test3/checkpoint
+test/test1/log
+test/test2/log
+test/test3/log
