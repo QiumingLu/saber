@@ -317,8 +317,9 @@ void DataTree::KillSession(uint64_t session_id, const Transaction& txn) {
 }
 
 void DataTree::SerializeToString(std::string* data) const {
-  size_t size = nodes_.size() > 1000 ? 12 * 1024 * 1024 : 4 * 1024 * 1024;
-  data->reserve(size);
+  size_t i = 0;
+  size_t size = 4 + 4 * nodes_.size();
+  std::vector<uint32_t> v(nodes_.size());
   for (auto& it : nodes_) {
     it.second->set_name(it.first);
     auto children = childrens_.find(it.first);
@@ -327,7 +328,14 @@ void DataTree::SerializeToString(std::string* data) const {
         it.second->add_children(child);
       }
     }
-    voyager::PutFixed32(data, static_cast<uint32_t>(it.second->ByteSize()));
+    v[i] = static_cast<uint32_t>(it.second->ByteSizeLong());
+    size += v[i];
+    ++i;
+  }
+  i = 0;
+  data->reserve(size);
+  for (auto& it : nodes_) {
+    voyager::PutFixed32(data, v[i++]);
     it.second->AppendToString(data);
     it.second->clear_children();
     it.second->clear_name();

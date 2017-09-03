@@ -54,9 +54,10 @@ class DataTree {
   void SerializeToString(std::string* data) const;
 
  private:
-  mutable Mutex mutex_;
+  Mutex mutex_;
   std::unordered_map<std::string, std::unique_ptr<DataNode> > nodes_;
   std::unordered_map<std::string, std::set<std::string> > childrens_;
+
   std::unordered_map<uint64_t, std::set<std::string> > ephemerals_;
 
   ServerWatchManager data_watches_;
