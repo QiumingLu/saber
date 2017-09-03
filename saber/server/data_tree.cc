@@ -34,6 +34,9 @@ void DataTree::Recover(const std::string& data) {
     }
     nodes_.insert(
         std::make_pair(node->name(), std::unique_ptr<DataNode>(node)));
+    if (node->stat().ephemeral_id() != 0) {
+      ephemerals_[node->stat().ephemeral_id()].insert(node->name());
+    }
     node->clear_name();
     index = index + 4 + size;
   }
@@ -78,11 +81,6 @@ void DataTree::Create(const CreateRequest& request, const Transaction& txn,
         nodes_.insert(std::make_pair(path, std::move(node)));
         response->set_code(RC_OK);
         response->set_path(path);
-        if (request.type() == NT_EPHEMERAL ||
-            request.type() == NT_EPHEMERAL_SEQUENTIAL) {
-          stat->set_ephemeral_id(txn.session_id());
-          ephemerals_[stat->ephemeral_id()].insert(path);
-        }
       } else {
         response->set_code(RC_NODE_EXISTS);
       }
@@ -91,6 +89,11 @@ void DataTree::Create(const CreateRequest& request, const Transaction& txn,
     }
   }
   if (response->code() == RC_OK) {
+    if (request.type() == NT_EPHEMERAL ||
+        request.type() == NT_EPHEMERAL_SEQUENTIAL) {
+      stat->set_ephemeral_id(txn.session_id());
+      ephemerals_[stat->ephemeral_id()].insert(path);
+    }
     data_watches_.TriggerWatcher(path, ET_NODE_CREATED);
     child_watches_.TriggerWatcher(parent.empty() ? "/" : parent,
                                   ET_NODE_CHILDREN_CHANGED);
@@ -107,10 +110,15 @@ void DataTree::Delete(const DeleteRequest& request, const Transaction& txn,
   {
     MutexLock lock(&mutex_);
     auto it = nodes_.find(path);
-    if (it != nodes_.end() && childrens_.find(path) == childrens_.end()) {
-      auto e = ephemerals_.find(it->second->stat().ephemeral_id());
-      if (e != ephemerals_.end()) {
-        e->second.erase(path);
+    if (it != nodes_.end()) {
+      if (it->second->stat().ephemeral_id() == 0) {
+        auto e = ephemerals_.find(it->second->stat().ephemeral_id());
+        if (e != ephemerals_.end()) {
+          e->second.erase(path);
+          if (e->second.empty()) {
+            ephemerals_.erase(e);
+          }
+        }
       }
       nodes_.erase(it);
       it = nodes_.find(parent);
@@ -131,8 +139,6 @@ void DataTree::Delete(const DeleteRequest& request, const Transaction& txn,
       } else {
         response->set_code(RC_NO_PARENT);
       }
-    } else if (it != nodes_.end()) {
-      response->set_code(RC_CHILDREN_EXISTS);
     } else {
       response->set_code(RC_NO_NODE);
     }
@@ -291,24 +297,6 @@ void DataTree::RemoveWatcher(Watcher* watcher) {
   child_watches_.RemoveWatcher(watcher);
 }
 
-void DataTree::SerializeToString(std::string* data) const {
-  data->reserve(4 * 1024 * 1024);
-  MutexLock lock(&mutex_);
-  for (auto& it : nodes_) {
-    it.second->set_name(it.first);
-    auto children = childrens_.find(it.first);
-    if (children != childrens_.end()) {
-      for (auto& child : children->second) {
-        it.second->add_children(child);
-      }
-    }
-    voyager::PutFixed32(data, static_cast<uint32_t>(it.second->ByteSize()));
-    it.second->AppendToString(data);
-    it.second->clear_children();
-    it.second->clear_name();
-  }
-}
-
 void DataTree::KillSession(uint64_t session_id, const Transaction& txn) {
   auto it = ephemerals_.find(session_id);
   if (it != ephemerals_.end()) {
@@ -326,6 +314,24 @@ void DataTree::KillSession(uint64_t session_id, const Transaction& txn) {
       }
     }
     ephemerals_.erase(it);
+  }
+}
+
+void DataTree::SerializeToString(std::string* data) const {
+  data->reserve(4 * 1024 * 1024);
+  MutexLock lock(&mutex_);
+  for (auto& it : nodes_) {
+    it.second->set_name(it.first);
+    auto children = childrens_.find(it.first);
+    if (children != childrens_.end()) {
+      for (auto& child : children->second) {
+        it.second->add_children(child);
+      }
+    }
+    voyager::PutFixed32(data, static_cast<uint32_t>(it.second->ByteSize()));
+    it.second->AppendToString(data);
+    it.second->clear_children();
+    it.second->clear_name();
   }
 }
 

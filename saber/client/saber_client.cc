@@ -53,6 +53,9 @@ void SaberClient::Close() {
   bool expected = true;
   if (has_started_.compare_exchange_strong(expected, false)) {
     assert(client_);
+    SaberMessage message;
+    message.set_type(MT_CLOSE);
+    codec_.SendMessage(client_->GetTcpConnectionPtr(), message);
     client_->Close();
   } else {
     LOG_WARN("SaberClient has closed, don't call it again!");
@@ -228,9 +231,6 @@ void SaberClient::OnConnection(const voyager::TcpConnectionPtr& p) {
   message.set_data(request.SerializeAsString());
   message.set_extra_data(kRoot);
   codec_.SendMessage(p, message);
-  for (auto& i : outgoing_queue_) {
-    codec_.SendMessage(p, *i);
-  }
   server_manager_->OnConnection();
 }
 
@@ -351,6 +351,9 @@ void SaberClient::OnConnect(SaberMessage* message) {
       event.set_state(SS_CONNECTED);
     } else {
       event.set_state(SS_EXPIRED);
+    }
+    for (auto& i : outgoing_queue_) {
+      codec_.SendMessage(client_->GetTcpConnectionPtr(), *i);
     }
     uint64_t timeout = response.timeout();
     timeout = 1000 * (timeout < 12000 ? (timeout * 4 / 5) : (timeout - 3000));

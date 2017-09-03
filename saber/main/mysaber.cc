@@ -31,6 +31,7 @@ void MySaber::GetLine() {
   std::string s;
   std::getline(std::cin, s);
   if (s == "quit") {
+    saber_.Close();
     printf("bye!\n");
     exit(0);
   }

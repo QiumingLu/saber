@@ -94,6 +94,8 @@ class SaberDB : public skywalker::StateMachine, public skywalker::Checkpoint {
   std::vector<std::unique_ptr<DataTree>> trees_;
   std::vector<std::map<uint64_t, uint64_t>> file_map_;
 
+  std::vector<std::set<uint64_t>> sessions_;
+
   RunLoop* loop_;
   RunLoopThread thread_;
 

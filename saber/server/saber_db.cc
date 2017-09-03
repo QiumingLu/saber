@@ -25,7 +25,8 @@ SaberDB::SaberDB(const ServerOptions& options)
       doing_(false),
       checkpoint_storage_path_(options.checkpoint_storage_path),
       instances_(options.paxos_group_size),
-      file_map_(options.paxos_group_size) {
+      file_map_(options.paxos_group_size),
+      sessions_(options.paxos_group_size) {
   if (checkpoint_storage_path_[checkpoint_storage_path_.size() - 1] != '/') {
     checkpoint_storage_path_.push_back('/');
   }
@@ -198,10 +199,13 @@ void SaberDB::RemoveWatcher(uint32_t group_id, Watcher* watcher) {
   trees_[group_id]->RemoveWatcher(watcher);
 }
 
-void SaberDB::CreateSession(uint32_t group_id, uint64_t session_id) {}
+void SaberDB::CreateSession(uint32_t group_id, uint64_t session_id) {
+  sessions_[group_id].insert(session_id);
+}
 
 void SaberDB::KillSession(uint32_t group_id, uint64_t session_id,
                           const Transaction& txn) {
+  sessions_[group_id].erase(session_id);
   trees_[group_id]->KillSession(session_id, txn);
 }
 

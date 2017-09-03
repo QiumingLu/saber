@@ -26,6 +26,7 @@ class ServerConnection : public Watcher {
                    skywalker::Node* node);
   virtual ~ServerConnection();
 
+  uint32_t group_id() const { return group_id_; }
   uint64_t session_id() const { return session_id_; }
 
   void Connect(const voyager::TcpConnectionPtr& p);
