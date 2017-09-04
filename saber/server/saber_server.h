@@ -5,7 +5,6 @@
 #ifndef SABER_SERVER_SABER_SERVER_H_
 #define SABER_SERVER_SABER_SERVER_H_
 
-#include <atomic>
 #include <map>
 #include <memory>
 #include <unordered_map>
@@ -50,7 +49,6 @@ class SaberServer {
 
   void OnConnection(const voyager::TcpConnectionPtr& p);
   void OnClose(const voyager::TcpConnectionPtr& p);
-  void OnWriteComplete(const voyager::TcpConnectionPtr& p);
   bool OnMessage(const voyager::TcpConnectionPtr& p,
                  std::unique_ptr<SaberMessage> message);
   void OnError(const voyager::TcpConnectionPtr& p,
@@ -58,12 +56,13 @@ class SaberServer {
   void OnTimer();
   void UpdateBuckets(const voyager::TcpConnectionPtr& p, const EntryPtr& entry);
   bool HandleMessage(const EntryPtr& p, std::unique_ptr<SaberMessage> message);
+  bool OnConnectRequest(uint32_t group_id, const EntryPtr& entry,
+                        std::unique_ptr<SaberMessage> message);
+  void OnConnectResponse(bool b, const EntryPtr& entry,
+                         std::unique_ptr<SaberMessage> message);
+  void KillSession(const std::shared_ptr<ServerConnection>& conn);
   uint64_t GetNextSessionId() const;
   uint32_t Shard(const std::string& s) const;
-  void CreateSession(bool b, uint32_t id, uint32_t group_id,
-                     uint64_t session_id, const EntryPtr& p);
-  void KillSession(const std::shared_ptr<ServerConnection>& conn);
-  void SyncToAllServers(uint32_t group_id, const std::string& s);
 
   ServerOptions options_;
 

@@ -14,6 +14,7 @@
 
 #include "saber/util/crc32c.h"
 #include "saber/util/logging.h"
+#include "saber/util/mutexlock.h"
 #include "saber/util/timeops.h"
 
 namespace saber {
@@ -198,13 +199,60 @@ void SaberDB::RemoveWatcher(uint32_t group_id, Watcher* watcher) {
   trees_[group_id]->RemoveWatcher(watcher);
 }
 
-void SaberDB::CreateSession(uint32_t group_id, uint64_t session_id) {
-  sessions_[group_id].insert(session_id);
+bool SaberDB::FindSession(uint64_t group_id, uint64_t session_id,
+                          uint64_t* version) const {
+  MutexLock lock(&mutex_);
+  auto it = sessions_[group_id].find(session_id);
+  if (it != sessions_[group_id].end()) {
+    *version = it->second;
+    return true;
+  }
+  return false;
+}
+
+bool SaberDB::FindSession(uint64_t group_id, uint64_t session_id,
+                          uint64_t version) const {
+  MutexLock lock(&mutex_);
+  auto it = sessions_[group_id].find(session_id);
+  if (it != sessions_[group_id].end()) {
+    return it->second == version;
+  }
+  return false;
+}
+
+bool SaberDB::CreateSession(uint32_t group_id, uint64_t session_id,
+                            uint64_t new_version, uint64_t old_version) {
+  MutexLock lock(&mutex_);
+  if (old_version != 0) {
+    auto it = sessions_[group_id].find(session_id);
+    if (it != sessions_[group_id].end() && it->second == old_version) {
+      it->second = new_version;
+      return true;
+    } else {
+      return false;
+    }
+  } else {
+    sessions_[group_id][session_id] = new_version;
+    return true;
+  }
+}
+
+bool SaberDB::CloseSession(uint32_t group_id, uint64_t session_id,
+                           uint64_t version) {
+  MutexLock lock(&mutex_);
+  auto it = sessions_[group_id].find(session_id);
+  if (it != sessions_[group_id].end()) {
+    if (it->second == version) {
+      sessions_[group_id].erase(it);
+      return true;
+    }
+    return false;
+  }
+  return true;
 }
 
 void SaberDB::KillSession(uint32_t group_id, uint64_t session_id,
                           const Transaction& txn) {
-  sessions_[group_id].erase(session_id);
   trees_[group_id]->KillSession(session_id, txn);
 }
 
@@ -225,13 +273,15 @@ bool SaberDB::Execute(uint32_t group_id, uint64_t instance_id,
     case MT_CONNECT: {
       ConnectRequest request;
       request.ParseFromString(message.data());
-      CreateSession(group_id, request.session_id());
-      break;
+      return CreateSession(group_id, request.session_id(), instance_id,
+                           txn.time());
     }
     case MT_CLOSE: {
       CloseRequest request;
       request.ParseFromString(message.data());
-      KillSession(group_id, request.session_id(), txn);
+      if (CloseSession(group_id, request.session_id(), txn.time())) {
+        KillSession(group_id, request.session_id(), txn);
+      }
       break;
     }
     case MT_CREATE: {

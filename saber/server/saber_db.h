@@ -9,6 +9,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -17,6 +18,7 @@
 #include "saber/proto/server.pb.h"
 #include "saber/server/data_tree.h"
 #include "saber/server/server_options.h"
+#include "saber/util/mutex.h"
 #include "saber/util/runloop.h"
 #include "saber/util/runloop_thread.h"
 
@@ -42,6 +44,12 @@ class SaberDB : public skywalker::StateMachine, public skywalker::Checkpoint {
                    Watcher* watcher, GetChildrenResponse* response);
 
   void RemoveWatcher(uint32_t group_id, Watcher* watcher);
+
+  bool FindSession(uint64_t group_id, uint64_t session_id,
+                   uint64_t* version) const;
+
+  bool FindSession(uint64_t group_id, uint64_t session_id,
+                   uint64_t version) const;
 
   virtual bool Execute(uint32_t group_id, uint64_t instance_id,
                        const std::string& value, void* context);
@@ -76,7 +84,9 @@ class SaberDB : public skywalker::StateMachine, public skywalker::Checkpoint {
 
   void SetACL(uint32_t group_id, const SetACLRequest& request,
               const Transaction& txn, SetACLResponse* response);
-  void CreateSession(uint32_t group_id, uint64_t session_id);
+  bool CreateSession(uint32_t group_id, uint64_t session_id,
+                     uint64_t new_version, uint64_t old_version);
+  bool CloseSession(uint32_t group_id, uint64_t session_id, uint64_t version);
   void KillSession(uint32_t group_id, uint64_t session_id,
                    const Transaction& txn);
 
@@ -94,7 +104,8 @@ class SaberDB : public skywalker::StateMachine, public skywalker::Checkpoint {
   std::vector<std::unique_ptr<DataTree>> trees_;
   std::vector<std::map<uint64_t, uint64_t>> file_map_;
 
-  std::vector<std::set<uint64_t>> sessions_;
+  mutable Mutex mutex_;
+  std::vector<std::unordered_map<uint64_t, uint64_t>> sessions_;
 
   RunLoop* loop_;
   RunLoopThread thread_;

@@ -300,9 +300,12 @@ void DataTree::RemoveWatcher(Watcher* watcher) {
 void DataTree::KillSession(uint64_t session_id, const Transaction& txn) {
   auto it = ephemerals_.find(session_id);
   if (it != ephemerals_.end()) {
+    std::set<std::string> paths;
+    paths.swap(it->second);
+    ephemerals_.erase(it);
     DeleteRequest request;
     DeleteResponse response;
-    for (auto& p : it->second) {
+    for (auto& p : paths) {
       request.set_path(p);
       request.set_version(-1);
       Delete(request, txn, &response);

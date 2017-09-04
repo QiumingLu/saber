@@ -24,13 +24,12 @@ struct SaberServer::Entry {
       : owner_(owner), index(-1), wp(p) {}
 
   ~Entry() {
-    if (conn) {
-      assert(conn.unique());
-      owner_->KillSession(conn);
-    }
     voyager::TcpConnectionPtr p = wp.lock();
     if (p) {
       p->ShutDown();
+    }
+    if (conn) {
+      owner_->KillSession(conn);
     }
   }
 
@@ -59,6 +58,17 @@ SaberServer::SaberServer(voyager::EventLoop* loop, const ServerOptions& options)
 SaberServer::~SaberServer() {}
 
 bool SaberServer::Start() {
+  db_.reset(new SaberDB(options_));
+  db_->set_machine_id(10);
+
+  bool res = db_->Recover();
+  if (res) {
+    LOG_INFO("Saber database recover successful!");
+  } else {
+    LOG_ERROR("Saber database recover failed!");
+    return false;
+  }
+
   skywalker::GroupOptions group_options;
   group_options.use_master = true;
   group_options.log_sync = true;
@@ -73,17 +83,6 @@ bool SaberServer::Start() {
     member.port = server_message.paxos_port;
     member.context = std::to_string(server_message.client_port);
     group_options.membership.push_back(member);
-  }
-
-  db_.reset(new SaberDB(options_));
-  db_->set_machine_id(10);
-
-  bool res = db_->Recover();
-  if (res) {
-    LOG_INFO("Saber database recover successful!");
-  } else {
-    LOG_ERROR("Saber database recover failed!");
-    return false;
   }
 
   group_options.checkpoint = db_.get();
@@ -106,8 +105,6 @@ bool SaberServer::Start() {
         [this](const voyager::TcpConnectionPtr& p) { OnConnection(p); });
     server_.SetCloseCallback(
         [this](const voyager::TcpConnectionPtr& p) { OnClose(p); });
-    server_.SetWriteCompleteCallback(
-        [this](const voyager::TcpConnectionPtr& p) { OnWriteComplete(p); });
     server_.SetMessageCallback(
         [this](const voyager::TcpConnectionPtr& p, voyager::Buffer* buf) {
           codec_.OnMessage(p, buf);
@@ -143,14 +140,6 @@ void SaberServer::OnClose(const voyager::TcpConnectionPtr& p) {
   monitor_->OnClose(p);
   Context* context = reinterpret_cast<Context*>(p->Context());
   delete context;
-}
-
-void SaberServer::OnWriteComplete(const voyager::TcpConnectionPtr& p) {
-  Context* context = reinterpret_cast<Context*>(p->Context());
-  assert(context);
-  EntryPtr entry = (context->entry_wp).lock();
-  assert(entry);
-  UpdateBuckets(p, entry);
 }
 
 bool SaberServer::OnMessage(const voyager::TcpConnectionPtr& p,
@@ -201,6 +190,7 @@ bool SaberServer::HandleMessage(const EntryPtr& entry,
   if (message->type() == MT_CLOSE) {
     if (entry->conn) {
       KillSession(entry->conn);
+      entry->conn.reset();
     }
     return false;
   }
@@ -212,26 +202,10 @@ bool SaberServer::HandleMessage(const EntryPtr& entry,
     return false;
   }
 
+  // FIXME: check message(MT_CONNECT) is repeated?
   uint32_t group_id = Shard(message->extra_data());
   if (node_->IsMaster(group_id)) {
-    ConnectRequest request;
-    request.ParseFromString(message->data());
-    if (request.session_id() == 0) {
-      request.set_session_id(GetNextSessionId());
-    }
-    message->set_data(request.SerializeAsString());
-    uint32_t id = message->id();
-    uint64_t session_id = request.session_id();
-    bool b = node_->Propose(
-        group_id, db_->machine_id(), message->SerializeAsString(), nullptr,
-        [this, id, group_id, session_id, entry](
-            uint64_t, const skywalker::Status& s, void*) {
-          CreateSession(s.ok(), id, group_id, session_id, entry);
-        });
-    if (!b) {
-      CreateSession(false, id, group_id, session_id, entry);
-    }
-    return b;
+    return OnConnectRequest(group_id, entry, std::move(message));
   } else {
     skywalker::Member i;
     uint64_t version;
@@ -248,6 +222,102 @@ bool SaberServer::HandleMessage(const EntryPtr& entry,
   }
 }
 
+bool SaberServer::OnConnectRequest(uint32_t group_id, const EntryPtr& entry,
+                                   std::unique_ptr<SaberMessage> message) {
+  ConnectRequest request;
+  request.ParseFromString(message->data());
+  uint64_t session_id = request.session_id();
+
+  if (session_id != 0) {
+    // FIXME: make it reconnect?
+    uint64_t version;
+    if (db_->FindSession(group_id, session_id, &version)) {
+      Transaction txn;
+      txn.set_time(version);
+      message->set_extra_data(txn.SerializeAsString());
+    } else {
+      session_id = 0;
+    }
+  }
+
+  if (session_id == 0) {
+    session_id = GetNextSessionId();
+  }
+
+  request.set_session_id(session_id);
+  message->set_data(request.SerializeAsString());
+
+  SaberMessage* reply = message.release();
+
+  voyager::TcpConnectionPtr p = entry->wp.lock();
+
+  bool b = node_->Propose(
+      group_id, db_->machine_id(), reply->SerializeAsString(), reply,
+      [this, group_id, session_id, p, entry](
+          uint64_t instance_id, const skywalker::Status& s, void* context) {
+        if (s.ok()) {
+          MutexLock lock(&mutex_);
+          auto it = conns_.find(session_id);
+          if (it != conns_.end()) {
+            entry->conn = it->second.lock();
+            assert(entry->conn);
+            entry->conn->Connect(p);
+          } else {
+            entry->conn.reset(new ServerConnection(group_id, session_id, p,
+                                                   db_.get(), node_.get()));
+            conns_.insert(std::make_pair(session_id, entry->conn));
+          }
+          entry->conn->set_version(instance_id);
+        }
+        SaberMessage* r = reinterpret_cast<SaberMessage*>(context);
+        OnConnectResponse(s.ok(), entry, std::unique_ptr<SaberMessage>(r));
+      });
+  if (!b) {
+    OnConnectResponse(b, entry, std::unique_ptr<SaberMessage>(reply));
+  }
+  return b;
+}
+
+void SaberServer::OnConnectResponse(bool b, const EntryPtr& entry,
+                                    std::unique_ptr<SaberMessage> message) {
+  ConnectResponse response;
+  if (b) {
+    response.set_session_id(entry->conn->session_id());
+    response.set_timeout(options_.max_session_timeout);
+  } else {
+    response.set_code(RC_FAILED);
+  }
+  message->set_data(response.SerializeAsString());
+  codec_.SendMessage(entry->wp.lock(), *(message.get()));
+}
+
+void SaberServer::KillSession(const std::shared_ptr<ServerConnection>& conn) {
+  MutexLock lock(&mutex_);
+  if (conn.unique()) {
+    conns_.erase(conn->session_id());
+    if (db_->FindSession(conn->group_id(), conn->session_id(),
+                         conn->version())) {
+      CloseRequest request;
+      request.set_session_id(conn->session_id());
+      SaberMessage message;
+      message.set_type(MT_CLOSE);
+      message.set_data(request.SerializeAsString());
+      Transaction txn;
+      txn.set_time(conn->version());
+      message.set_extra_data(txn.SerializeAsString());
+      // FIXME check master?
+      node_->Propose(
+          conn->group_id(), db_->machine_id(), message.SerializeAsString(),
+          nullptr,
+          [this, conn](uint64_t, const skywalker::Status& status, void*) {
+            if (!status.ok()) {
+              KillSession(conn);
+            }
+          });
+    }
+  }
+}
+
 uint64_t SaberServer::GetNextSessionId() const {
   static SequenceNumber<int> seq_num_(1 << 10);
   return (NowMillis() << 22) | (server_id_ << 10) | seq_num_.GetNext();
@@ -260,62 +330,6 @@ uint32_t SaberServer::Shard(const std::string& s) const {
     return (Hash(s.c_str(), s.size(), 0) %
             static_cast<uint32_t>(node_->group_size()));
   }
-}
-
-void SaberServer::CreateSession(bool b, uint32_t id, uint32_t group_id,
-                                uint64_t session_id, const EntryPtr& entry) {
-  ConnectResponse response;
-  voyager::TcpConnectionPtr p = entry->wp.lock();
-  if (b && p) {
-    response.set_session_id(session_id);
-    response.set_timeout(options_.max_session_timeout);
-    MutexLock lock(&mutex_);
-    auto it = conns_.find(session_id);
-    if (it != conns_.end()) {
-      entry->conn = it->second.lock();
-      if (entry->conn) {
-        entry->conn->Connect(p);
-      } else {
-        entry->conn.reset(new ServerConnection(group_id, session_id, p,
-                                               db_.get(), node_.get()));
-        it->second = entry->conn;
-      }
-    } else {
-      entry->conn.reset(new ServerConnection(group_id, session_id, p, db_.get(),
-                                             node_.get()));
-      conns_.insert(std::make_pair(entry->conn->session_id(), entry->conn));
-    }
-  } else {
-    response.set_code(RC_FAILED);
-  }
-  SaberMessage reply_message;
-  reply_message.set_type(MT_CONNECT);
-  reply_message.set_id(id);
-  reply_message.set_data(response.SerializeAsString());
-  codec_.SendMessage(entry->wp.lock(), reply_message);
-}
-
-void SaberServer::KillSession(const std::shared_ptr<ServerConnection>& conn) {
-  CloseRequest request;
-  request.set_session_id(conn->session_id());
-  SaberMessage message;
-  message.set_type(MT_CLOSE);
-  message.set_data(request.SerializeAsString());
-  SyncToAllServers(conn->group_id(), message.SerializeAsString());
-
-  MutexLock lock(&mutex_);
-  conns_.erase(conn->session_id());
-}
-
-void SaberServer::SyncToAllServers(uint32_t group_id, const std::string& s) {
-  // FIXME check master?
-  node_->Propose(
-      group_id, db_->machine_id(), s, nullptr,
-      [this, group_id, s](uint64_t, const skywalker::Status& status, void*) {
-        if (!status.ok()) {
-          SyncToAllServers(group_id, s);
-        }
-      });
 }
 
 }  // namespace saber

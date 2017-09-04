@@ -29,6 +29,9 @@ class ServerConnection : public Watcher {
   uint32_t group_id() const { return group_id_; }
   uint64_t session_id() const { return session_id_; }
 
+  void set_version(uint64_t version) { version_ = version; }
+  uint64_t version() const { return version_; }
+
   void Connect(const voyager::TcpConnectionPtr& p);
 
   bool OnMessage(std::unique_ptr<SaberMessage> message);
@@ -43,6 +46,9 @@ class ServerConnection : public Watcher {
   bool last_finished_;
   const uint32_t group_id_;
   const uint64_t session_id_;
+
+  uint64_t version_;
+  
   voyager::ProtobufCodec<SaberMessage> codec_;
   std::weak_ptr<voyager::TcpConnection> conn_wp_;
   SaberDB* db_;
