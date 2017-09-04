@@ -22,7 +22,7 @@ class DataTree {
   DataTree();
   ~DataTree();
 
-  void Recover(const std::string& data);
+  uint64_t Recover(const std::string& data);
 
   void Create(const CreateRequest& request, const Transaction& txn,
               CreateResponse* response);
@@ -51,7 +51,7 @@ class DataTree {
 
   void KillSession(uint64_t session_id, const Transaction& txn);
 
-  void SerializeToString(std::string* data) const;
+  void SerializeToString(std::string* data, size_t size) const;
 
  private:
   Mutex mutex_;

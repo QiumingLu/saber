@@ -19,9 +19,11 @@ DataTree::DataTree() {
 
 DataTree::~DataTree() {}
 
-void DataTree::Recover(const std::string& data) {
-  uint64_t index = 0;
-  while (index < data.size()) {
+uint64_t DataTree::Recover(const std::string& data) {
+  uint64_t all = voyager::DecodeFixed64(data.c_str());
+  uint64_t index = 8;
+
+  while (index < all) {
     uint32_t size = voyager::DecodeFixed32(data.c_str() + index);
     DataNode* node = new DataNode();
     node->ParseFromArray(data.c_str() + index + 4, static_cast<int>(size));
@@ -40,7 +42,8 @@ void DataTree::Recover(const std::string& data) {
     node->clear_name();
     index = index + 4 + size;
   }
-  assert(index == data.size());
+  assert(index == all);
+  return index;
 }
 
 void DataTree::Create(const CreateRequest& request, const Transaction& txn,
@@ -319,9 +322,9 @@ void DataTree::KillSession(uint64_t session_id, const Transaction& txn) {
   }
 }
 
-void DataTree::SerializeToString(std::string* data) const {
+void DataTree::SerializeToString(std::string* data, size_t size) const {
   size_t i = 0;
-  size_t size = 4 + 4 * nodes_.size();
+  size_t all = size + 8 + 4 * nodes_.size();
   std::vector<uint32_t> v(nodes_.size());
   for (auto& it : nodes_) {
     it.second->set_name(it.first);
@@ -332,11 +335,12 @@ void DataTree::SerializeToString(std::string* data) const {
       }
     }
     v[i] = static_cast<uint32_t>(it.second->ByteSizeLong());
-    size += v[i];
+    all += v[i];
     ++i;
   }
   i = 0;
-  data->reserve(size);
+  data->reserve(all);
+  voyager::PutFixed64(data, all - size);
   for (auto& it : nodes_) {
     voyager::PutFixed32(data, v[i++]);
     it.second->AppendToString(data);

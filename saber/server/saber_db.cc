@@ -26,7 +26,8 @@ SaberDB::SaberDB(const ServerOptions& options)
       doing_(false),
       checkpoint_storage_path_(options.checkpoint_storage_path),
       file_map_(options.paxos_group_size),
-      sessions_(options.paxos_group_size) {
+      sessions_(options.paxos_group_size),
+      distribution_(1, kMakeCheckpointInterval / 2) {
   if (checkpoint_storage_path_[checkpoint_storage_path_.size() - 1] != '/') {
     checkpoint_storage_path_.push_back('/');
   }
@@ -76,7 +77,8 @@ bool SaberDB::Recover() {
       std::string fname = dir + "/" + std::to_string(*(temp.rbegin()));
       ReadFileToString(skywalker::FileManager::Instance(), fname, &s);
       if (CheckData(&s)) {
-        trees_[i]->Recover(s);
+        uint64_t index = trees_[i]->Recover(s);
+        ParseFromArray(i, s.c_str() + index, s.size() - index);
         LOG_INFO("Group %u: recover from checkpoint file %s", i, fname.c_str());
         break;
       }
@@ -340,13 +342,19 @@ void SaberDB::MaybeMakeCheckpoint(uint32_t group_id, uint64_t instance_id) {
     uint64_t i = file_map_[group_id].empty()
                      ? UINTMAX_MAX
                      : file_map_[group_id].rbegin()->second;
-    if (((i == UINTMAX_MAX && instance_id > kMakeCheckpointInterval) ||
-         (instance_id - i > kMakeCheckpointInterval)) &&
+    uint32_t interval = kMakeCheckpointInterval / 2 + distribution_(generator_);
+    if (((i == UINTMAX_MAX && instance_id > interval) ||
+         (instance_id - i > interval)) &&
         LockCheckpoint(group_id)) {
+      // FIXME
+      std::unordered_map<uint64_t, uint64_t>* sessions =
+          new std::unordered_map<uint64_t, uint64_t>(sessions_[group_id]);
       std::string* s = new std::string();
-      trees_[group_id]->SerializeToString(s);
-      loop_->QueueInLoop([this, group_id, instance_id, s]() {
+      trees_[group_id]->SerializeToString(s, 4 + 8 + 16 * sessions->size());
+      loop_->QueueInLoop([this, group_id, instance_id, sessions, s]() {
+        SerializeToString(*sessions, s);
         MakeCheckpoint(group_id, instance_id, s);
+        delete sessions;
         delete s;
         UnLockCheckpoint(group_id);
         doing_ = false;
@@ -467,6 +475,31 @@ bool SaberDB::LoadCheckpoint(uint32_t group_id, uint64_t instance_id,
   CleanCheckpoint(group_id);
 
   return true;
+}
+
+void SaberDB::ParseFromArray(uint32_t group_id, const char* s, size_t len) {
+  size_t size = voyager::DecodeFixed64(s);
+  s += 8;
+  size_t index = 0;
+  while (index < len) {
+    uint64_t session_id = voyager::DecodeFixed64(s);
+    uint64_t instance_id = voyager::DecodeFixed64(s + 8);
+    sessions_[group_id].insert(std::make_pair(session_id, instance_id));
+    s += 16;
+    index += 16;
+  }
+  assert(index == len);
+  assert(size == sessions_[group_id].size());
+}
+
+void SaberDB::SerializeToString(
+    const std::unordered_map<uint64_t, uint64_t>& sessions,
+    std::string* s) const {
+  voyager::PutFixed64(s, sessions.size());
+  for (auto& it : sessions) {
+    voyager::PutFixed64(s, it.first);
+    voyager::PutFixed64(s, it.second);
+  }
 }
 
 }  // namespace saber

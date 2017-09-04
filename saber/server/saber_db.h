@@ -8,6 +8,7 @@
 #include <atomic>
 #include <map>
 #include <memory>
+#include <random>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -94,6 +95,10 @@ class SaberDB : public skywalker::StateMachine, public skywalker::Checkpoint {
   void MakeCheckpoint(uint32_t group_id, uint64_t instance_id, std::string* s);
   void CleanCheckpoint(uint32_t group_id);
 
+  void ParseFromArray(uint32_t group_id, const char* s, size_t len);
+  void SerializeToString(const std::unordered_map<uint64_t, uint64_t>& sessions,
+                         std::string* s) const;
+
   const uint32_t kKeepCheckpointCount;
   const uint32_t kMakeCheckpointInterval;
 
@@ -106,6 +111,9 @@ class SaberDB : public skywalker::StateMachine, public skywalker::Checkpoint {
 
   mutable Mutex mutex_;
   std::vector<std::unordered_map<uint64_t, uint64_t>> sessions_;
+
+  std::default_random_engine generator_;
+  std::uniform_int_distribution<uint32_t> distribution_;
 
   RunLoop* loop_;
   RunLoopThread thread_;
