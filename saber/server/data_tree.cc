@@ -4,8 +4,6 @@
 
 #include "saber/server/data_tree.h"
 
-#include <utility>
-
 #include <voyager/util/coding.h>
 
 #include "saber/util/logging.h"
@@ -13,34 +11,36 @@
 
 namespace saber {
 
-DataTree::DataTree() {
-  nodes_.insert(std::make_pair("", std::unique_ptr<DataNode>(new DataNode())));
-}
+DataTree::DataTree() { nodes_.insert(std::make_pair("", DataNode())); }
 
 DataTree::~DataTree() {}
 
-uint64_t DataTree::Recover(const std::string& data) {
-  uint64_t all = voyager::DecodeFixed64(data.c_str());
-  uint64_t index = 8;
-
+uint64_t DataTree::Recover(const std::string& s, size_t index) {
+  const char* p = s.c_str();
+  p += index;
+  uint64_t size = voyager::DecodeFixed64(p);
+  p += 8;
+  index += 8;
+  uint64_t all = index + size;
+  assert(all <= s.size());
+  DataNode node;
   while (index < all) {
-    uint32_t size = voyager::DecodeFixed32(data.c_str() + index);
-    DataNode* node = new DataNode();
-    node->ParseFromArray(data.c_str() + index + 4, static_cast<int>(size));
-    if (node->children_size() > 0) {
-      std::set<std::string>& children = childrens_[node->name()];
-      for (int i = 0; i < node->children_size(); ++i) {
-        children.insert(node->children(i));
+    uint32_t one = voyager::DecodeFixed32(p);
+    node.ParseFromArray(p + 4, static_cast<int>(one));
+    if (node.children_size() > 0) {
+      std::set<std::string>& children = childrens_[node.name()];
+      for (int i = 0; i < node.children_size(); ++i) {
+        children.insert(node.children(i));
       }
-      node->clear_children();
+      node.clear_children();
     }
-    nodes_.insert(
-        std::make_pair(node->name(), std::unique_ptr<DataNode>(node)));
-    if (node->stat().ephemeral_id() != 0) {
-      ephemerals_[node->stat().ephemeral_id()].insert(node->name());
+    if (node.stat().ephemeral_id() != 0) {
+      ephemerals_[node.stat().ephemeral_id()].insert(node.name());
     }
-    node->clear_name();
-    index = index + 4 + size;
+    nodes_[node.name()].Swap(&node);
+    nodes_[node.name()].clear_name();
+    p = p + 4 + one;
+    index = index + 4 + one;
   }
   assert(index == all);
   return index;
@@ -54,8 +54,8 @@ void DataTree::Create(const CreateRequest& request, const Transaction& txn,
   std::string parent = path.substr(0, found);
   std::string child = path.substr(found + 1);
 
-  std::unique_ptr<DataNode> node(new DataNode());
-  Stat* stat = node->mutable_stat();
+  DataNode node;
+  Stat* stat = node.mutable_stat();
   stat->set_group_id(txn.group_id());
   stat->set_created_id(txn.instance_id());
   stat->set_modified_id(txn.instance_id());
@@ -67,8 +67,8 @@ void DataTree::Create(const CreateRequest& request, const Transaction& txn,
   stat->set_data_len(static_cast<uint32_t>(data.size()));
   stat->set_children_num(0);
   stat->set_children_id(txn.instance_id());
-  node->set_data(request.data());
-  *(node->mutable_acl()) = request.acl();
+  node.set_data(request.data());
+  *(node.mutable_acl()) = request.acl();
   {
     MutexLock lock(&mutex_);
     auto it = nodes_.find(parent);
@@ -76,12 +76,12 @@ void DataTree::Create(const CreateRequest& request, const Transaction& txn,
       std::set<std::string>& children = childrens_[parent];
       if (children.find(child) == children.end()) {
         children.insert(child);
-        Stat* tmp = it->second->mutable_stat();
+        Stat* tmp = it->second.mutable_stat();
         tmp->set_children_version(tmp->children_version() + 1);
         tmp->set_children_num(static_cast<uint32_t>(children.size()));
         tmp->set_children_id(txn.instance_id());
 
-        nodes_.insert(std::make_pair(path, std::move(node)));
+        nodes_[path].Swap(&node);
         response->set_code(RC_OK);
         response->set_path(path);
       } else {
@@ -114,8 +114,8 @@ void DataTree::Delete(const DeleteRequest& request, const Transaction& txn,
     MutexLock lock(&mutex_);
     auto it = nodes_.find(path);
     if (it != nodes_.end()) {
-      if (it->second->stat().ephemeral_id() != 0) {
-        auto e = ephemerals_.find(it->second->stat().ephemeral_id());
+      if (it->second.stat().ephemeral_id() != 0) {
+        auto e = ephemerals_.find(it->second.stat().ephemeral_id());
         if (e != ephemerals_.end()) {
           e->second.erase(path);
           if (e->second.empty()) {
@@ -129,7 +129,7 @@ void DataTree::Delete(const DeleteRequest& request, const Transaction& txn,
         if (childrens_.find(parent) != childrens_.end()) {
           std::set<std::string>& children = childrens_[parent];
           if (children.erase(child)) {
-            Stat* tmp = it->second->mutable_stat();
+            Stat* tmp = it->second.mutable_stat();
             tmp->set_children_version(tmp->children_version() + 1);
             tmp->set_children_num(static_cast<uint32_t>(children.size()));
             tmp->set_children_id(txn.instance_id());
@@ -167,7 +167,7 @@ void DataTree::Exists(const ExistsRequest& request, Watcher* watcher,
   auto it = nodes_.find(path);
   if (it != nodes_.end()) {
     response->set_code(RC_OK);
-    Stat* stat = new Stat(it->second->stat());
+    Stat* stat = new Stat(it->second.stat());
     response->set_allocated_stat(stat);
   } else {
     response->set_code(RC_NO_NODE);
@@ -183,8 +183,8 @@ void DataTree::GetData(const GetDataRequest& request, Watcher* watcher,
     auto it = nodes_.find(path);
     if (it != nodes_.end()) {
       response->set_code(RC_OK);
-      Stat* stat = new Stat(it->second->stat());
-      response->set_data(it->second->data());
+      Stat* stat = new Stat(it->second.stat());
+      response->set_data(it->second.data());
       response->set_allocated_stat(stat);
     } else {
       response->set_code(RC_NO_NODE);
@@ -207,16 +207,16 @@ void DataTree::SetData(const SetDataRequest& request, const Transaction& txn,
     MutexLock lock(&mutex_);
     auto it = nodes_.find(path);
     if (it != nodes_.end()) {
-      int version = it->second->stat().version();
+      int version = it->second.stat().version();
       if (request.version() != -1 && request.version() != version) {
         response->set_code(RC_BAD_VERSION);
       } else {
-        Stat* stat = it->second->mutable_stat();
+        Stat* stat = it->second.mutable_stat();
         stat->set_modified_id(txn.instance_id());
         stat->set_modified_time(txn.time());
         stat->set_version(version + 1);
         stat->set_data_len(static_cast<int>(data.size()));
-        it->second->set_data(data);
+        it->second.set_data(data);
         response->set_code(RC_OK);
         response->set_allocated_stat(new Stat(*stat));
       }
@@ -236,9 +236,9 @@ void DataTree::GetACL(const GetACLRequest& request, GetACLResponse* response) {
   auto it = nodes_.find(path);
   if (it != nodes_.end()) {
     response->set_code(RC_OK);
-    Stat* stat = new Stat(it->second->stat());
+    Stat* stat = new Stat(it->second.stat());
     response->set_allocated_stat(stat);
-    *(response->mutable_acl()) = it->second->acl();
+    *(response->mutable_acl()) = it->second.acl();
   } else {
     response->set_code(RC_NO_NODE);
   }
@@ -251,14 +251,14 @@ void DataTree::SetACL(const SetACLRequest& request, const Transaction& txn,
   MutexLock lock(&mutex_);
   auto it = nodes_.find(path);
   if (it != nodes_.end()) {
-    int version = it->second->stat().acl_version();
+    int version = it->second.stat().acl_version();
     if (request.version() != -1 && request.version() != version) {
       response->set_code(RC_BAD_VERSION);
     } else {
-      *(it->second->mutable_acl()) = request.acl();
-      it->second->mutable_stat()->set_acl_version(version + 1);
+      *(it->second.mutable_acl()) = request.acl();
+      it->second.mutable_stat()->set_acl_version(version + 1);
       response->set_code(RC_OK);
-      Stat* stat = new Stat(it->second->stat());
+      Stat* stat = new Stat(it->second.stat());
       response->set_allocated_stat(stat);
     }
   } else {
@@ -275,7 +275,7 @@ void DataTree::GetChildren(const GetChildrenRequest& request, Watcher* watcher,
     auto it = nodes_.find(path);
     if (it != nodes_.end()) {
       response->set_code(RC_OK);
-      Stat* stat = new Stat(it->second->stat());
+      Stat* stat = new Stat(it->second.stat());
       response->set_allocated_stat(stat);
       if (childrens_.find(path) != childrens_.end()) {
         const std::set<std::string>& children = childrens_[path];
@@ -322,30 +322,46 @@ void DataTree::KillSession(uint64_t session_id, const Transaction& txn) {
   }
 }
 
-void DataTree::SerializeToString(std::string* data, size_t size) const {
+void DataTree::SerializeToString(std::string* data, size_t size) {
+  DataTree::SerializeToString(nodes_, childrens_, data, size);
+}
+
+std::unordered_map<std::string, DataNode>* DataTree::CopyNodes() const {
+  return new std::unordered_map<std::string, DataNode>(nodes_);
+}
+
+std::unordered_map<std::string, std::set<std::string>>*
+DataTree::CopyChildrens() const {
+  return new std::unordered_map<std::string, std::set<std::string>>(childrens_);
+}
+
+void DataTree::SerializeToString(
+    std::unordered_map<std::string, DataNode>& nodes,
+    std::unordered_map<std::string, std::set<std::string>>& childrens,
+    std::string* data, size_t size) {
   size_t i = 0;
-  size_t all = size + 8 + 4 * nodes_.size();
-  std::vector<uint32_t> v(nodes_.size());
-  for (auto& it : nodes_) {
-    it.second->set_name(it.first);
-    auto children = childrens_.find(it.first);
-    if (children != childrens_.end()) {
+  size_t all = size + 8 + 4 * nodes.size();
+  std::vector<uint32_t> v(nodes.size());
+  for (auto& it : nodes) {
+    it.second.set_name(it.first);
+    auto children = childrens.find(it.first);
+    if (children != childrens.end()) {
       for (auto& child : children->second) {
-        it.second->add_children(child);
+        it.second.add_children(child);
       }
     }
-    v[i] = static_cast<uint32_t>(it.second->ByteSizeLong());
+    v[i] = static_cast<uint32_t>(it.second.ByteSizeLong());
     all += v[i];
     ++i;
   }
   i = 0;
   data->reserve(all);
-  voyager::PutFixed64(data, all - size);
-  for (auto& it : nodes_) {
+  voyager::PutFixed64(data, all - 8 - size);
+  for (auto& it : nodes) {
     voyager::PutFixed32(data, v[i++]);
-    it.second->AppendToString(data);
-    it.second->clear_children();
-    it.second->clear_name();
+    it.second.AppendToString(data);
+    it.second.clear_children();
+    it.second.clear_name();
   }
 }
 

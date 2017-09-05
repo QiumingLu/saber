@@ -28,7 +28,7 @@
 namespace saber {
 
 class SaberDB;
-class ServerConnection;
+class SaberSession;
 class ConnectionMonitor;
 
 class SaberServer {
@@ -60,7 +60,7 @@ class SaberServer {
                         std::unique_ptr<SaberMessage> message);
   void OnConnectResponse(bool b, const EntryPtr& entry,
                          std::unique_ptr<SaberMessage> message);
-  void KillSession(const std::shared_ptr<ServerConnection>& conn);
+  void KillSession(const std::shared_ptr<SaberSession>& session);
   uint64_t GetNextSessionId() const;
   uint32_t Shard(const std::string& s) const;
 
@@ -84,7 +84,7 @@ class SaberServer {
   std::map<voyager::EventLoop*, std::pair<BucketList, int>> buckets_;
 
   Mutex mutex_;
-  std::unordered_map<uint64_t, std::weak_ptr<ServerConnection>> conns_;
+  std::unordered_map<uint64_t, std::weak_ptr<SaberSession>> sessions_;
 
   voyager::TcpServer server_;
 

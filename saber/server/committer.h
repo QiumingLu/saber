@@ -16,11 +16,11 @@
 
 namespace saber {
 
-class ServerConnection;
+class SaberSession;
 
 class Committer : public std::enable_shared_from_this<Committer> {
  public:
-  Committer(uint32_t group_id, ServerConnection* conn, voyager::EventLoop* loop,
+  Committer(uint32_t group_id, SaberSession* session, voyager::EventLoop* loop,
             SaberDB* db, skywalker::Node* node);
 
   void SetEventLoop(voyager::EventLoop* loop) { loop_ = loop; }
@@ -35,7 +35,7 @@ class Committer : public std::enable_shared_from_this<Committer> {
   void SetFailedState(SaberMessage* reply_message);
 
   const uint32_t group_id_;
-  ServerConnection* conn_;
+  SaberSession* session_;
   voyager::EventLoop* loop_;
   SaberDB* db_;
   skywalker::Node* node_;

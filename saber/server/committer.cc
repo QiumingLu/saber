@@ -7,16 +7,20 @@
 #include <utility>
 
 #include "saber/proto/server.pb.h"
-#include "saber/server/server_connection.h"
+#include "saber/server/saber_session.h"
 #include "saber/util/logging.h"
 #include "saber/util/timeops.h"
 
 namespace saber {
 
-Committer::Committer(uint32_t group_id, ServerConnection* conn,
+Committer::Committer(uint32_t group_id, SaberSession* session,
                      voyager::EventLoop* loop, SaberDB* db,
                      skywalker::Node* node)
-    : group_id_(group_id), conn_(conn), loop_(loop), db_(db), node_(node) {}
+    : group_id_(group_id),
+      session_(session),
+      loop_(loop),
+      db_(db),
+      node_(node) {}
 
 void Committer::Commit(SaberMessage* message) {
   // FIXME don't check master?
@@ -32,7 +36,7 @@ void Committer::Commit(SaberMessage* message) {
     SaberMessage* reply_message = new SaberMessage();
     reply_message->set_type(MT_MASTER);
     reply_message->set_data(master.SerializeAsString());
-    conn_->OnCommitComplete(std::unique_ptr<SaberMessage>(reply_message));
+    session_->OnCommitComplete(std::unique_ptr<SaberMessage>(reply_message));
   }
 }
 
@@ -46,7 +50,7 @@ void Committer::HandleCommit(SaberMessage* message) {
       ExistsRequest request;
       ExistsResponse response;
       request.ParseFromString(message->data());
-      Watcher* watcher = request.watch() ? conn_ : nullptr;
+      Watcher* watcher = request.watch() ? session_ : nullptr;
       db_->Exists(group_id_, request, watcher, &response);
       reply_message->set_data(response.SerializeAsString());
       break;
@@ -55,7 +59,7 @@ void Committer::HandleCommit(SaberMessage* message) {
       GetDataRequest request;
       GetDataResponse response;
       request.ParseFromString(message->data());
-      Watcher* watcher = request.watch() ? conn_ : nullptr;
+      Watcher* watcher = request.watch() ? session_ : nullptr;
       db_->GetData(group_id_, request, watcher, &response);
       reply_message->set_data(response.SerializeAsString());
       break;
@@ -72,7 +76,7 @@ void Committer::HandleCommit(SaberMessage* message) {
       GetChildrenRequest request;
       GetChildrenResponse response;
       request.ParseFromString(message->data());
-      Watcher* watcher = request.watch() ? conn_ : nullptr;
+      Watcher* watcher = request.watch() ? session_ : nullptr;
       db_->GetChildren(group_id_, request, watcher, &response);
       reply_message->set_data(response.SerializeAsString());
       break;
@@ -91,13 +95,13 @@ void Committer::HandleCommit(SaberMessage* message) {
     }
   }
   if (!wait) {
-    conn_->OnCommitComplete(std::unique_ptr<SaberMessage>(reply_message));
+    session_->OnCommitComplete(std::unique_ptr<SaberMessage>(reply_message));
   }
 }
 
 bool Committer::Propose(SaberMessage* message, SaberMessage* reply_message) {
   Transaction txn;
-  txn.set_session_id(conn_->session_id());
+  txn.set_session_id(session_->session_id());
   txn.set_time(NowMillis());
   message->set_extra_data(txn.SerializeAsString());
   CommitterPtr ptr(shared_from_this());
@@ -126,7 +130,7 @@ void Committer::OnProposeComplete(uint64_t instance_id,
   CommitterPtr ptr(shared_from_this());
   loop_->QueueInLoop([ptr, reply_message]() {
     if (!ptr.unique()) {
-      ptr->conn_->OnCommitComplete(
+      ptr->session_->OnCommitComplete(
           std::unique_ptr<SaberMessage>(reply_message));
     }
   });

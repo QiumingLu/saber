@@ -6,11 +6,9 @@
 #define SABER_SERVER_SABER_DB_H_
 
 #include <atomic>
-#include <map>
 #include <memory>
 #include <random>
 #include <string>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -19,6 +17,7 @@
 #include "saber/proto/server.pb.h"
 #include "saber/server/data_tree.h"
 #include "saber/server/server_options.h"
+#include "saber/server/session_manager.h"
 #include "saber/util/mutex.h"
 #include "saber/util/runloop.h"
 #include "saber/util/runloop_thread.h"
@@ -69,10 +68,9 @@ class SaberDB : public skywalker::StateMachine, public skywalker::Checkpoint {
                               const std::vector<std::string>& files);
 
  private:
-  bool GroupFile(uint32_t group_id);
-  bool CheckData(std::string* s);
-  void DeleteFile(uint32_t group_id, uint64_t instance_id);
-  void CheckFiles(uint32_t group_id, std::set<uint64_t>& temp);
+  bool Checksum(std::string* s);
+  std::string FileName(uint32_t group_id, uint64_t instance_id) const;
+  void DeleteFile(const std::string& fname) const;
 
   void Create(uint32_t group_id, const CreateRequest& request,
               const Transaction& txn, CreateResponse* response);
@@ -92,12 +90,14 @@ class SaberDB : public skywalker::StateMachine, public skywalker::Checkpoint {
                    const Transaction& txn);
 
   void MaybeMakeCheckpoint(uint32_t group_id, uint64_t instance_id);
-  void MakeCheckpoint(uint32_t group_id, uint64_t instance_id, std::string* s);
+  void MakeCheckpoint(
+      uint32_t group_id, uint64_t instance_id,
+      std::unordered_map<std::string, DataNode>* nodes,
+      std::unordered_map<std::string, std::set<std::string>>* childrens,
+      std::unordered_map<uint64_t, uint64_t>* sessions);
   void CleanCheckpoint(uint32_t group_id);
 
-  void ParseFromArray(uint32_t group_id, const char* s, size_t len);
-  void SerializeToString(const std::unordered_map<uint64_t, uint64_t>& sessions,
-                         std::string* s) const;
+  class Session;
 
   const uint32_t kKeepCheckpointCount;
   const uint32_t kMakeCheckpointInterval;
@@ -106,11 +106,10 @@ class SaberDB : public skywalker::StateMachine, public skywalker::Checkpoint {
   std::atomic<bool> doing_;
 
   std::string checkpoint_storage_path_;
+  std::vector<uint64_t> checkpoint_id_;
+  std::vector<std::vector<uint64_t>> files_;
   std::vector<std::unique_ptr<DataTree>> trees_;
-  std::vector<std::map<uint64_t, uint64_t>> file_map_;
-
-  mutable Mutex mutex_;
-  std::vector<std::unordered_map<uint64_t, uint64_t>> sessions_;
+  std::vector<std::unique_ptr<SessionManager>> sessions_;
 
   std::default_random_engine generator_;
   std::uniform_int_distribution<uint32_t> distribution_;

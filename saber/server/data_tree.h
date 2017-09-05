@@ -22,7 +22,7 @@ class DataTree {
   DataTree();
   ~DataTree();
 
-  uint64_t Recover(const std::string& data);
+  uint64_t Recover(const std::string& s, size_t index);
 
   void Create(const CreateRequest& request, const Transaction& txn,
               CreateResponse* response);
@@ -51,14 +51,27 @@ class DataTree {
 
   void KillSession(uint64_t session_id, const Transaction& txn);
 
-  void SerializeToString(std::string* data, size_t size) const;
+  // Sync serialize
+  void SerializeToString(std::string* data, size_t size);
+
+  // No thread safe
+  std::unordered_map<std::string, DataNode>* CopyNodes() const;
+
+  // No thread safe
+  std::unordered_map<std::string, std::set<std::string>>* CopyChildrens() const;
+
+  // Async serialize
+  static void SerializeToString(
+      std::unordered_map<std::string, DataNode>& nodes,
+      std::unordered_map<std::string, std::set<std::string>>& children,
+      std::string* data, size_t size);
 
  private:
   Mutex mutex_;
-  std::unordered_map<std::string, std::unique_ptr<DataNode> > nodes_;
-  std::unordered_map<std::string, std::set<std::string> > childrens_;
+  std::unordered_map<std::string, DataNode> nodes_;
+  std::unordered_map<std::string, std::set<std::string>> childrens_;
 
-  std::unordered_map<uint64_t, std::set<std::string> > ephemerals_;
+  std::unordered_map<uint64_t, std::set<std::string>> ephemerals_;
 
   ServerWatchManager data_watches_;
   ServerWatchManager child_watches_;

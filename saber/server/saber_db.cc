@@ -7,10 +7,10 @@
 #include <stdlib.h>
 
 #include <algorithm>
+#include <unordered_map>
 
 #include <skywalker/file.h>
 #include <voyager/util/coding.h>
-#include <voyager/util/string_util.h>
 
 #include "saber/util/crc32c.h"
 #include "saber/util/logging.h"
@@ -19,20 +19,27 @@
 
 namespace saber {
 
+namespace {
+static const std::string kCheckpoint = "CHECKPOINT.";
+}
+
 SaberDB::SaberDB(const ServerOptions& options)
     : kKeepCheckpointCount(options.keep_checkpoint_count),
       kMakeCheckpointInterval(options.make_checkpoint_interval),
       lock_(false),
       doing_(false),
       checkpoint_storage_path_(options.checkpoint_storage_path),
-      file_map_(options.paxos_group_size),
-      sessions_(options.paxos_group_size),
+      checkpoint_id_(options.paxos_group_size, UINTMAX_MAX),
+      files_(options.paxos_group_size),
       distribution_(1, kMakeCheckpointInterval / 2) {
   if (checkpoint_storage_path_[checkpoint_storage_path_.size() - 1] != '/') {
     checkpoint_storage_path_.push_back('/');
   }
   for (uint32_t i = 0; i < options.paxos_group_size; ++i) {
     trees_.push_back(std::unique_ptr<DataTree>(new DataTree()));
+  }
+  for (uint32_t i = 0; i < options.paxos_group_size; ++i) {
+    sessions_.push_back(std::unique_ptr<SessionManager>(new SessionManager()));
   }
 }
 
@@ -51,73 +58,50 @@ bool SaberDB::Recover() {
   char* end;
   std::string s;
   std::vector<std::string> files;
-  std::set<uint64_t> temp;
-  for (uint32_t i = 0; i < trees_.size(); ++i) {
+  for (uint32_t i = 0; i < files_.size(); ++i) {
     std::string dir = checkpoint_storage_path_ + "g" + std::to_string(i);
     skywalker::FileManager::Instance()->CreateDir(dir);
     skywalker::FileManager::Instance()->GetChildren(dir, &files, true);
-
     for (auto& file : files) {
-      if (file == "g") {
-        if (!GroupFile(i)) {
-          std::string backup = dir + "/backup";
-          if (skywalker::FileManager::Instance()->FileExists(backup)) {
-            skywalker::FileManager::Instance()->RenameFile(backup, dir + "/g");
-            GroupFile(i);
-          }
-        }
-      } else if (file != "backup") {
-        temp.insert(strtoull(file.c_str(), &end, 10));
+      size_t found = file.find_first_of(".");
+      if (found != std::string::npos) {
+        files_[i].push_back(strtoull(file.substr(found + 1).c_str(), &end, 10));
       }
     }
+    std::sort(files_[i].begin(), files_[i].end());
 
-    CheckFiles(i, temp);
-
-    while (!temp.empty()) {
-      std::string fname = dir + "/" + std::to_string(*(temp.rbegin()));
+    while (!files_[i].empty()) {
+      std::string fname = FileName(i, files_[i].back());
       ReadFileToString(skywalker::FileManager::Instance(), fname, &s);
-      if (CheckData(&s)) {
-        uint64_t index = trees_[i]->Recover(s);
-        ParseFromArray(i, s.c_str() + index, s.size() - index);
-        LOG_INFO("Group %u: recover from checkpoint file %s", i, fname.c_str());
-        break;
+      if (Checksum(&s)) {
+        uint64_t instance_id = voyager::DecodeFixed64(s.c_str());
+        if (files_[i].back() != instance_id) {
+          if (std::find(files_[i].begin(), files_[i].end(), instance_id) ==
+              files_[i].end()) {
+            files_[i].back() = instance_id;
+            skywalker::FileManager::Instance()->RenameFile(
+                fname, FileName(i, instance_id));
+            std::sort(files_[i].begin(), files_[i].end());
+            continue;
+          }
+        } else {
+          checkpoint_id_[i] = instance_id;
+          uint64_t index = trees_[i]->Recover(s, 8);
+          index = sessions_[i]->Recover(s, index);
+          assert(index == s.size());
+          LOG_INFO("Group %u: recover from file %s", i, fname.c_str());
+          break;
+        }
       }
-      DeleteFile(i, *(temp.rbegin()));
-      file_map_[i].erase(std::prev(file_map_[i].end()));
-      temp.erase(std::prev(temp.end()));
+      DeleteFile(fname);
+      files_[i].pop_back();
     }
-    CleanCheckpoint(i);
-    s.clear();
-    files.clear();
-    temp.clear();
   }
   loop_ = thread_.Loop();
   return true;
 }
 
-bool SaberDB::GroupFile(uint32_t group_id) {
-  std::string fname =
-      checkpoint_storage_path_ + "g" + std::to_string(group_id) + "/g";
-  std::string s;
-  skywalker::ReadFileToString(skywalker::FileManager::Instance(), fname, &s);
-  if (CheckData(&s)) {
-    char* end;
-    std::vector<std::string> result;
-    voyager::SplitStringUsing(s, "\r\n", &result);
-    for (auto& one : result) {
-      size_t found = one.find_first_of(":");
-      uint64_t f = strtoull(one.substr(0, found).c_str(), &end, 10);
-      uint64_t id = strtoull(one.substr(found + 1).c_str(), &end, 10);
-      file_map_[group_id].insert(std::make_pair(f, id));
-    }
-    return true;
-  } else {
-    skywalker::FileManager::Instance()->DeleteFile(fname);
-    return false;
-  }
-}
-
-bool SaberDB::CheckData(std::string* s) {
+bool SaberDB::Checksum(std::string* s) {
   assert(s->size() > 4);
   if (s->size() > 4) {
     uint32_t c = voyager::DecodeFixed32(s->c_str() + s->size() - 4);
@@ -129,32 +113,16 @@ bool SaberDB::CheckData(std::string* s) {
   return false;
 }
 
-void SaberDB::DeleteFile(uint32_t group_id, uint64_t instance_id) {
+std::string SaberDB::FileName(uint32_t group_id, uint64_t instance_id) const {
   std::string fname = checkpoint_storage_path_ + "g" +
-                      std::to_string(group_id) + "/" +
+                      std::to_string(group_id) + "/" + kCheckpoint +
                       std::to_string(instance_id);
-  skywalker::FileManager::Instance()->DeleteFile(fname);
-  LOG_INFO("Delete file %s.", fname.c_str());
+  return fname;
 }
 
-void SaberDB::CheckFiles(uint32_t group_id, std::set<uint64_t>& temp) {
-  for (std::map<uint64_t, uint64_t>::iterator it = file_map_[group_id].begin();
-       it != file_map_[group_id].end();) {
-    if (temp.find(it->first) == temp.end()) {
-      it = file_map_[group_id].erase(it);
-    } else {
-      ++it;
-    }
-  }
-
-  for (std::set<uint64_t>::iterator it = temp.begin(); it != temp.end();) {
-    if (file_map_[group_id].find(*it) == file_map_[group_id].end()) {
-      DeleteFile(group_id, *it);
-      it = temp.erase(it);
-    } else {
-      ++it;
-    }
-  }
+void SaberDB::DeleteFile(const std::string& fname) const {
+  skywalker::FileManager::Instance()->DeleteFile(fname);
+  LOG_INFO("Delete file %s.", fname.c_str());
 }
 
 void SaberDB::Create(uint32_t group_id, const CreateRequest& request,
@@ -203,54 +171,23 @@ void SaberDB::RemoveWatcher(uint32_t group_id, Watcher* watcher) {
 
 bool SaberDB::FindSession(uint64_t group_id, uint64_t session_id,
                           uint64_t* version) const {
-  MutexLock lock(&mutex_);
-  auto it = sessions_[group_id].find(session_id);
-  if (it != sessions_[group_id].end()) {
-    *version = it->second;
-    return true;
-  }
-  return false;
+  return sessions_[group_id]->FindSession(session_id, version);
 }
 
 bool SaberDB::FindSession(uint64_t group_id, uint64_t session_id,
                           uint64_t version) const {
-  MutexLock lock(&mutex_);
-  auto it = sessions_[group_id].find(session_id);
-  if (it != sessions_[group_id].end()) {
-    return it->second == version;
-  }
-  return false;
+  return sessions_[group_id]->FindSession(session_id, version);
 }
 
 bool SaberDB::CreateSession(uint32_t group_id, uint64_t session_id,
                             uint64_t new_version, uint64_t old_version) {
-  MutexLock lock(&mutex_);
-  if (old_version != 0) {
-    auto it = sessions_[group_id].find(session_id);
-    if (it != sessions_[group_id].end() && it->second == old_version) {
-      it->second = new_version;
-      return true;
-    } else {
-      return false;
-    }
-  } else {
-    sessions_[group_id][session_id] = new_version;
-    return true;
-  }
+  return sessions_[group_id]->CreateSession(session_id, new_version,
+                                            old_version);
 }
 
 bool SaberDB::CloseSession(uint32_t group_id, uint64_t session_id,
                            uint64_t version) {
-  MutexLock lock(&mutex_);
-  auto it = sessions_[group_id].find(session_id);
-  if (it != sessions_[group_id].end()) {
-    if (it->second == version) {
-      sessions_[group_id].erase(it);
-      return true;
-    }
-    return false;
-  }
-  return true;
+  return sessions_[group_id]->CloseSession(session_id, version);
 }
 
 void SaberDB::KillSession(uint32_t group_id, uint64_t session_id,
@@ -339,81 +276,70 @@ bool SaberDB::Execute(uint32_t group_id, uint64_t instance_id,
 void SaberDB::MaybeMakeCheckpoint(uint32_t group_id, uint64_t instance_id) {
   bool expected = false;
   if (doing_.compare_exchange_strong(expected, true)) {
-    uint64_t i = file_map_[group_id].empty()
-                     ? UINTMAX_MAX
-                     : file_map_[group_id].rbegin()->second;
+    uint64_t i = GetCheckpointInstanceId(group_id);
     uint32_t interval = kMakeCheckpointInterval / 2 + distribution_(generator_);
     if (((i == UINTMAX_MAX && instance_id > interval) ||
          (instance_id - i > interval)) &&
         LockCheckpoint(group_id)) {
-      // FIXME
+      // FIXME when the data is too much, may be can use sync serialization.
+      std::unordered_map<std::string, DataNode>* nodes =
+          trees_[group_id]->CopyNodes();
+      std::unordered_map<std::string, std::set<std::string>>* childrens =
+          trees_[group_id]->CopyChildrens();
       std::unordered_map<uint64_t, uint64_t>* sessions =
-          new std::unordered_map<uint64_t, uint64_t>(sessions_[group_id]);
-      std::string* s = new std::string();
-      trees_[group_id]->SerializeToString(s, 4 + 8 + 16 * sessions->size());
-      loop_->QueueInLoop([this, group_id, instance_id, sessions, s]() {
-        SerializeToString(*sessions, s);
-        MakeCheckpoint(group_id, instance_id, s);
-        delete sessions;
-        delete s;
-        UnLockCheckpoint(group_id);
-        doing_ = false;
-      });
+          sessions_[group_id]->CopySessions();
+
+      loop_->QueueInLoop(
+          [this, group_id, instance_id, nodes, childrens, sessions]() {
+            MakeCheckpoint(group_id, instance_id, nodes, childrens, sessions);
+            UnLockCheckpoint(group_id);
+            delete sessions;
+            delete childrens;
+            delete nodes;
+            doing_ = false;
+          });
     } else {
       doing_ = false;
     }
   }
 }
 
-void SaberDB::MakeCheckpoint(uint32_t group_id, uint64_t instance_id,
-                             std::string* s) {
-  uint64_t f = NowMillis();
-  voyager::PutFixed32(s, crc::crc32(0, s->c_str(), s->size()));
-  std::string fname = checkpoint_storage_path_ + "g" +
-                      std::to_string(group_id) + "/" + std::to_string(f);
+void SaberDB::MakeCheckpoint(
+    uint32_t group_id, uint64_t instance_id,
+    std::unordered_map<std::string, DataNode>* nodes,
+    std::unordered_map<std::string, std::set<std::string>>* childrens,
+    std::unordered_map<uint64_t, uint64_t>* sessions) {
+  std::string s;
+  voyager::PutFixed64(&s, instance_id);
+  DataTree::SerializeToString(*nodes, *childrens, &s,
+                              12 + 8 + 16 * sessions->size());
+  SessionManager::SerializeToString(*sessions, &s);
+  voyager::PutFixed32(&s, crc::crc32(0, s.c_str(), s.size()));
+  std::string fname = FileName(group_id, instance_id);
   skywalker::Status status = skywalker::WriteStringToFileSync(
-      skywalker::FileManager::Instance(), *s, fname);
+      skywalker::FileManager::Instance(), s, fname);
   if (status.ok()) {
-    file_map_[group_id].insert(std::make_pair(f, instance_id));
-    LOG_INFO(
-        "Group %u: make checkpoint successful, the file is %s, instance_id "
-        "is %llu",
-        group_id, fname.c_str(), (unsigned long long)instance_id);
+    checkpoint_id_[group_id] = instance_id;
+    files_[group_id].push_back(instance_id);
+    LOG_INFO("Group %u: make checkpoint successful, the file is %s.", group_id,
+             fname.c_str());
     CleanCheckpoint(group_id);
   } else {
     LOG_INFO("Group %u: make checkpoint failed.", group_id);
-    skywalker::FileManager::Instance()->DeleteFile(fname);
+    DeleteFile(fname);
   }
 }
 
 void SaberDB::CleanCheckpoint(uint32_t group_id) {
-  while (file_map_[group_id].size() > kKeepCheckpointCount) {
-    DeleteFile(group_id, file_map_[group_id].begin()->first);
-    file_map_[group_id].erase(file_map_[group_id].begin());
-  }
-  std::string s;
-  for (auto& file : file_map_[group_id]) {
-    s.append(std::to_string(file.first));
-    s.append(":");
-    s.append(std::to_string(file.second));
-    s.append("\r\n");
-  }
-  if (!s.empty()) {
-    voyager::PutFixed32(&s, crc::crc32(0, s.c_str(), s.size()));
-    std::string dir =
-        checkpoint_storage_path_ + "g" + std::to_string(group_id) + "/";
-    std::string fname = dir + "g";
-    if (skywalker::FileManager::Instance()->FileExists(fname)) {
-      skywalker::FileManager::Instance()->RenameFile(fname, dir + "backup");
-    }
-    skywalker::WriteStringToFileSync(skywalker::FileManager::Instance(), s,
-                                     fname);
+  while (files_[group_id].size() > kKeepCheckpointCount) {
+    DeleteFile(FileName(group_id, files_[group_id].front()));
+    files_[group_id].erase(files_[group_id].begin());
   }
 }
 
 uint64_t SaberDB::GetCheckpointInstanceId(uint32_t group_id) {
-  return file_map_[group_id].empty() ? UINTMAX_MAX
-                                     : file_map_[group_id].rbegin()->second;
+  // FIXME no thread safe
+  return checkpoint_id_[group_id];
 }
 
 bool SaberDB::LockCheckpoint(uint32_t group_id) {
@@ -430,8 +356,8 @@ bool SaberDB::GetCheckpoint(uint32_t group_id, uint32_t machine_id,
                             std::string* dir, std::vector<std::string>* files) {
   assert(this->machine_id() == machine_id);
   *dir = checkpoint_storage_path_ + "g" + std::to_string(group_id);
-  if (!(file_map_[group_id].empty())) {
-    files->push_back(std::to_string(file_map_[group_id].rbegin()->first));
+  if (!(files_[group_id].empty())) {
+    files->push_back(kCheckpoint + std::to_string(files_[group_id].back()));
   }
   return true;
 }
@@ -447,11 +373,8 @@ bool SaberDB::LoadCheckpoint(uint32_t group_id, uint64_t instance_id,
 
   skywalker::Status status;
 
-  uint64_t f = NowMillis();
-  std::string fname = checkpoint_storage_path_ + "g" +
-                      std::to_string(group_id) + "/" + std::to_string(f);
+  std::string fname = FileName(group_id, instance_id);
   std::string s;
-
   for (auto& file : files) {
     status = skywalker::ReadFileToString(skywalker::FileManager::Instance(),
                                          d + file, &s);
@@ -460,46 +383,20 @@ bool SaberDB::LoadCheckpoint(uint32_t group_id, uint64_t instance_id,
           skywalker::FileManager::Instance(), s, fname);
     }
     if (!status.ok()) {
-      skywalker::FileManager::Instance()->DeleteFile(fname);
+      DeleteFile(fname);
       return false;
     }
   }
 
-  file_map_[group_id].insert(std::make_pair(f, instance_id));
+  checkpoint_id_[group_id] = instance_id;
+  files_[group_id].push_back(instance_id);
 
-  LOG_INFO(
-      "Group %u: load checkpoint successful! the file is %s, instance_id is "
-      "%llu",
-      group_id, fname.c_str(), (unsigned long long)instance_id);
+  LOG_INFO("Group %u: load checkpoint successful! the file is %s.", group_id,
+           fname.c_str());
 
   CleanCheckpoint(group_id);
 
   return true;
-}
-
-void SaberDB::ParseFromArray(uint32_t group_id, const char* s, size_t len) {
-  size_t size = voyager::DecodeFixed64(s);
-  s += 8;
-  size_t index = 0;
-  while (index < len) {
-    uint64_t session_id = voyager::DecodeFixed64(s);
-    uint64_t instance_id = voyager::DecodeFixed64(s + 8);
-    sessions_[group_id].insert(std::make_pair(session_id, instance_id));
-    s += 16;
-    index += 16;
-  }
-  assert(index == len);
-  assert(size == sessions_[group_id].size());
-}
-
-void SaberDB::SerializeToString(
-    const std::unordered_map<uint64_t, uint64_t>& sessions,
-    std::string* s) const {
-  voyager::PutFixed64(s, sessions.size());
-  for (auto& it : sessions) {
-    voyager::PutFixed64(s, it.first);
-    voyager::PutFixed64(s, it.second);
-  }
 }
 
 }  // namespace saber
