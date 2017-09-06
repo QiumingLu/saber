@@ -7,6 +7,7 @@
 
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include "saber/util/mutex.h"
 
@@ -41,6 +42,11 @@ class SessionManager {
   // Thread safe
   static void SerializeToString(
       const std::unordered_map<uint64_t, uint64_t>& sessions, std::string* s);
+
+  static void CleanSessions(
+      uint64_t server_id,
+      const std::unordered_map<uint64_t, uint64_t>& sessions,
+      std::vector<uint64_t>* result);
 
  private:
   mutable Mutex mutex_;

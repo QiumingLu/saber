@@ -24,7 +24,8 @@ static const std::string kCheckpoint = "CHECKPOINT-";
 }
 
 SaberDB::SaberDB(const ServerOptions& options)
-    : kKeepCheckpointCount(options.keep_checkpoint_count),
+    : kServerId(options.my_server_message.id),
+      kKeepCheckpointCount(options.keep_checkpoint_count),
       kMakeCheckpointInterval(options.make_checkpoint_interval),
       lock_(false),
       doing_(false),
@@ -180,6 +181,21 @@ bool SaberDB::FindSession(uint64_t group_id, uint64_t session_id,
   return sessions_[group_id]->FindSession(session_id, version);
 }
 
+void SaberDB::CleanSessions(uint64_t group_id) const {
+  auto sessions = sessions_[group_id]->CopySessions();
+  std::vector<uint64_t> result;
+  SessionManager::CleanSessions(kServerId, *sessions, &result);
+  std::string s;
+  s.reserve(8 * result.size());
+  for (auto& i : result) {
+    voyager::PutFixed64(&s, i);
+  }
+  delete sessions;
+  SaberMessage message;
+  message.set_type(MT_MASTER);
+  message.set_data(std::move(s));
+}
+
 bool SaberDB::CreateSession(uint32_t group_id, uint64_t session_id,
                             uint64_t new_version, uint64_t old_version) {
   return sessions_[group_id]->CreateSession(session_id, new_version,
@@ -262,6 +278,9 @@ bool SaberDB::Execute(uint32_t group_id, uint64_t instance_id,
       if (reply_message) {
         reply_message->set_data(response.SerializeAsString());
       }
+      break;
+    }
+    case MT_MASTER: {
       break;
     }
     default: {

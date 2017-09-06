@@ -46,6 +46,9 @@ void Committer::HandleCommit(SaberMessage* message) {
   reply_message->set_type(message->type());
 
   switch (message->type()) {
+    case MT_PING: {
+      break;
+    }
     case MT_EXISTS: {
       ExistsRequest request;
       ExistsResponse response;

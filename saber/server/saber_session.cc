@@ -42,21 +42,25 @@ bool SaberSession::OnMessage(std::unique_ptr<SaberMessage> message) {
   if (closed_) {
     return false;
   }
-  if (message->type() != MT_PING) {
-    pending_messages_.push_back(std::move(message));
-    if (last_finished_) {
-      last_finished_ = false;
-      // FIXME check the session has been moved?
-      committer_->Commit(pending_messages_.front().get());
-    }
+  // No need to check master when the pending_messages_ is not empty.
+  if (message->type() == MT_PING && !pending_messages_.empty()) {
+    return false;
+  }
+  pending_messages_.push_back(std::move(message));
+  if (last_finished_) {
+    last_finished_ = false;
+    // FIXME check the session has been moved?
+    committer_->Commit(pending_messages_.front().get());
   }
   return true;
 }
 
 void SaberSession::OnCommitComplete(std::unique_ptr<SaberMessage> message) {
   assert(!pending_messages_.empty());
-  message->set_id(pending_messages_.front()->id());
-  codec_.SendMessage(conn_wp_.lock(), *message);
+  if (message->type() != MT_PING) {
+    message->set_id(pending_messages_.front()->id());
+    codec_.SendMessage(conn_wp_.lock(), *message);
+  }
   pending_messages_.pop_front();
 
   if (message->type() != MT_MASTER) {

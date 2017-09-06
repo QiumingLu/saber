@@ -93,4 +93,15 @@ void SessionManager::SerializeToString(
   }
 }
 
+void SessionManager::CleanSessions(
+    uint64_t server_id, const std::unordered_map<uint64_t, uint64_t>& sessions,
+    std::vector<uint64_t>* result) {
+  for (auto& it : sessions) {
+    uint64_t id = ((it.second) << 42) >> 52;
+    if (id != server_id) {
+      result->push_back(id);
+    }
+  }
+}
+
 }  // namespace saber
