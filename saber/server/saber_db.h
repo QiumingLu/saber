@@ -68,7 +68,7 @@ class SaberDB : public skywalker::StateMachine, public skywalker::Checkpoint {
                               const std::vector<std::string>& files);
 
  private:
-  bool Checksum(std::string* s);
+  bool Checksum(std::string* s) const;
   std::string FileName(uint32_t group_id, uint64_t instance_id) const;
   void DeleteFile(const std::string& fname) const;
 
@@ -96,8 +96,6 @@ class SaberDB : public skywalker::StateMachine, public skywalker::Checkpoint {
       std::unordered_map<std::string, std::set<std::string>>* childrens,
       std::unordered_map<uint64_t, uint64_t>* sessions);
   void CleanCheckpoint(uint32_t group_id);
-
-  class Session;
 
   const uint32_t kKeepCheckpointCount;
   const uint32_t kMakeCheckpointInterval;

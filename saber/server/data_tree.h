@@ -51,20 +51,26 @@ class DataTree {
 
   void KillSession(uint64_t session_id, const Transaction& txn);
 
-  // Sync serialize
-  void SerializeToString(std::string* data, size_t size);
-
+  // Serialize all nodes, and append the result to the *s;
   // No thread safe
+  void SerializeToString(std::string* s, size_t size);
+
+  // Copy all the nodes
+  // No thread safe
+  // Caller should delete the return value when it's no longer needed.
   std::unordered_map<std::string, DataNode>* CopyNodes() const;
 
+  // Copy all the childrens
   // No thread safe
+  // Caller should delete the return value when it's no longer needed.
   std::unordered_map<std::string, std::set<std::string>>* CopyChildrens() const;
 
-  // Async serialize
+  // Serialize all nodes, and append the result to the *s.
+  // Thread safe
   static void SerializeToString(
       std::unordered_map<std::string, DataNode>& nodes,
       std::unordered_map<std::string, std::set<std::string>>& children,
-      std::string* data, size_t size);
+      std::string* s, size_t size);
 
  private:
   Mutex mutex_;

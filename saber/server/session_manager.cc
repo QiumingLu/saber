@@ -76,7 +76,7 @@ bool SessionManager::CloseSession(uint64_t session_id, uint64_t version) {
   return true;
 }
 
-void SessionManager::SerializeToString(std::string* s) {
+void SessionManager::SerializeToString(std::string* s) const {
   SessionManager::SerializeToString(sessions_, s);
 }
 

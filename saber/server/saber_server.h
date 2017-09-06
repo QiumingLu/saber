@@ -60,7 +60,10 @@ class SaberServer {
                         std::unique_ptr<SaberMessage> message);
   void OnConnectResponse(bool b, const EntryPtr& entry,
                          std::unique_ptr<SaberMessage> message);
+  void CreateSession(uint32_t group_id, uint64_t session_id, uint64_t version,
+                     const voyager::TcpConnectionPtr& p, const EntryPtr& entry);
   void KillSession(const std::shared_ptr<SaberSession>& session);
+
   uint64_t GetNextSessionId() const;
   uint32_t Shard(const std::string& s) const;
 
@@ -83,6 +86,7 @@ class SaberServer {
   // Value的first值表示循环队列，second值表示该队列最后一个元素，即最后一个桶。
   std::map<voyager::EventLoop*, std::pair<BucketList, int>> buckets_;
 
+  // FIXME Maybe can shard sessions by group id?
   Mutex mutex_;
   std::unordered_map<uint64_t, std::weak_ptr<SaberSession>> sessions_;
 

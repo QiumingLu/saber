@@ -28,13 +28,17 @@ class SessionManager {
 
   bool CloseSession(uint64_t session_id, uint64_t version);
 
-  // Sync serialize
-  void SerializeToString(std::string* s);
-
+  // Serialize all sessions, and append the result to the *s;
   // No thread safe
+  void SerializeToString(std::string* s) const;
+
+  // Copy all the sessions
+  // No thread safe
+  // Caller should delete the return value when it's no longer needed.
   std::unordered_map<uint64_t, uint64_t>* CopySessions() const;
 
-  // Async serialize
+  // Serialize all sessions, and append the result to the *s;
+  // Thread safe
   static void SerializeToString(
       const std::unordered_map<uint64_t, uint64_t>& sessions, std::string* s);
 

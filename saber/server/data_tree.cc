@@ -322,8 +322,8 @@ void DataTree::KillSession(uint64_t session_id, const Transaction& txn) {
   }
 }
 
-void DataTree::SerializeToString(std::string* data, size_t size) {
-  DataTree::SerializeToString(nodes_, childrens_, data, size);
+void DataTree::SerializeToString(std::string* s, size_t size) {
+  DataTree::SerializeToString(nodes_, childrens_, s, size);
 }
 
 std::unordered_map<std::string, DataNode>* DataTree::CopyNodes() const {
@@ -338,7 +338,7 @@ DataTree::CopyChildrens() const {
 void DataTree::SerializeToString(
     std::unordered_map<std::string, DataNode>& nodes,
     std::unordered_map<std::string, std::set<std::string>>& childrens,
-    std::string* data, size_t size) {
+    std::string* s, size_t size) {
   size_t i = 0;
   size_t all = size + 8 + 4 * nodes.size();
   std::vector<uint32_t> v(nodes.size());
@@ -355,11 +355,11 @@ void DataTree::SerializeToString(
     ++i;
   }
   i = 0;
-  data->reserve(all);
-  voyager::PutFixed64(data, all - 8 - size);
+  s->reserve(all);
+  voyager::PutFixed64(s, all - 8 - size);
   for (auto& it : nodes) {
-    voyager::PutFixed32(data, v[i++]);
-    it.second.AppendToString(data);
+    voyager::PutFixed32(s, v[i++]);
+    it.second.AppendToString(s);
     it.second.clear_children();
     it.second.clear_name();
   }

@@ -20,7 +20,7 @@
 namespace saber {
 
 namespace {
-static const std::string kCheckpoint = "CHECKPOINT.";
+static const std::string kCheckpoint = "CHECKPOINT-";
 }
 
 SaberDB::SaberDB(const ServerOptions& options)
@@ -63,7 +63,7 @@ bool SaberDB::Recover() {
     skywalker::FileManager::Instance()->CreateDir(dir);
     skywalker::FileManager::Instance()->GetChildren(dir, &files, true);
     for (auto& file : files) {
-      size_t found = file.find_first_of(".");
+      size_t found = file.find_first_of("-");
       if (found != std::string::npos) {
         files_[i].push_back(strtoull(file.substr(found + 1).c_str(), &end, 10));
       }
@@ -101,7 +101,7 @@ bool SaberDB::Recover() {
   return true;
 }
 
-bool SaberDB::Checksum(std::string* s) {
+bool SaberDB::Checksum(std::string* s) const {
   assert(s->size() > 4);
   if (s->size() > 4) {
     uint32_t c = voyager::DecodeFixed32(s->c_str() + s->size() - 4);
