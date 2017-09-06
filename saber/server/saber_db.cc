@@ -31,6 +31,7 @@ SaberDB::SaberDB(const ServerOptions& options)
       checkpoint_storage_path_(options.checkpoint_storage_path),
       checkpoint_id_(options.paxos_group_size, UINTMAX_MAX),
       files_(options.paxos_group_size),
+      generator_((unsigned)NowMillis()),
       distribution_(1, kMakeCheckpointInterval / 2) {
   if (checkpoint_storage_path_[checkpoint_storage_path_.size() - 1] != '/') {
     checkpoint_storage_path_.push_back('/');

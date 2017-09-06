@@ -18,7 +18,7 @@ class ClientWatchManager {
   ~ClientWatchManager();
 
   void AddDataWatch(const std::string& path, Watcher* watcher);
-  void AddExistWatch(const std::string& path, Watcher* watcher);
+  void AddExistsWatch(const std::string& path, Watcher* watcher);
   void AddChildWatch(const std::string& path, Watcher* watcher);
 
   WatcherSetPtr Trigger(const WatchedEvent& event);
@@ -26,7 +26,7 @@ class ClientWatchManager {
  private:
   Watcher* watcher_;
   std::unordered_map<std::string, WatcherSetPtr> data_watches_;
-  std::unordered_map<std::string, WatcherSetPtr> exist_watches_;
+  std::unordered_map<std::string, WatcherSetPtr> exists_watches_;
   std::unordered_map<std::string, WatcherSetPtr> child_watches_;
 
   // No copying allowed

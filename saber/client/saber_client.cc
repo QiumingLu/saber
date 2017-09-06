@@ -57,14 +57,20 @@ void SaberClient::Close() {
     message.set_type(MT_CLOSE);
     codec_.SendMessage(client_->GetTcpConnectionPtr(), message);
     client_->Close();
+    WatchedEvent event;
+    event.set_type(ET_NONE);
+    event.set_state(SS_DISCONNECTED);
+    TriggerWatchers(event);
   } else {
     LOG_WARN("SaberClient has closed, don't call it again!");
   }
 }
 
-void SaberClient::Create(const CreateRequest& request, void* context,
+bool SaberClient::Create(const CreateRequest& request, void* context,
                          const CreateCallback& cb) {
-  assert(GetRoot(request.path()) == kRoot);
+  if (GetRoot(request.path()) != kRoot) {
+    return false;
+  }
   SaberMessage* message = new SaberMessage();
   message->set_type(MT_CREATE);
   message->set_data(request.SerializeAsString());
@@ -77,11 +83,14 @@ void SaberClient::Create(const CreateRequest& request, void* context,
     create_queue_.push(std::unique_ptr<CreateRequestT>(r));
     TrySendInLoop(message);
   });
+  return true;
 }
 
-void SaberClient::Delete(const DeleteRequest& request, void* context,
+bool SaberClient::Delete(const DeleteRequest& request, void* context,
                          const DeleteCallback& cb) {
-  assert(GetRoot(request.path()) == kRoot);
+  if (GetRoot(request.path()) != kRoot) {
+    return false;
+  }
   SaberMessage* message = new SaberMessage();
   message->set_type(MT_DELETE);
   message->set_data(request.SerializeAsString());
@@ -94,11 +103,14 @@ void SaberClient::Delete(const DeleteRequest& request, void* context,
     delete_queue_.push(std::unique_ptr<DeleteRequestT>(r));
     TrySendInLoop(message);
   });
+  return true;
 }
 
-void SaberClient::Exists(const ExistsRequest& request, Watcher* watcher,
+bool SaberClient::Exists(const ExistsRequest& request, Watcher* watcher,
                          void* context, const ExistsCallback& cb) {
-  assert(GetRoot(request.path()) == kRoot);
+  if (GetRoot(request.path()) != kRoot) {
+    return false;
+  }
   SaberMessage* message = new SaberMessage();
   message->set_type(MT_EXISTS);
   message->set_data(request.SerializeAsString());
@@ -111,11 +123,14 @@ void SaberClient::Exists(const ExistsRequest& request, Watcher* watcher,
     exists_queue_.push(std::unique_ptr<ExistsRequestT>(r));
     TrySendInLoop(message);
   });
+  return true;
 }
 
-void SaberClient::GetData(const GetDataRequest& request, Watcher* watcher,
+bool SaberClient::GetData(const GetDataRequest& request, Watcher* watcher,
                           void* context, const GetDataCallback& cb) {
-  assert(GetRoot(request.path()) == kRoot);
+  if (GetRoot(request.path()) != kRoot) {
+    return false;
+  }
   SaberMessage* message = new SaberMessage();
   message->set_type(MT_GETDATA);
   message->set_data(request.SerializeAsString());
@@ -129,11 +144,14 @@ void SaberClient::GetData(const GetDataRequest& request, Watcher* watcher,
     get_data_queue_.push(std::unique_ptr<GetDataRequestT>(r));
     TrySendInLoop(message);
   });
+  return true;
 }
 
-void SaberClient::SetData(const SetDataRequest& request, void* context,
+bool SaberClient::SetData(const SetDataRequest& request, void* context,
                           const SetDataCallback& cb) {
-  assert(GetRoot(request.path()) == kRoot);
+  if (GetRoot(request.path()) != kRoot) {
+    return false;
+  }
   SaberMessage* message = new SaberMessage();
   message->set_type(MT_SETDATA);
   message->set_data(request.SerializeAsString());
@@ -147,11 +165,14 @@ void SaberClient::SetData(const SetDataRequest& request, void* context,
     set_data_queue_.push(std::unique_ptr<SetDataRequestT>(r));
     TrySendInLoop(message);
   });
+  return true;
 }
 
-void SaberClient::GetACL(const GetACLRequest& request, void* context,
+bool SaberClient::GetACL(const GetACLRequest& request, void* context,
                          const GetACLCallback& cb) {
-  assert(GetRoot(request.path()) == kRoot);
+  if (GetRoot(request.path()) != kRoot) {
+    return false;
+  }
   SaberMessage* message = new SaberMessage();
   message->set_type(MT_GETACL);
   message->set_data(request.SerializeAsString());
@@ -164,11 +185,14 @@ void SaberClient::GetACL(const GetACLRequest& request, void* context,
     get_acl_queue_.push(std::unique_ptr<GetACLRequestT>(r));
     TrySendInLoop(message);
   });
+  return true;
 }
 
-void SaberClient::SetACL(const SetACLRequest& request, void* context,
+bool SaberClient::SetACL(const SetACLRequest& request, void* context,
                          const SetACLCallback& cb) {
-  assert(GetRoot(request.path()) == kRoot);
+  if (GetRoot(request.path()) != kRoot) {
+    return false;
+  }
   SaberMessage* message = new SaberMessage();
   message->set_type(MT_SETACL);
   message->set_data(request.SerializeAsString());
@@ -181,12 +205,15 @@ void SaberClient::SetACL(const SetACLRequest& request, void* context,
     set_acl_queue_.push(std::unique_ptr<SetACLRequestT>(r));
     TrySendInLoop(message);
   });
+  return true;
 }
 
-void SaberClient::GetChildren(const GetChildrenRequest& request,
+bool SaberClient::GetChildren(const GetChildrenRequest& request,
                               Watcher* watcher, void* context,
                               const GetChildrenCallback& cb) {
-  assert(GetRoot(request.path()) == kRoot);
+  if (GetRoot(request.path()) != kRoot) {
+    return false;
+  }
   SaberMessage* message = new SaberMessage();
   message->set_type(MT_GETCHILDREN);
   message->set_data(request.SerializeAsString());
@@ -200,6 +227,7 @@ void SaberClient::GetChildren(const GetChildrenRequest& request,
     children_queue_.push(std::unique_ptr<GetChildrenRequestT>(r));
     TrySendInLoop(message);
   });
+  return true;
 }
 
 void SaberClient::Connect(const voyager::SockAddr& addr) {
@@ -346,7 +374,7 @@ void SaberClient::OnConnect(SaberMessage* message) {
   ConnectResponse response;
   response.ParseFromString(message->data());
   WatchedEvent event;
-  if (response.code() == RC_OK) {
+  if (response.code() == RC_OK || response.code() == RC_RECONNECT) {
     if (session_id_ == 0 || response.session_id() == session_id_) {
       event.set_state(SS_CONNECTED);
     } else {
@@ -359,11 +387,20 @@ void SaberClient::OnConnect(SaberMessage* message) {
     timeout = 1000 * (timeout < 12000 ? (timeout * 4 / 5) : (timeout - 3000));
     timer_ = loop_->RunEvery(timeout, std::bind(&SaberClient::OnTimer, this));
   } else {
-    event.set_state(SS_AUTHFAILED);
+    if (response.code() == RC_NO_AUTH) {
+      event.set_state(SS_AUTHFAILED);
+      has_started_ = false;
+    } else {
+      if (session_id_ != 0) {
+        event.set_state(SS_EXPIRED);
+      }
+    }
     client_->Close();
   }
-  event.set_type(ET_NONE);
-  TriggerWatchers(event);
+  if (response.code() != RC_RECONNECT) {
+    event.set_type(ET_NONE);
+    TriggerWatchers(event);
+  }
   session_id_ = response.session_id();
 }
 
@@ -442,7 +479,7 @@ bool SaberClient::OnExists(SaberMessage* message) {
     if (response.code() == RC_OK) {
       watch_manager_.AddDataWatch(request->path, request->watcher);
     } else {
-      watch_manager_.AddExistWatch(request->path, request->watcher);
+      watch_manager_.AddExistsWatch(request->path, request->watcher);
     }
   }
   exists_queue_.pop();

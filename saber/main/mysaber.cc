@@ -102,11 +102,15 @@ void MySaber::Create() {
   request.set_data(v[1]);
   int node_type = atoi(v[2].c_str());
   request.set_type(static_cast<NodeType>(node_type));
-  saber_.Create(request, nullptr,
-                [this](const std::string& path, void* context,
-                       const CreateResponse& response) {
-                  OnCreateReply(path, context, response);
-                });
+  bool b = saber_.Create(request, nullptr,
+                         [this](const std::string& path, void* context,
+                                const CreateResponse& response) {
+                           OnCreateReply(path, context, response);
+                         });
+  if (!b) {
+    printf("Invalid root path!\n");
+    Create();
+  }
 }
 
 void MySaber::OnCreateReply(const std::string& path, void* context,
@@ -129,11 +133,15 @@ void MySaber::Delete() {
   DeleteRequest request;
   request.set_path(v[0]);
   request.set_version(atoi(v[1].c_str()));
-  saber_.Delete(request, nullptr,
-                [this](const std::string& path, void* context,
-                       const DeleteResponse& response) {
-                  OnDeleteReply(path, context, response);
-                });
+  bool b = saber_.Delete(request, nullptr,
+                         [this](const std::string& path, void* context,
+                                const DeleteResponse& response) {
+                           OnDeleteReply(path, context, response);
+                         });
+  if (!b) {
+    printf("Invalid root path!\n");
+    Delete();
+  }
 }
 
 void MySaber::OnDeleteReply(const std::string& path, void* context,
@@ -165,11 +173,15 @@ void MySaber::Exists() {
     Exists();
     return;
   }
-  saber_.Exists(request, watcher, nullptr,
-                [this](const std::string& path, void* context,
-                       const ExistsResponse& response) {
-                  OnExistsReply(path, context, response);
-                });
+  bool b = saber_.Exists(request, watcher, nullptr,
+                         [this](const std::string& path, void* context,
+                                const ExistsResponse& response) {
+                           OnExistsReply(path, context, response);
+                         });
+  if (!b) {
+    printf("Invalid root path!\n");
+    Exists();
+  }
 }
 
 void MySaber::OnExistsReply(const std::string& path, void* context,
@@ -201,11 +213,15 @@ void MySaber::GetData() {
     GetData();
     return;
   }
-  saber_.GetData(request, watcher, nullptr,
-                 [this](const std::string& path, void* context,
-                        const GetDataResponse& response) {
-                   OnGetDataReply(path, context, response);
-                 });
+  bool b = saber_.GetData(request, watcher, nullptr,
+                          [this](const std::string& path, void* context,
+                                 const GetDataResponse& response) {
+                            OnGetDataReply(path, context, response);
+                          });
+  if (!b) {
+    printf("Invalid root path!\n");
+    GetData();
+  }
 }
 
 void MySaber::OnGetDataReply(const std::string& path, void* context,
@@ -229,11 +245,15 @@ void MySaber::SetData() {
   request.set_path(v[0]);
   request.set_data(v[1]);
   request.set_version(atoi(v[2].c_str()));
-  saber_.SetData(request, nullptr,
-                 [this](const std::string& path, void* context,
-                        const SetDataResponse& response) {
-                   OnSetDataReply(path, context, response);
-                 });
+  bool b = saber_.SetData(request, nullptr,
+                          [this](const std::string& path, void* context,
+                                 const SetDataResponse& response) {
+                            OnSetDataReply(path, context, response);
+                          });
+  if (!b) {
+    printf("Invalid root path!\n");
+    SetData();
+  }
 }
 
 void MySaber::OnSetDataReply(const std::string& path, void* context,
@@ -249,11 +269,15 @@ void MySaber::GetACL() {
   std::getline(std::cin, s);
   GetACLRequest request;
   request.set_path(s);
-  saber_.GetACL(request, nullptr,
-                [this](const std::string& path, void* context,
-                       const GetACLResponse& response) {
-                  OnGetACLReply(path, context, response);
-                });
+  bool b = saber_.GetACL(request, nullptr,
+                         [this](const std::string& path, void* context,
+                                const GetACLResponse& response) {
+                           OnGetACLReply(path, context, response);
+                         });
+  if (!b) {
+    printf("Invalid root path!\n");
+    GetACL();
+  }
 }
 
 void MySaber::OnGetACLReply(const std::string& path, void* context,
@@ -293,11 +317,15 @@ void MySaber::SetACL() {
     *(request.add_acl()) = one;
   }
   request.set_version(atoi(v[2].c_str()));
-  saber_.SetACL(request, nullptr,
-                [this](const std::string& path, void* context,
-                       const SetACLResponse& response) {
-                  OnSetACLReply(path, context, response);
-                });
+  bool b = saber_.SetACL(request, nullptr,
+                         [this](const std::string& path, void* context,
+                                const SetACLResponse& response) {
+                           OnSetACLReply(path, context, response);
+                         });
+  if (!b) {
+    printf("Invalid root path!\n");
+    SetACL();
+  }
 }
 
 void MySaber::OnSetACLReply(const std::string& path, void* context,
@@ -329,11 +357,15 @@ void MySaber::GetChildren() {
     GetChildren();
     return;
   }
-  saber_.GetChildren(request, watcher, nullptr,
-                     [this](const std::string& path, void* context,
-                            const GetChildrenResponse& response) {
-                       OnGetChildrenReply(path, context, response);
-                     });
+  bool b = saber_.GetChildren(request, watcher, nullptr,
+                              [this](const std::string& path, void* context,
+                                     const GetChildrenResponse& response) {
+                                OnGetChildrenReply(path, context, response);
+                              });
+  if (!b) {
+    printf("Invalid root path!\n");
+    GetChildren();
+  }
 }
 
 void MySaber::OnGetChildrenReply(const std::string& path, void* context,

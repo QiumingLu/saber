@@ -33,28 +33,28 @@ class SaberClient {
   void Connect();
   void Close();
 
-  void Create(const CreateRequest& request, void* context,
+  bool Create(const CreateRequest& request, void* context,
               const CreateCallback& cb);
 
-  void Delete(const DeleteRequest& request, void* context,
+  bool Delete(const DeleteRequest& request, void* context,
               const DeleteCallback& cb);
 
-  void Exists(const ExistsRequest& request, Watcher* watcher, void* context,
+  bool Exists(const ExistsRequest& request, Watcher* watcher, void* context,
               const ExistsCallback& cb);
 
-  void GetData(const GetDataRequest& request, Watcher* watcher, void* context,
+  bool GetData(const GetDataRequest& request, Watcher* watcher, void* context,
                const GetDataCallback& cb);
 
-  void SetData(const SetDataRequest& request, void* context,
+  bool SetData(const SetDataRequest& request, void* context,
                const SetDataCallback& cb);
 
-  void GetACL(const GetACLRequest& request, void* context,
+  bool GetACL(const GetACLRequest& request, void* context,
               const GetACLCallback& cb);
 
-  void SetACL(const SetACLRequest& request, void* context,
+  bool SetACL(const SetACLRequest& request, void* context,
               const SetACLCallback& cb);
 
-  void GetChildren(const GetChildrenRequest& request, Watcher* watcher,
+  bool GetChildren(const GetChildrenRequest& request, Watcher* watcher,
                    void* context, const GetChildrenCallback& cb);
 
  private:

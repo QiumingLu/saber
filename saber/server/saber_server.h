@@ -58,9 +58,9 @@ class SaberServer {
   bool HandleMessage(const EntryPtr& p, std::unique_ptr<SaberMessage> message);
   bool OnConnectRequest(uint32_t group_id, const EntryPtr& entry,
                         std::unique_ptr<SaberMessage> message);
-  void OnConnectResponse(bool b, const EntryPtr& entry,
+  void OnConnectResponse(ResponseCode code, const EntryPtr& entry,
                          std::unique_ptr<SaberMessage> message);
-  void CreateSession(uint32_t group_id, uint64_t session_id, uint64_t version,
+  bool CreateSession(uint32_t group_id, uint64_t session_id, uint64_t version,
                      const voyager::TcpConnectionPtr& p, const EntryPtr& entry);
   void KillSession(const std::shared_ptr<SaberSession>& session);
 

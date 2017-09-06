@@ -48,8 +48,8 @@ uint64_t DataTree::Recover(const std::string& s, size_t index) {
 
 void DataTree::Create(const CreateRequest& request, const Transaction& txn,
                       CreateResponse* response) {
-  const std::string& path = request.path();
   const std::string& data = request.data();
+  std::string path = request.path();
   size_t found = path.find_last_of('/');
   std::string parent = path.substr(0, found);
   std::string child = path.substr(found + 1);
@@ -73,6 +73,13 @@ void DataTree::Create(const CreateRequest& request, const Transaction& txn,
     MutexLock lock(&mutex_);
     auto it = nodes_.find(parent);
     if (it != nodes_.end()) {
+      if (request.type() == NT_PERSISTENT_SEQUENTIAL ||
+          request.type() == NT_EPHEMERAL_SEQUENTIAL) {
+        char seq[16];
+        snprintf(seq, 16, "_%010d", it->second.stat().children_version() + 1);
+        child.append(seq);
+        path.append(seq);
+      }
       std::set<std::string>& children = childrens_[parent];
       if (children.find(child) == children.end()) {
         children.insert(child);
@@ -80,7 +87,6 @@ void DataTree::Create(const CreateRequest& request, const Transaction& txn,
         tmp->set_children_version(tmp->children_version() + 1);
         tmp->set_children_num(static_cast<uint32_t>(children.size()));
         tmp->set_children_id(txn.instance_id());
-
         nodes_[path].Swap(&node);
         response->set_code(RC_OK);
         response->set_path(path);

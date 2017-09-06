@@ -8,6 +8,7 @@
 #include <saber/util/runloop.h>
 
 #include "saber/main/mysaber.h"
+#include "saber/main/default_watcher.h"
 
 int main(int argc, char** argv) {
   if (argc != 2) {
@@ -16,9 +17,11 @@ int main(int argc, char** argv) {
   }
 
   saber::SetLogHandler(nullptr);
+  saber::DefaultWatcher watcher;
   saber::ClientOptions options;
   options.root = "/ls";
   options.servers = argv[1];
+  options.watcher = &watcher;
   saber::RunLoop loop;
   saber::MySaber mysaber(&loop, options);
   mysaber.Start();

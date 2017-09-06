@@ -27,13 +27,13 @@ void ClientWatchManager::AddDataWatch(const std::string& path,
   }
 }
 
-void ClientWatchManager::AddExistWatch(const std::string& path,
-                                       Watcher* watcher) {
-  auto it = exist_watches_.find(path);
-  if (it == exist_watches_.end()) {
+void ClientWatchManager::AddExistsWatch(const std::string& path,
+                                        Watcher* watcher) {
+  auto it = exists_watches_.find(path);
+  if (it == exists_watches_.end()) {
     WatcherSetPtr watches(new std::set<Watcher*>());
     watches->insert(watcher);
-    exist_watches_.insert(std::make_pair(path, std::move(watches)));
+    exists_watches_.insert(std::make_pair(path, std::move(watches)));
   } else {
     it->second->insert(watcher);
   }
@@ -62,17 +62,16 @@ WatcherSetPtr ClientWatchManager::Trigger(const WatchedEvent& event) {
       for (auto& i : data_watches_) {
         result->insert(i.second->begin(), i.second->end());
       }
-      for (auto& i : exist_watches_) {
+      for (auto& i : exists_watches_) {
         result->insert(i.second->begin(), i.second->end());
       }
       for (auto& i : child_watches_) {
         result->insert(i.second->begin(), i.second->end());
       }
-      if (event.state() != SS_CONNECTED) {
-        data_watches_.clear();
-        exist_watches_.clear();
-        child_watches_.clear();
-      }
+      // FIXME Maybe auto reset watch will be better when state is connected?
+      data_watches_.clear();
+      exists_watches_.clear();
+      child_watches_.clear();
       break;
     }
     case ET_NODE_CREATED:
@@ -82,14 +81,14 @@ WatcherSetPtr ClientWatchManager::Trigger(const WatchedEvent& event) {
         result.swap(i->second);
         data_watches_.erase(i);
       }
-      auto j = exist_watches_.find(event.path());
-      if (j != exist_watches_.end()) {
+      auto j = exists_watches_.find(event.path());
+      if (j != exists_watches_.end()) {
         if (result) {
           result->insert(j->second->begin(), j->second->end());
         } else {
           result.swap(j->second);
         }
-        exist_watches_.erase(j);
+        exists_watches_.erase(j);
       }
       break;
     }

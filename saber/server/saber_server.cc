@@ -237,7 +237,7 @@ bool SaberServer::OnConnectRequest(uint32_t group_id, const EntryPtr& entry,
   uint64_t session_id = request.session_id();
 
   if (session_id != 0) {
-    // FIXME Need to check whether the session still exists?
+    // FIXME Need to check whether the session still exists or has been moved?
     {
       MutexLock lock(&mutex_);
       auto it = sessions_.find(session_id);
@@ -246,7 +246,7 @@ bool SaberServer::OnConnectRequest(uint32_t group_id, const EntryPtr& entry,
         if (session) {
           voyager::TcpConnectionPtr p = session->GetTcpConnectionPtr();
           if (p && p->IsConnected()) {
-            OnConnectResponse(false, entry, std::move(message));
+            OnConnectResponse(RC_UNKNOWN, entry, std::move(message));
             return false;
           }
         }
@@ -259,6 +259,7 @@ bool SaberServer::OnConnectRequest(uint32_t group_id, const EntryPtr& entry,
       txn.set_time(version);
       message->set_extra_data(txn.SerializeAsString());
     } else {
+      // FIXME Only send back to tell the session has been closed?
       session_id = 0;
     }
   }
@@ -276,39 +277,48 @@ bool SaberServer::OnConnectRequest(uint32_t group_id, const EntryPtr& entry,
       group_id, db_->machine_id(), reply->SerializeAsString(), reply,
       [this, group_id, session_id, p, entry](
           uint64_t instance_id, const skywalker::Status& s, void* context) {
+        ResponseCode code = RC_OK;
         if (s.ok()) {
-          CreateSession(group_id, session_id, instance_id, p, entry);
+          if (CreateSession(group_id, session_id, instance_id, p, entry)) {
+            code = RC_RECONNECT;
+          }
         } else {
+          // The session has been moved or has been killed in propose time.
+          if (s.IsMachineError()) {
+            code = RC_UNKNOWN;
+          } else {
+            code = RC_FAILED;
+          }
           entry->started = false;
         }
         SaberMessage* r = reinterpret_cast<SaberMessage*>(context);
-        OnConnectResponse(s.ok(), entry, std::unique_ptr<SaberMessage>(r));
+        OnConnectResponse(code, entry, std::unique_ptr<SaberMessage>(r));
       });
 
   if (!b) {
     entry->started = false;
-    OnConnectResponse(b, entry, std::unique_ptr<SaberMessage>(reply));
+    OnConnectResponse(RC_FAILED, entry, std::unique_ptr<SaberMessage>(reply));
   }
   return true;
 }
 
-void SaberServer::OnConnectResponse(bool b, const EntryPtr& entry,
+void SaberServer::OnConnectResponse(ResponseCode code, const EntryPtr& entry,
                                     std::unique_ptr<SaberMessage> message) {
   ConnectResponse response;
-  if (b) {
+  response.set_code(code);
+  if (code == RC_OK) {
     response.set_session_id(entry->session->session_id());
     response.set_timeout(options_.max_session_timeout);
-  } else {
-    response.set_code(RC_FAILED);
   }
   message->set_data(response.SerializeAsString());
   codec_.SendMessage(entry->conn_wp.lock(), *(message.get()));
 }
 
-void SaberServer::CreateSession(uint32_t group_id, uint64_t session_id,
+bool SaberServer::CreateSession(uint32_t group_id, uint64_t session_id,
                                 uint64_t version,
                                 const voyager::TcpConnectionPtr& p,
                                 const EntryPtr& entry) {
+  bool b = true;
   MutexLock lock(&mutex_);
   auto it = sessions_.find(session_id);
   if (it != sessions_.end()) {
@@ -316,11 +326,13 @@ void SaberServer::CreateSession(uint32_t group_id, uint64_t session_id,
     assert(entry->session);
     entry->session->Connect(p);
   } else {
+    b = false;
     entry->session.reset(
         new SaberSession(group_id, session_id, p, db_.get(), node_.get()));
     sessions_.insert(std::make_pair(session_id, entry->session));
   }
   entry->session->set_version(version);
+  return b;
 }
 
 void SaberServer::KillSession(const std::shared_ptr<SaberSession>& session) {
