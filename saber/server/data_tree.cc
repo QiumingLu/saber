@@ -54,6 +54,12 @@ void DataTree::Create(const CreateRequest& request, const Transaction& txn,
   std::string parent = path.substr(0, found);
   std::string child = path.substr(found + 1);
 
+  if (parent == "" && (request.type() == NT_PERSISTENT_SEQUENTIAL ||
+                       request.type() == NT_EPHEMERAL_SEQUENTIAL)) {
+    response->set_code(RC_NO_PARENT);
+    return;
+  }
+
   DataNode node;
   Stat* stat = node.mutable_stat();
   stat->set_group_id(txn.group_id());
