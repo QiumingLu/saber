@@ -24,7 +24,7 @@ Committer::Committer(uint32_t group_id, SaberSession* session,
 
 void Committer::Commit(SaberMessage* message) {
   // FIXME don't check master?
-  if (node_->IsMaster(group_id_)) {
+  if (message->type() != MT_MASTER && node_->IsMaster(group_id_)) {
     HandleCommit(message);
   } else {
     skywalker::Member i;
@@ -87,7 +87,8 @@ void Committer::HandleCommit(SaberMessage* message) {
     case MT_CREATE:
     case MT_DELETE:
     case MT_SETDATA:  // FIXME check version here may be more effective?
-    case MT_SETACL: {
+    case MT_SETACL:
+    case MT_CLOSE: {
       wait = Propose(message, reply_message);
       break;
     }
@@ -161,6 +162,12 @@ void Committer::SetFailedState(SaberMessage* reply_message) {
     }
     case MT_SETACL: {
       SetACLResponse response;
+      response.set_code(RC_FAILED);
+      reply_message->set_data(response.SerializeAsString());
+      break;
+    }
+    case MT_CLOSE: {
+      CloseResponse response;
       response.set_code(RC_FAILED);
       reply_message->set_data(response.SerializeAsString());
       break;

@@ -23,7 +23,7 @@ namespace {
 static const std::string kCheckpoint = "CHECKPOINT-";
 }
 
-SaberDB::SaberDB(const ServerOptions& options)
+SaberDB::SaberDB(RunLoop* loop, const ServerOptions& options)
     : kServerId(options.my_server_message.id),
       kKeepCheckpointCount(options.keep_checkpoint_count),
       kMakeCheckpointInterval(options.make_checkpoint_interval),
@@ -33,7 +33,8 @@ SaberDB::SaberDB(const ServerOptions& options)
       checkpoint_id_(options.paxos_group_size, UINTMAX_MAX),
       files_(options.paxos_group_size),
       generator_((unsigned)NowMillis()),
-      distribution_(1, kMakeCheckpointInterval / 2) {
+      distribution_(1, kMakeCheckpointInterval / 2),
+      loop_(loop) {
   if (checkpoint_storage_path_[checkpoint_storage_path_.size() - 1] != '/') {
     checkpoint_storage_path_.push_back('/');
   }
@@ -99,7 +100,6 @@ bool SaberDB::Recover() {
       files_[i].pop_back();
     }
   }
-  loop_ = thread_.Loop();
   return true;
 }
 
@@ -181,19 +181,9 @@ bool SaberDB::FindSession(uint64_t group_id, uint64_t session_id,
   return sessions_[group_id]->FindSession(session_id, version);
 }
 
-void SaberDB::CleanSessions(uint64_t group_id) const {
-  auto sessions = sessions_[group_id]->CopySessions();
-  std::vector<uint64_t> result;
-  SessionManager::CleanSessions(kServerId, *sessions, &result);
-  std::string s;
-  s.reserve(8 * result.size());
-  for (auto& i : result) {
-    voyager::PutFixed64(&s, i);
-  }
-  delete sessions;
-  SaberMessage message;
-  message.set_type(MT_MASTER);
-  message.set_data(std::move(s));
+std::unordered_map<uint64_t, uint64_t>* SaberDB::CopySessions(
+    uint64_t group_id) const {
+  return sessions_[group_id]->CopySessions();
 }
 
 bool SaberDB::CreateSession(uint32_t group_id, uint64_t session_id,
@@ -230,13 +220,15 @@ bool SaberDB::Execute(uint32_t group_id, uint64_t instance_id,
       ConnectRequest request;
       request.ParseFromString(message.data());
       return CreateSession(group_id, request.session_id(), instance_id,
-                           txn.time());
+                           request.version());
     }
     case MT_CLOSE: {
       CloseRequest request;
       request.ParseFromString(message.data());
-      if (CloseSession(group_id, request.session_id(), txn.time())) {
-        KillSession(group_id, request.session_id(), txn);
+      for (int i = 0; i < request.session_id_size(); ++i) {
+        if (CloseSession(group_id, request.session_id(i), request.version(i))) {
+          KillSession(group_id, request.session_id(i), txn);
+        }
       }
       break;
     }
@@ -278,9 +270,6 @@ bool SaberDB::Execute(uint32_t group_id, uint64_t instance_id,
       if (reply_message) {
         reply_message->set_data(response.SerializeAsString());
       }
-      break;
-    }
-    case MT_MASTER: {
       break;
     }
     default: {

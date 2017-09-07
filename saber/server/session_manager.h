@@ -43,11 +43,6 @@ class SessionManager {
   static void SerializeToString(
       const std::unordered_map<uint64_t, uint64_t>& sessions, std::string* s);
 
-  static void CleanSessions(
-      uint64_t server_id,
-      const std::unordered_map<uint64_t, uint64_t>& sessions,
-      std::vector<uint64_t>* result);
-
  private:
   mutable Mutex mutex_;
   std::unordered_map<uint64_t, uint64_t> sessions_;

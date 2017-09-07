@@ -20,13 +20,12 @@
 #include "saber/server/session_manager.h"
 #include "saber/util/mutex.h"
 #include "saber/util/runloop.h"
-#include "saber/util/runloop_thread.h"
 
 namespace saber {
 
 class SaberDB : public skywalker::StateMachine, public skywalker::Checkpoint {
  public:
-  explicit SaberDB(const ServerOptions& options);
+  explicit SaberDB(RunLoop* loop, const ServerOptions& options);
   virtual ~SaberDB();
 
   bool Recover();
@@ -51,7 +50,7 @@ class SaberDB : public skywalker::StateMachine, public skywalker::Checkpoint {
   bool FindSession(uint64_t group_id, uint64_t session_id,
                    uint64_t version) const;
 
-  void CleanSessions(uint64_t group_id) const;
+  std::unordered_map<uint64_t, uint64_t>* CopySessions(uint64_t group_id) const;
 
   virtual bool Execute(uint32_t group_id, uint64_t instance_id,
                        const std::string& value, void* context);
@@ -116,7 +115,6 @@ class SaberDB : public skywalker::StateMachine, public skywalker::Checkpoint {
   std::uniform_int_distribution<uint32_t> distribution_;
 
   RunLoop* loop_;
-  RunLoopThread thread_;
 
   // No copying allowed
   SaberDB(const SaberDB&);

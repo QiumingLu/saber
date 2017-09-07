@@ -29,7 +29,7 @@ struct SaberServer::Entry {
       p->ShutDown();
     }
     if (session) {
-      owner_->KillSession(session);
+      owner_->CloseSession(session);
     }
   }
 
@@ -41,12 +41,15 @@ struct SaberServer::Entry {
 };
 
 SaberServer::SaberServer(voyager::EventLoop* loop, const ServerOptions& options)
-    : options_(options),
+    : loop_(loop),
+      options_(options),
       server_id_(options_.my_server_message.id),
       addr_(options.my_server_message.host,
             options.my_server_message.client_port),
       monitor_(new ConnectionMonitor(options.max_all_connections,
                                      options.max_ip_connections)),
+      mutexes_(options_.paxos_group_size),
+      sessions_(options_.paxos_group_size),
       server_(loop, addr_, "SaberServer", options.server_thread_size) {
   codec_.SetMessageCallback(std::bind(&SaberServer::OnMessage, this,
                                       std::placeholders::_1,
@@ -59,9 +62,9 @@ SaberServer::SaberServer(voyager::EventLoop* loop, const ServerOptions& options)
 SaberServer::~SaberServer() {}
 
 bool SaberServer::Start() {
-  db_.reset(new SaberDB(options_));
+  schedule_ = thread_.Loop();
+  db_.reset(new SaberDB(schedule_, options_));
   db_->set_machine_id(10);
-
   bool res = db_->Recover();
   if (res) {
     LOG_INFO("Saber database recover successful!");
@@ -95,12 +98,17 @@ bool SaberServer::Start() {
   skywalker_options.my.port = options_.my_server_message.paxos_port;
   skywalker_options.io_thread_size = options_.paxos_io_thread_size;
   skywalker_options.groups.resize(options_.paxos_group_size, group_options);
+  skywalker_options.master_cb =
+      std::bind(&SaberServer::CleanSessions, this, std::placeholders::_1);
 
   skywalker::Node* node;
   res = skywalker::Node::Start(skywalker_options, &node);
   if (res) {
     LOG_INFO("Skywalker start successful!");
     node_.reset(node);
+    for (uint32_t i = 0; i < options_.paxos_group_size; ++i) {
+      schedule_->RunInLoop(std::bind(&SaberServer::CleanSessions, this, i));
+    }
 
     server_.SetConnectionCallback(
         [this](const voyager::TcpConnectionPtr& p) { OnConnection(p); });
@@ -113,7 +121,7 @@ bool SaberServer::Start() {
     server_.Start();
 
     // FIXME
-    idle_ticks_ = options_.max_session_timeout / options_.tick_time;
+    idle_ticks_ = options_.master_lease_time / options_.tick_time;
     assert(idle_ticks_ > 0);
 
     const std::vector<voyager::EventLoop*>* loops = server_.AllLoops();
@@ -189,15 +197,6 @@ void SaberServer::UpdateBuckets(const voyager::TcpConnectionPtr& p,
 
 bool SaberServer::HandleMessage(const EntryPtr& entry,
                                 std::unique_ptr<SaberMessage> message) {
-  if (message->type() == MT_CLOSE) {
-    if (entry->session) {
-      KillSession(entry->session);
-      entry->session.reset();
-    }
-    // FIXME send a close message?
-    return false;
-  }
-
   if (message->type() != MT_CONNECT) {
     if (entry->session) {
       return entry->session->OnMessage(std::move(message));
@@ -239,9 +238,9 @@ bool SaberServer::OnConnectRequest(uint32_t group_id, const EntryPtr& entry,
   if (session_id != 0) {
     // FIXME Need to check whether the session still exists or has been moved?
     {
-      MutexLock lock(&mutex_);
-      auto it = sessions_.find(session_id);
-      if (it != sessions_.end()) {
+      MutexLock lock(&mutexes_[group_id]);
+      auto it = sessions_[group_id].find(session_id);
+      if (it != sessions_[group_id].end()) {
         std::shared_ptr<SaberSession> session = it->second.lock();
         if (session) {
           voyager::TcpConnectionPtr p = session->GetTcpConnectionPtr();
@@ -255,9 +254,7 @@ bool SaberServer::OnConnectRequest(uint32_t group_id, const EntryPtr& entry,
 
     uint64_t version;
     if (db_->FindSession(group_id, session_id, &version)) {
-      Transaction txn;
-      txn.set_time(version);
-      message->set_extra_data(txn.SerializeAsString());
+      request.set_version(version);
     } else {
       // FIXME Only send back to tell the session has been closed?
       session_id = 0;
@@ -283,7 +280,7 @@ bool SaberServer::OnConnectRequest(uint32_t group_id, const EntryPtr& entry,
             code = RC_RECONNECT;
           }
         } else {
-          // The session has been moved or has been killed in propose time.
+          // The session has been moved or has been closed in propose time.
           if (s.IsMachineError()) {
             code = RC_UNKNOWN;
           } else {
@@ -308,7 +305,7 @@ void SaberServer::OnConnectResponse(ResponseCode code, const EntryPtr& entry,
   response.set_code(code);
   if (code == RC_OK) {
     response.set_session_id(entry->session->session_id());
-    response.set_timeout(options_.max_session_timeout);
+    response.set_timeout(options_.master_lease_time);
   }
   message->set_data(response.SerializeAsString());
   codec_.SendMessage(entry->conn_wp.lock(), *(message.get()));
@@ -319,9 +316,9 @@ bool SaberServer::CreateSession(uint32_t group_id, uint64_t session_id,
                                 const voyager::TcpConnectionPtr& p,
                                 const EntryPtr& entry) {
   bool b = true;
-  MutexLock lock(&mutex_);
-  auto it = sessions_.find(session_id);
-  if (it != sessions_.end()) {
+  MutexLock lock(&mutexes_[group_id]);
+  auto it = sessions_[group_id].find(session_id);
+  if (it != sessions_[group_id].end()) {
     entry->session = it->second.lock();
     assert(entry->session);
     entry->session->Connect(p);
@@ -329,41 +326,77 @@ bool SaberServer::CreateSession(uint32_t group_id, uint64_t session_id,
     b = false;
     entry->session.reset(
         new SaberSession(group_id, session_id, p, db_.get(), node_.get()));
-    sessions_.insert(std::make_pair(session_id, entry->session));
+    sessions_[group_id].insert(std::make_pair(session_id, entry->session));
   }
   entry->session->set_version(version);
   return b;
 }
 
-void SaberServer::KillSession(const std::shared_ptr<SaberSession>& session) {
+void SaberServer::CloseSession(const std::shared_ptr<SaberSession>& session) {
   bool need_kill = false;
-  mutex_.Lock();
+  mutexes_[session->group_id()].Lock();
   if (session.unique()) {
-    sessions_.erase(session->session_id());
+    sessions_[session->group_id()].erase(session->session_id());
     need_kill = true;
   }
-  mutex_.UnLock();
+  mutexes_[session->group_id()].UnLock();
 
-  if (need_kill && db_->FindSession(session->group_id(), session->session_id(),
-                                    session->version())) {
+  if (need_kill && node_->IsMaster(session->group_id()) &&
+      db_->FindSession(session->group_id(), session->session_id(),
+                       session->version())) {
     CloseRequest request;
-    request.set_session_id(session->session_id());
-    SaberMessage message;
-    message.set_type(MT_CLOSE);
-    message.set_data(request.SerializeAsString());
-    Transaction txn;
-    txn.set_time(session->version());
-    message.set_extra_data(txn.SerializeAsString());
-    // FIXME check master?
-    node_->Propose(
-        session->group_id(), db_->machine_id(), message.SerializeAsString(),
-        nullptr,
-        [this, session](uint64_t, const skywalker::Status& status, void*) {
-          if (!status.ok()) {
-            KillSession(session);
-          }
-        });
+    request.add_session_id(session->session_id());
+    request.add_version(session->version());
+    OnCloseRequest(session->group_id(), request);
   }
+}
+
+void SaberServer::OnCloseRequest(uint32_t group_id,
+                                 const CloseRequest& request) {
+  SaberMessage message;
+  message.set_type(MT_CLOSE);
+  message.set_data(request.SerializeAsString());
+  node_->Propose(group_id, db_->machine_id(), message.SerializeAsString(),
+                 nullptr, [](uint64_t, const skywalker::Status&, void*) {});
+}
+
+void SaberServer::CleanSessions(uint32_t group_id) {
+  if (!node_) {
+    return;
+  }
+  if (!node_->IsMaster(group_id)) {
+    MutexLock lock(&mutexes_[group_id]);
+    for (auto& it : sessions_[group_id]) {
+      auto ptr = it.second.lock();
+      if (ptr) {
+        std::unique_ptr<SaberMessage> message(new SaberMessage());
+        message->set_type(MT_MASTER);
+        ptr->OnMessage(std::move(message));
+      }
+    }
+    sessions_[group_id].clear();
+    return;
+  }
+  auto sessions = db_->CopySessions(group_id);
+  if (sessions->empty()) {
+    delete sessions;
+    return;
+  }
+  schedule_->RunAfter(10000000, [this, group_id, sessions]() {
+    CloseRequest request;
+    mutexes_[group_id].Lock();
+    for (auto& it : *sessions) {
+      if (sessions_[group_id].find(it.first) == sessions_[group_id].end()) {
+        request.add_session_id(it.first);
+        request.add_version(it.second);
+      }
+    }
+    mutexes_[group_id].UnLock();
+    if (request.session_id_size() > 0) {
+      OnCloseRequest(group_id, request);
+    }
+    delete sessions;
+  });
 }
 
 uint64_t SaberServer::GetNextSessionId() const {

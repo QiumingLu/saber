@@ -40,11 +40,8 @@ struct ServerOptions {
   // Default: 3000
   uint32_t tick_time;
 
-  // Default: 2 * tick_time
-  uint32_t min_session_timeout;
-
-  // Default: 20 * tick_time
-  uint32_t max_session_timeout;
+  // Default: 4 * tick_time
+  uint32_t master_lease_time;
 
   // Default: 60000
   uint32_t max_all_connections;

@@ -24,6 +24,8 @@
 #include "saber/proto/saber.pb.h"
 #include "saber/server/server_options.h"
 #include "saber/util/mutex.h"
+#include "saber/util/runloop.h"
+#include "saber/util/runloop_thread.h"
 
 namespace saber {
 
@@ -46,6 +48,7 @@ class SaberServer {
   typedef std::shared_ptr<Entry> EntryPtr;
   typedef std::unordered_set<EntryPtr> Bucket;
   typedef std::vector<Bucket> BucketList;
+  typedef std::unordered_map<uint64_t, std::weak_ptr<SaberSession>> SessionMap;
 
   void OnConnection(const voyager::TcpConnectionPtr& p);
   void OnClose(const voyager::TcpConnectionPtr& p);
@@ -62,11 +65,14 @@ class SaberServer {
                          std::unique_ptr<SaberMessage> message);
   bool CreateSession(uint32_t group_id, uint64_t session_id, uint64_t version,
                      const voyager::TcpConnectionPtr& p, const EntryPtr& entry);
-  void KillSession(const std::shared_ptr<SaberSession>& session);
+  void CloseSession(const std::shared_ptr<SaberSession>& session);
+  void CleanSessions(uint32_t group_id);
+  void OnCloseRequest(uint32_t group_id, const CloseRequest& request);
 
   uint64_t GetNextSessionId() const;
   uint32_t Shard(const std::string& s) const;
 
+  voyager::EventLoop* loop_;
   ServerOptions options_;
 
   const uint64_t server_id_;
@@ -86,10 +92,12 @@ class SaberServer {
   // Value的first值表示循环队列，second值表示该队列最后一个元素，即最后一个桶。
   std::map<voyager::EventLoop*, std::pair<BucketList, int>> buckets_;
 
-  // FIXME Maybe can shard sessions by group id?
-  Mutex mutex_;
-  std::unordered_map<uint64_t, std::weak_ptr<SaberSession>> sessions_;
+  // FIXME Maybe use a class to manage it?
+  std::vector<Mutex> mutexes_;
+  std::vector<SessionMap> sessions_;
 
+  RunLoop* schedule_;
+  RunLoopThread thread_;
   voyager::TcpServer server_;
 
   // No copying allowed

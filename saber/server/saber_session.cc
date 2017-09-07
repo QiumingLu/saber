@@ -46,6 +46,18 @@ bool SaberSession::OnMessage(std::unique_ptr<SaberMessage> message) {
   if (message->type() == MT_PING && !pending_messages_.empty()) {
     return false;
   }
+
+  if (message->type() == MT_MASTER) {
+    closed_ = true;
+    pending_messages_.clear();
+  }
+  if (message->type() == MT_CLOSE) {
+    CloseRequest request;
+    request.add_session_id(session_id_);
+    request.add_version(version_);
+    message->set_data(request.SerializeAsString());
+  }
+
   pending_messages_.push_back(std::move(message));
   if (last_finished_) {
     last_finished_ = false;
@@ -63,7 +75,7 @@ void SaberSession::OnCommitComplete(std::unique_ptr<SaberMessage> message) {
   }
   pending_messages_.pop_front();
 
-  if (message->type() != MT_MASTER) {
+  if (message->type() != MT_MASTER && message->type() != MT_CLOSE) {
     if (!pending_messages_.empty() && !closed_) {
       assert(!last_finished_);
       committer_->Commit(pending_messages_.front().get());

@@ -67,7 +67,10 @@ message ACL {
   Id id = 2;
 }
 
-message ConnectRequest { uint64 session_id = 1; }
+message ConnectRequest {
+  uint64 session_id = 1;
+  uint64 version = 2;
+}
 
 message ConnectResponse {
   ResponseCode code = 1;
@@ -75,7 +78,14 @@ message ConnectResponse {
   uint64 timeout = 3;
 }
 
-message CloseRequest { uint64 session_id = 1; }
+message CloseRequest {
+  repeated uint64 session_id = 1;
+  repeated uint64 version = 2;
+}
+
+message CloseResponse {
+  ResponseCode code = 1;
+}
 
 message CreateRequest {
   bytes path = 1;
