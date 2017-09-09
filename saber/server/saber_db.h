@@ -8,7 +8,9 @@
 #include <atomic>
 #include <memory>
 #include <random>
+#include <set>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 

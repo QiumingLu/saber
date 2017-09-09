@@ -7,7 +7,6 @@
 #include <saber/server/saber_server.h>
 #include <saber/util/logging.h>
 #include <skywalker/logging.h>
-#include <skywalker/node.h>
 #include <voyager/core/eventloop.h>
 #include <voyager/util/logging.h>
 #include <voyager/util/string_util.h>

@@ -4,6 +4,9 @@
 
 #include "saber/server/data_tree.h"
 
+#include <utility>
+#include <vector>
+
 #include <voyager/util/coding.h>
 
 #include "saber/util/logging.h"
@@ -82,7 +85,8 @@ void DataTree::Create(const CreateRequest& request, const Transaction& txn,
       if (request.type() == NT_PERSISTENT_SEQUENTIAL ||
           request.type() == NT_EPHEMERAL_SEQUENTIAL) {
         char seq[16];
-        snprintf(seq, 16, "_%010d", it->second.stat().children_version() + 1);
+        snprintf(seq, sizeof(seq), "_%010d",
+                 it->second.stat().children_version() + 1);
         child.append(seq);
         path.append(seq);
       }

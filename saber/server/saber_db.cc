@@ -7,7 +7,6 @@
 #include <stdlib.h>
 
 #include <algorithm>
-#include <unordered_map>
 
 #include <skywalker/file.h>
 #include <voyager/util/coding.h>
@@ -20,7 +19,7 @@
 namespace saber {
 
 namespace {
-static const std::string kCheckpoint = "CHECKPOINT-";
+static const char* kCheckpoint = "CHECKPOINT-";
 }
 
 SaberDB::SaberDB(RunLoop* loop, const ServerOptions& options)
