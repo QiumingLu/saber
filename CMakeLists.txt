@@ -33,7 +33,6 @@ if(NOT CMAKE_INSTALL_DIR)
   set(CMAKE_INSTALL_DIR "/usr/local")
 endif()
 
-option(BUILD_EXAMPLES "Build saber examples" on)
 option(BUILD_TESTS "Build saber perftests and unittests." on)
 option(BUILD_SHARED_LIBS "Build saber shared libraries" on)
 option(BUILD_CLIENT_LIBS "Build saber client libraries" on)
@@ -99,7 +98,3 @@ saber_set_saber_client_link()
 saber_set_saber_server_link()
 
 add_subdirectory(saber)
-
-if(BUILD_EXAMPLES AND BUILD_CLIENT_LIBS)
-  add_subdirectory(examples/echo)
-endif()
