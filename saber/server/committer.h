@@ -20,6 +20,8 @@ class SaberSession;
 
 class Committer : public std::enable_shared_from_this<Committer> {
  public:
+  static uint32_t kMaxDataSize;
+
   Committer(uint32_t group_id, SaberSession* session, voyager::EventLoop* loop,
             SaberDB* db, skywalker::Node* node);
 

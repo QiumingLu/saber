@@ -13,6 +13,8 @@
 
 namespace saber {
 
+uint32_t Committer::kMaxDataSize = 1024 * 1024;
+
 Committer::Committer(uint32_t group_id, SaberSession* session,
                      voyager::EventLoop* loop, SaberDB* db,
                      skywalker::Node* node)
@@ -84,9 +86,18 @@ void Committer::HandleCommit(SaberMessage* message) {
       reply_message->set_data(response.SerializeAsString());
       break;
     }
+    // FIXME check version here may be more effective?
+    case MT_SETDATA: {
+      if (message->data().size() > kMaxDataSize) {
+        SetDataResponse response;
+        response.set_code(RC_FAILED);
+        reply_message->set_data(response.SerializeAsString());
+        wait = false;
+        break;
+      }
+    }
     case MT_CREATE:
     case MT_DELETE:
-    case MT_SETDATA:  // FIXME check version here may be more effective?
     case MT_SETACL:
     case MT_CLOSE: {
       wait = Propose(message, reply_message);

@@ -24,8 +24,7 @@ static const std::string kCheckpoint = "CHECKPOINT-";
 }
 
 SaberDB::SaberDB(RunLoop* loop, const ServerOptions& options)
-    : kServerId(options.my_server_message.id),
-      kKeepCheckpointCount(options.keep_checkpoint_count),
+    : kKeepCheckpointCount(options.keep_checkpoint_count),
       kMakeCheckpointInterval(options.make_checkpoint_interval),
       lock_(false),
       doing_(false),
@@ -182,7 +181,7 @@ bool SaberDB::FindSession(uint64_t group_id, uint64_t session_id,
 }
 
 std::unordered_map<uint64_t, uint64_t>* SaberDB::CopySessions(
-    uint64_t group_id) const {
+    uint32_t group_id) const {
   return sessions_[group_id]->CopySessions();
 }
 

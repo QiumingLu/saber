@@ -50,7 +50,7 @@ class SaberDB : public skywalker::StateMachine, public skywalker::Checkpoint {
   bool FindSession(uint64_t group_id, uint64_t session_id,
                    uint64_t version) const;
 
-  std::unordered_map<uint64_t, uint64_t>* CopySessions(uint64_t group_id) const;
+  std::unordered_map<uint64_t, uint64_t>* CopySessions(uint32_t group_id) const;
 
   virtual bool Execute(uint32_t group_id, uint64_t instance_id,
                        const std::string& value, void* context);
@@ -98,7 +98,6 @@ class SaberDB : public skywalker::StateMachine, public skywalker::Checkpoint {
       std::unordered_map<uint64_t, uint64_t>* sessions);
   void CleanCheckpoint(uint32_t group_id);
 
-  const uint64_t kServerId;
   const uint32_t kKeepCheckpointCount;
   const uint32_t kMakeCheckpointInterval;
 

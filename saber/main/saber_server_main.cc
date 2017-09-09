@@ -42,9 +42,9 @@ int main(int argc, char** argv) {
   server_options.my_server_message.paxos_port = atoi(server[3].data());
 
   // Just for test
-  server_options.keep_log_count = 20;
-  server_options.keep_checkpoint_count = 3;
-  server_options.make_checkpoint_interval = 5;
+  // server_options.keep_log_count = 20;
+  // server_options.keep_checkpoint_count = 3;
+  // server_options.make_checkpoint_interval = 5;
 
   voyager::SplitStringUsing(std::string(argv[2]), ",", &servers);
   for (auto& s : servers) {

@@ -11,8 +11,9 @@ endif()
 project (Saber C CXX)
 
 set(SABER_VERSION_MAJOR 1)
-set(SABER_VERSION_MINOR 1)
-set(SABER_VERSION_STRING ${SABER_VERSION_MAJOR}.${SABER_VERSION_MINOR})
+set(SABER_VERSION_MINOR 0)
+set(SABER_VERSION_PATCH 0)
+set(SABER_VERSION_STRING ${SABER_VERSION_MAJOR}.${SABER_VERSION_MINOR}.${SABER_VERSION_PATCH})
 
 function(exclude OUTPUT INPUT)
   set(EXCLUDES ${ARGN})
@@ -44,7 +45,7 @@ set(CXX_FLAGS
   -D_FILE_OFFSET_BITS=64
   -Wall
   -Wextra
-  #  -Werror
+  #-Werror
   -Wconversion
   -Wno-unused-parameter
   -Woverloaded-virtual

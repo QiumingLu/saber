@@ -44,11 +44,10 @@ bool SaberSession::OnMessage(std::unique_ptr<SaberMessage> message) {
   }
   // No need to check master when the pending_messages_ is not empty.
   if (message->type() == MT_PING && !pending_messages_.empty()) {
-    return false;
+    return true;
   }
 
   if (message->type() == MT_MASTER) {
-    closed_ = true;
     pending_messages_.clear();
   }
   if (message->type() == MT_CLOSE) {

@@ -8,10 +8,10 @@ Saber是一个分布式服务框架，主要参考了Google的Chubby和Apache的
 <br/>
 <br/>**Saber主要包含以下几个部分**：
 <br/>
-<br/>1. **util**: 基础库模块，包括互斥量、条件变量、线程、时间处理等基础工具。
+<br/>1. **util**: 基础库模块，包括互斥量、条件变量、线程、轮询队列等基础工具。
 <br/>2. **proto**: Saber的消息协议，在Google的Protobuf的基础上搭建。 
 <br/>3. **service**: Saber的事件通知机制，对外开放事件通知接口。
-<br/>4. **client**: Saber的客户端实现，对外提供节点的创建、删除、读写等接口。
+<br/>4. **client**: Saber的客户端实现，对外提供数据节点的创建、删除、读写等接口。
 <br/>5. **server**:  Saber的服务端实现，对外提供服务的启动、集群的管理等接口。
 <br/>6. **main**: Saber的可执行程序实现，包括Client端和Server端。
 <br/>7. **test**: Saber的使用和测试示例。
@@ -29,8 +29,10 @@ Saber是一个分布式服务框架，主要参考了Google的Chubby和Apache的
 * 基于Protobuf来完成消息的序列化和反序列化。
 
 ## 局限
+* 没有像Chubby那样实现客户端缓存。
+* 对会话的激活和超时处理做得不是特别的精细，没有根据当前服务器的负载来进行动态调整。
+* 对Master故障恢复还有不少的优化空间。
 * 没有做特别的过载保护，在高压的情况下可能会导致服务不可用。
-* 没有做特别的安全保护，需要经过二次开发才能应用于外网环境。
 
 ## 使用场景
 * 数据分布/订阅
@@ -68,7 +70,7 @@ Saber只支持Linux，FreeBSD等类Unix平台，不支持Windows平台。以下�
 * 进入./build/release目录
 * 执行sudo make install
 
-(4) Skywalker编译安装
+(4) Skywalker编译安装(https://github.com/QiumingLu/skywalker/blob/master/README.md) 
 * 进入third_party/skwalker目录
 * 执行./build.sh
 * 进入./build/release目录

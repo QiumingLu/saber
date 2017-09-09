@@ -384,18 +384,20 @@ void SaberClient::OnConnect(SaberMessage* message) {
       codec_.SendMessage(client_->GetTcpConnectionPtr(), *i);
     }
     uint64_t timeout = response.timeout();
-    timeout = 1000 * (timeout < 12000 ? (timeout * 4 / 5) : (timeout - 3000));
+    timeout = (timeout < 12000000 ? (timeout * 4 / 5) : (timeout - 3000000));
     timer_ = loop_->RunEvery(timeout, std::bind(&SaberClient::OnTimer, this));
   } else {
     if (response.code() == RC_NO_AUTH) {
       event.set_state(SS_AUTHFAILED);
       has_started_ = false;
+      client_->Close();
     } else {
       if (session_id_ != 0) {
         event.set_state(SS_EXPIRED);
       }
+      session_id_ = 0;
+      OnConnection(client_->GetTcpConnectionPtr());
     }
-    client_->Close();
   }
   if (response.code() != RC_RECONNECT) {
     event.set_type(ET_NONE);

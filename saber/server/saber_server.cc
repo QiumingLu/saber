@@ -106,6 +106,8 @@ bool SaberServer::Start() {
   if (res) {
     LOG_INFO("Skywalker start successful!");
     node_.reset(node);
+
+    Committer::kMaxDataSize = options_.max_data_size;
     for (uint32_t i = 0; i < options_.paxos_group_size; ++i) {
       schedule_->RunInLoop(std::bind(&SaberServer::CleanSessions, this, i));
     }
@@ -121,12 +123,12 @@ bool SaberServer::Start() {
     server_.Start();
 
     // FIXME
-    idle_ticks_ = options_.master_lease_time / options_.tick_time;
+    idle_ticks_ = options_.session_timeout / options_.tick_time;
     assert(idle_ticks_ > 0);
 
     const std::vector<voyager::EventLoop*>* loops = server_.AllLoops();
     for (auto& loop : *loops) {
-      loop->RunEvery(1000 * options_.tick_time,
+      loop->RunEvery(options_.tick_time,
                      std::bind(&SaberServer::OnTimer, this));
       buckets_.insert(
           std::make_pair(loop, std::make_pair(BucketList(idle_ticks_), 0)));
@@ -236,7 +238,7 @@ bool SaberServer::OnConnectRequest(uint32_t group_id, const EntryPtr& entry,
   uint64_t session_id = request.session_id();
 
   if (session_id != 0) {
-    // FIXME Need to check whether the session still exists or has been moved?
+    // Check whether the session still exists or has been moved.
     {
       MutexLock lock(&mutexes_[group_id]);
       auto it = sessions_[group_id].find(session_id);
@@ -262,6 +264,7 @@ bool SaberServer::OnConnectRequest(uint32_t group_id, const EntryPtr& entry,
   }
 
   if (session_id == 0) {
+    request.set_version(0);
     session_id = GetNextSessionId();
   }
 
@@ -305,10 +308,25 @@ void SaberServer::OnConnectResponse(ResponseCode code, const EntryPtr& entry,
   response.set_code(code);
   if (code == RC_OK) {
     response.set_session_id(entry->session->session_id());
-    response.set_timeout(options_.master_lease_time);
+    response.set_timeout(options_.session_timeout);
   }
   message->set_data(response.SerializeAsString());
   codec_.SendMessage(entry->conn_wp.lock(), *(message.get()));
+}
+
+void SaberServer::OnCloseRequest(uint32_t group_id,
+                                 const CloseRequest& request) {
+  SaberMessage message;
+  message.set_type(MT_CLOSE);
+  message.set_data(request.SerializeAsString());
+  node_->Propose(group_id, db_->machine_id(), message.SerializeAsString(),
+                 nullptr,
+                 [group_id](uint64_t, const skywalker::Status& s, void*) {
+                   if (!s.ok()) {
+                     LOG_WARN("Group %u: close session failed, reason:%s",
+                              group_id, s.ToString().c_str());
+                   }
+                 });
 }
 
 bool SaberServer::CreateSession(uint32_t group_id, uint64_t session_id,
@@ -351,15 +369,6 @@ void SaberServer::CloseSession(const std::shared_ptr<SaberSession>& session) {
   }
 }
 
-void SaberServer::OnCloseRequest(uint32_t group_id,
-                                 const CloseRequest& request) {
-  SaberMessage message;
-  message.set_type(MT_CLOSE);
-  message.set_data(request.SerializeAsString());
-  node_->Propose(group_id, db_->machine_id(), message.SerializeAsString(),
-                 nullptr, [](uint64_t, const skywalker::Status&, void*) {});
-}
-
 void SaberServer::CleanSessions(uint32_t group_id) {
   if (!node_) {
     return;
@@ -369,9 +378,9 @@ void SaberServer::CleanSessions(uint32_t group_id) {
     for (auto& it : sessions_[group_id]) {
       auto ptr = it.second.lock();
       if (ptr) {
-        std::unique_ptr<SaberMessage> message(new SaberMessage());
+        SaberMessage* message = new SaberMessage();
         message->set_type(MT_MASTER);
-        ptr->OnMessage(std::move(message));
+        ptr->OnMessage(std::unique_ptr<SaberMessage>(message));
       }
     }
     sessions_[group_id].clear();
