@@ -73,7 +73,7 @@ class DataTree {
       std::string* s, size_t size);
 
  private:
-  mutable Mutex mutex_;
+  Mutex mutex_;
   std::unordered_map<std::string, DataNode> nodes_;
   std::unordered_map<std::string, std::set<std::string>> childrens_;
 
