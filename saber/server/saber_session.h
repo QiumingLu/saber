@@ -8,7 +8,6 @@
 #include <deque>
 #include <memory>
 
-#include <voyager/core/eventloop.h>
 #include <voyager/core/tcp_connection.h>
 #include <voyager/protobuf/protobuf_codec.h>
 

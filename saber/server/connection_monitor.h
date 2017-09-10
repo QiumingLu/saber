@@ -8,10 +8,8 @@
 #include <string>
 #include <unordered_map>
 
-#include <voyager/core/eventloop.h>
 #include <voyager/core/tcp_connection.h>
 
-#include "saber/server/connection_monitor.h"
 #include "saber/util/mutex.h"
 
 namespace saber {

@@ -13,7 +13,6 @@
 
 #include "saber/util/crc32c.h"
 #include "saber/util/logging.h"
-#include "saber/util/mutexlock.h"
 #include "saber/util/timeops.h"
 
 namespace saber {
@@ -38,8 +37,6 @@ SaberDB::SaberDB(RunLoop* loop, const ServerOptions& options)
   }
   for (uint32_t i = 0; i < options.paxos_group_size; ++i) {
     trees_.push_back(std::unique_ptr<DataTree>(new DataTree()));
-  }
-  for (uint32_t i = 0; i < options.paxos_group_size; ++i) {
     sessions_.push_back(std::unique_ptr<SessionManager>(new SessionManager()));
   }
 }
@@ -114,10 +111,8 @@ bool SaberDB::Checksum(std::string* s) const {
 }
 
 std::string SaberDB::FileName(uint32_t group_id, uint64_t instance_id) const {
-  std::string fname = checkpoint_storage_path_ + "g" +
-                      std::to_string(group_id) + "/" + kCheckpoint +
-                      std::to_string(instance_id);
-  return fname;
+  return checkpoint_storage_path_ + "g" + std::to_string(group_id) + "/" +
+         kCheckpoint + std::to_string(instance_id);
 }
 
 void SaberDB::DeleteFile(const std::string& fname) const {
@@ -126,55 +121,56 @@ void SaberDB::DeleteFile(const std::string& fname) const {
 }
 
 void SaberDB::Create(uint32_t group_id, const CreateRequest& request,
-                     const Transaction& txn, CreateResponse* response) {
+                     const Transaction& txn, CreateResponse* response) const {
   trees_[group_id]->Create(request, txn, response);
 }
 
 void SaberDB::Delete(uint32_t group_id, const DeleteRequest& request,
-                     const Transaction& txn, DeleteResponse* response) {
+                     const Transaction& txn, DeleteResponse* response) const {
   trees_[group_id]->Delete(request, txn, response);
 }
 
 void SaberDB::Exists(uint32_t group_id, const ExistsRequest& request,
-                     Watcher* watcher, ExistsResponse* response) {
+                     Watcher* watcher, ExistsResponse* response) const {
   trees_[group_id]->Exists(request, watcher, response);
 }
 
 void SaberDB::GetData(uint32_t group_id, const GetDataRequest& request,
-                      Watcher* watcher, GetDataResponse* response) {
+                      Watcher* watcher, GetDataResponse* response) const {
   trees_[group_id]->GetData(request, watcher, response);
 }
 
 void SaberDB::SetData(uint32_t group_id, const SetDataRequest& request,
-                      const Transaction& txn, SetDataResponse* response) {
+                      const Transaction& txn, SetDataResponse* response) const {
   trees_[group_id]->SetData(request, txn, response);
 }
 
 void SaberDB::GetACL(uint32_t group_id, const GetACLRequest& request,
-                     GetACLResponse* response) {
+                     GetACLResponse* response) const {
   trees_[group_id]->GetACL(request, response);
 }
 
 void SaberDB::SetACL(uint32_t group_id, const SetACLRequest& request,
-                     const Transaction& txn, SetACLResponse* response) {
+                     const Transaction& txn, SetACLResponse* response) const {
   trees_[group_id]->SetACL(request, txn, response);
 }
 
 void SaberDB::GetChildren(uint32_t group_id, const GetChildrenRequest& request,
-                          Watcher* watcher, GetChildrenResponse* response) {
+                          Watcher* watcher,
+                          GetChildrenResponse* response) const {
   trees_[group_id]->GetChildren(request, watcher, response);
 }
 
-void SaberDB::RemoveWatcher(uint32_t group_id, Watcher* watcher) {
+void SaberDB::RemoveWatcher(uint32_t group_id, Watcher* watcher) const {
   trees_[group_id]->RemoveWatcher(watcher);
 }
 
-bool SaberDB::FindSession(uint64_t group_id, uint64_t session_id,
+bool SaberDB::FindSession(uint32_t group_id, uint64_t session_id,
                           uint64_t* version) const {
   return sessions_[group_id]->FindSession(session_id, version);
 }
 
-bool SaberDB::FindSession(uint64_t group_id, uint64_t session_id,
+bool SaberDB::FindSession(uint32_t group_id, uint64_t session_id,
                           uint64_t version) const {
   return sessions_[group_id]->FindSession(session_id, version);
 }
@@ -185,18 +181,18 @@ std::unordered_map<uint64_t, uint64_t>* SaberDB::CopySessions(
 }
 
 bool SaberDB::CreateSession(uint32_t group_id, uint64_t session_id,
-                            uint64_t new_version, uint64_t old_version) {
+                            uint64_t new_version, uint64_t old_version) const {
   return sessions_[group_id]->CreateSession(session_id, new_version,
                                             old_version);
 }
 
 bool SaberDB::CloseSession(uint32_t group_id, uint64_t session_id,
-                           uint64_t version) {
+                           uint64_t version) const {
   return sessions_[group_id]->CloseSession(session_id, version);
 }
 
 void SaberDB::KillSession(uint32_t group_id, uint64_t session_id,
-                          const Transaction& txn) {
+                          const Transaction& txn) const {
   trees_[group_id]->KillSession(session_id, txn);
 }
 

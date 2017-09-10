@@ -27,11 +27,11 @@ class Committer : public std::enable_shared_from_this<Committer> {
 
   void SetEventLoop(voyager::EventLoop* loop) { loop_ = loop; }
 
-  void Commit(SaberMessage* message);
+  void Commit(std::unique_ptr<SaberMessage> message);
 
  private:
-  void HandleCommit(SaberMessage* message);
-  bool Propose(SaberMessage* message, SaberMessage* reply_message);
+  void HandleCommit(std::unique_ptr<SaberMessage> message);
+  void Propose(std::unique_ptr<SaberMessage> message);
   void OnProposeComplete(uint64_t instance_id, const skywalker::Status& s,
                          void* context);
   void SetFailedState(SaberMessage* reply_message);

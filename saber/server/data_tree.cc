@@ -51,7 +51,6 @@ uint64_t DataTree::Recover(const std::string& s, size_t index) {
 
 void DataTree::Create(const CreateRequest& request, const Transaction& txn,
                       CreateResponse* response) {
-  const std::string& data = request.data();
   std::string path = request.path();
   size_t found = path.find_last_of('/');
   std::string parent = path.substr(0, found);
@@ -73,7 +72,7 @@ void DataTree::Create(const CreateRequest& request, const Transaction& txn,
   stat->set_version(0);
   stat->set_children_version(0);
   stat->set_acl_version(0);
-  stat->set_data_len(static_cast<uint32_t>(data.size()));
+  stat->set_data_len(static_cast<uint32_t>(request.data().size()));
   stat->set_children_num(0);
   stat->set_children_id(txn.instance_id());
   node.set_data(request.data());
@@ -186,8 +185,7 @@ void DataTree::Exists(const ExistsRequest& request, Watcher* watcher,
   auto it = nodes_.find(path);
   if (it != nodes_.end()) {
     response->set_code(RC_OK);
-    Stat* stat = new Stat(it->second.stat());
-    response->set_allocated_stat(stat);
+    *(response->mutable_stat()) = it->second.stat();
   } else {
     response->set_code(RC_NO_NODE);
   }
@@ -202,9 +200,8 @@ void DataTree::GetData(const GetDataRequest& request, Watcher* watcher,
     auto it = nodes_.find(path);
     if (it != nodes_.end()) {
       response->set_code(RC_OK);
-      Stat* stat = new Stat(it->second.stat());
       response->set_data(it->second.data());
-      response->set_allocated_stat(stat);
+      *(response->mutable_stat()) = it->second.stat();
     } else {
       response->set_code(RC_NO_NODE);
     }
@@ -237,7 +234,7 @@ void DataTree::SetData(const SetDataRequest& request, const Transaction& txn,
         stat->set_data_len(static_cast<int>(data.size()));
         it->second.set_data(data);
         response->set_code(RC_OK);
-        response->set_allocated_stat(new Stat(*stat));
+        *(response->mutable_stat()) = *stat;
       }
     } else {
       response->set_code(RC_NO_NODE);
@@ -255,8 +252,7 @@ void DataTree::GetACL(const GetACLRequest& request, GetACLResponse* response) {
   auto it = nodes_.find(path);
   if (it != nodes_.end()) {
     response->set_code(RC_OK);
-    Stat* stat = new Stat(it->second.stat());
-    response->set_allocated_stat(stat);
+    *(response->mutable_stat()) = it->second.stat();
     *(response->mutable_acl()) = it->second.acl();
   } else {
     response->set_code(RC_NO_NODE);
@@ -277,8 +273,7 @@ void DataTree::SetACL(const SetACLRequest& request, const Transaction& txn,
       *(it->second.mutable_acl()) = request.acl();
       it->second.mutable_stat()->set_acl_version(version + 1);
       response->set_code(RC_OK);
-      Stat* stat = new Stat(it->second.stat());
-      response->set_allocated_stat(stat);
+      *(response->mutable_stat()) = it->second.stat();
     }
   } else {
     response->set_code(RC_NO_NODE);
@@ -294,8 +289,7 @@ void DataTree::GetChildren(const GetChildrenRequest& request, Watcher* watcher,
     auto it = nodes_.find(path);
     if (it != nodes_.end()) {
       response->set_code(RC_OK);
-      Stat* stat = new Stat(it->second.stat());
-      response->set_allocated_stat(stat);
+      *(response->mutable_stat()) = it->second.stat();
       if (childrens_.find(path) != childrens_.end()) {
         const std::set<std::string>& children = childrens_[path];
         for (auto& i : children) {

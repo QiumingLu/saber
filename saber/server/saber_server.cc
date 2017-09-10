@@ -220,7 +220,7 @@ bool SaberServer::HandleMessage(const EntryPtr& entry,
     master.set_port(atoi(i.context.c_str()));
     message->set_type(MT_MASTER);
     message->set_data(master.SerializeAsString());
-    codec_.SendMessage(entry->conn_wp.lock(), *(message).get());
+    codec_.SendMessage(entry->conn_wp.lock(), *message);
     return false;
   }
 }
@@ -311,7 +311,7 @@ void SaberServer::OnConnectResponse(ResponseCode code, const EntryPtr& entry,
     response.set_timeout(options_.session_timeout);
   }
   message->set_data(response.SerializeAsString());
-  codec_.SendMessage(entry->conn_wp.lock(), *(message.get()));
+  codec_.SendMessage(entry->conn_wp.lock(), *message);
 }
 
 void SaberServer::OnCloseRequest(uint32_t group_id,

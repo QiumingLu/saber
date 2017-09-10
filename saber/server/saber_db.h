@@ -20,36 +20,35 @@
 #include "saber/server/data_tree.h"
 #include "saber/server/server_options.h"
 #include "saber/server/session_manager.h"
-#include "saber/util/mutex.h"
 #include "saber/util/runloop.h"
 
 namespace saber {
 
 class SaberDB : public skywalker::StateMachine, public skywalker::Checkpoint {
  public:
-  explicit SaberDB(RunLoop* loop, const ServerOptions& options);
+  SaberDB(RunLoop* loop, const ServerOptions& options);
   virtual ~SaberDB();
 
   bool Recover();
 
   void Exists(uint32_t group_id, const ExistsRequest& request, Watcher* watcher,
-              ExistsResponse* response);
+              ExistsResponse* response) const;
 
   void GetData(uint32_t group_id, const GetDataRequest& request,
-               Watcher* watcher, GetDataResponse* response);
+               Watcher* watcher, GetDataResponse* response) const;
 
   void GetACL(uint32_t group_id, const GetACLRequest& request,
-              GetACLResponse* response);
+              GetACLResponse* response) const;
 
   void GetChildren(uint32_t group_id, const GetChildrenRequest& request,
-                   Watcher* watcher, GetChildrenResponse* response);
+                   Watcher* watcher, GetChildrenResponse* response) const;
 
-  void RemoveWatcher(uint32_t group_id, Watcher* watcher);
+  void RemoveWatcher(uint32_t group_id, Watcher* watcher) const;
 
-  bool FindSession(uint64_t group_id, uint64_t session_id,
+  bool FindSession(uint32_t group_id, uint64_t session_id,
                    uint64_t* version) const;
 
-  bool FindSession(uint64_t group_id, uint64_t session_id,
+  bool FindSession(uint32_t group_id, uint64_t session_id,
                    uint64_t version) const;
 
   std::unordered_map<uint64_t, uint64_t>* CopySessions(uint32_t group_id) const;
@@ -76,21 +75,22 @@ class SaberDB : public skywalker::StateMachine, public skywalker::Checkpoint {
   void DeleteFile(const std::string& fname) const;
 
   void Create(uint32_t group_id, const CreateRequest& request,
-              const Transaction& txn, CreateResponse* response);
+              const Transaction& txn, CreateResponse* response) const;
 
   void Delete(uint32_t group_id, const DeleteRequest& request,
-              const Transaction& txn, DeleteResponse* response);
+              const Transaction& txn, DeleteResponse* response) const;
 
   void SetData(uint32_t group_id, const SetDataRequest& request,
-               const Transaction& txn, SetDataResponse* response);
+               const Transaction& txn, SetDataResponse* response) const;
 
   void SetACL(uint32_t group_id, const SetACLRequest& request,
-              const Transaction& txn, SetACLResponse* response);
+              const Transaction& txn, SetACLResponse* response) const;
   bool CreateSession(uint32_t group_id, uint64_t session_id,
-                     uint64_t new_version, uint64_t old_version);
-  bool CloseSession(uint32_t group_id, uint64_t session_id, uint64_t version);
+                     uint64_t new_version, uint64_t old_version) const;
+  bool CloseSession(uint32_t group_id, uint64_t session_id,
+                    uint64_t version) const;
   void KillSession(uint32_t group_id, uint64_t session_id,
-                   const Transaction& txn);
+                   const Transaction& txn) const;
 
   void MaybeMakeCheckpoint(uint32_t group_id, uint64_t instance_id);
   void MakeCheckpoint(

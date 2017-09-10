@@ -24,6 +24,7 @@ SaberSession::~SaberSession() { db_->RemoveWatcher(group_id_, this); }
 
 void SaberSession::Connect(const voyager::TcpConnectionPtr& p) {
   closed_ = false;
+  last_finished_ = true;
   pending_messages_.clear();
   conn_wp_ = p;
   committer_->SetEventLoop(p->OwnerEventLoop());
@@ -49,35 +50,33 @@ bool SaberSession::OnMessage(std::unique_ptr<SaberMessage> message) {
 
   if (message->type() == MT_MASTER) {
     pending_messages_.clear();
-  }
-  if (message->type() == MT_CLOSE) {
+  } else if (message->type() == MT_CLOSE) {
     CloseRequest request;
     request.add_session_id(session_id_);
     request.add_version(version_);
     message->set_data(request.SerializeAsString());
   }
 
-  pending_messages_.push_back(std::move(message));
   if (last_finished_) {
     last_finished_ = false;
     // FIXME check the session has been moved?
-    committer_->Commit(pending_messages_.front().get());
+    committer_->Commit(std::move(message));
+  } else {
+    pending_messages_.push_back(std::move(message));
   }
   return true;
 }
 
 void SaberSession::OnCommitComplete(std::unique_ptr<SaberMessage> message) {
-  assert(!pending_messages_.empty());
   if (message->type() != MT_PING) {
-    message->set_id(pending_messages_.front()->id());
     codec_.SendMessage(conn_wp_.lock(), *message);
   }
-  pending_messages_.pop_front();
 
   if (message->type() != MT_MASTER && message->type() != MT_CLOSE) {
     if (!pending_messages_.empty() && !closed_) {
       assert(!last_finished_);
-      committer_->Commit(pending_messages_.front().get());
+      committer_->Commit(std::move(pending_messages_.front()));
+      pending_messages_.pop_front();
     } else {
       last_finished_ = true;
     }
