@@ -9,14 +9,11 @@
 
 #include <voyager/util/string_util.h>
 
-#include "saber/util/mutexlock.h"
-
 namespace saber {
 
 void ServerManagerImpl::UpdateServers(const std::string& servers) {
   std::vector<std::string> v;
   voyager::SplitStringUsing(servers, ",", &v);
-  MutexLock lock(&mutex_);
   servers_.clear();
   for (auto& s : v) {
     size_t found = s.find_first_of(":");
@@ -29,13 +26,9 @@ void ServerManagerImpl::UpdateServers(const std::string& servers) {
   next_ = 0;
 }
 
-size_t ServerManagerImpl::GetSize() const {
-  MutexLock lock(&mutex_);
-  return servers_.size();
-}
+size_t ServerManagerImpl::GetSize() const { return servers_.size(); }
 
 voyager::SockAddr ServerManagerImpl::GetNext() {
-  MutexLock lock(&mutex_);
   assert(!servers_.empty());
   if (next_ >= servers_.size()) {
     next_ = 0;

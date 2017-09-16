@@ -198,6 +198,7 @@ void SaberDB::KillSession(uint32_t group_id, uint64_t session_id,
 
 bool SaberDB::Execute(uint32_t group_id, uint64_t instance_id,
                       const std::string& value, void* context) {
+  bool result = true;
   SaberMessage message;
   message.ParseFromString(value);
   Transaction txn;
@@ -213,8 +214,9 @@ bool SaberDB::Execute(uint32_t group_id, uint64_t instance_id,
     case MT_CONNECT: {
       ConnectRequest request;
       request.ParseFromString(message.data());
-      return CreateSession(group_id, request.session_id(), instance_id,
-                           request.version());
+      result = CreateSession(group_id, request.session_id(), instance_id,
+                             request.version());
+      break;
     }
     case MT_CLOSE: {
       CloseRequest request;
@@ -228,7 +230,7 @@ bool SaberDB::Execute(uint32_t group_id, uint64_t instance_id,
     }
     case MT_CREATE: {
       CreateRequest request;
-      CreateResponse response;  // FIXME response may be no neccessary here?
+      CreateResponse response;
       request.ParseFromString(message.data());
       Create(group_id, request, txn, &response);
       if (reply_message) {
@@ -273,7 +275,7 @@ bool SaberDB::Execute(uint32_t group_id, uint64_t instance_id,
     }
   }
   MaybeMakeCheckpoint(group_id, instance_id);
-  return true;
+  return result;
 }
 
 void SaberDB::MaybeMakeCheckpoint(uint32_t group_id, uint64_t instance_id) {

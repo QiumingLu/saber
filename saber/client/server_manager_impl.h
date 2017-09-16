@@ -9,7 +9,6 @@
 #include <vector>
 
 #include "saber/client/server_manager.h"
-#include "saber/util/mutex.h"
 
 namespace saber {
 
@@ -27,7 +26,6 @@ class ServerManagerImpl : public ServerManager {
   virtual void OnConnection();
 
  private:
-  mutable Mutex mutex_;
   size_t next_;
   std::vector<voyager::SockAddr> servers_;
 

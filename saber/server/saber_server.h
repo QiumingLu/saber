@@ -70,10 +70,11 @@ class SaberServer {
   void CloseSession(const std::shared_ptr<SaberSession>& session);
   void CleanSessions(uint32_t group_id);
 
+  void NewServers(uint32_t group_id);
+
   uint64_t GetNextSessionId() const;
   uint32_t Shard(const std::string& s) const;
 
-  voyager::EventLoop* loop_;
   ServerOptions options_;
 
   const uint64_t server_id_;
@@ -93,11 +94,11 @@ class SaberServer {
   // Value的first值表示循环队列，second值表示该队列最后一个元素，即最后一个桶。
   std::map<voyager::EventLoop*, std::pair<BucketList, int>> buckets_;
 
-  // FIXME Maybe use a class to manage it?
+  // FIXME Use a class to manage it?
   std::vector<Mutex> mutexes_;
   std::vector<SessionMap> sessions_;
 
-  RunLoop* schedule_;
+  RunLoop* loop_;
   RunLoopThread thread_;
   voyager::TcpServer server_;
 

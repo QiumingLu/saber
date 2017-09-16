@@ -331,6 +331,9 @@ bool SaberClient::OnMessage(const voyager::TcpConnectionPtr& p,
       client_->Close();
       break;
     }
+    case MT_SERVERS:
+      server_manager_->UpdateServers(message->data());
+      break;
     case MT_PING:
       break;
     default: {
@@ -340,7 +343,7 @@ bool SaberClient::OnMessage(const voyager::TcpConnectionPtr& p,
     }
   }
   if (type != MT_NOTIFICATION && type != MT_MASTER && type != MT_PING &&
-      type != MT_CONNECT) {
+      type != MT_CONNECT && type != MT_SERVERS) {
     assert(!outgoing_queue_.empty());
     assert(outgoing_queue_.front()->id() == message->id());
     while (!outgoing_queue_.empty() &&

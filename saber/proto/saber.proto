@@ -83,9 +83,7 @@ message CloseRequest {
   repeated uint64 version = 2;
 }
 
-message CloseResponse {
-  ResponseCode code = 1;
-}
+message CloseResponse { ResponseCode code = 1; }
 
 message CreateRequest {
   bytes path = 1;
@@ -187,6 +185,7 @@ enum MessageType {
   MT_PING = 10;
   MT_CONNECT = 11;
   MT_CLOSE = 12;
+  MT_SERVERS = 13;
 }
 
 message SaberMessage {

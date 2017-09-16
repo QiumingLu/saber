@@ -32,7 +32,6 @@ Saber是一个分布式服务框架，主要参考了Google的Chubby和Apache的
 * 没有像Chubby那样实现客户端缓存。
 * 对会话的激活和超时处理做得不是特别的精细，没有根据当前服务器的负载来进行动态调整。
 * 对Master故障恢复还有不少的优化空间。
-* 没有做特别的过载保护，在高压的情况下可能会导致服务不可用。
 
 ## 使用场景
 * 数据分布/订阅
@@ -52,8 +51,8 @@ Saber只支持Linux，FreeBSD等类Unix平台，不支持Windows平台。以下�
 * macOS 10.12，Clang 3.6.0
 
 ## 编译依赖
-* LevelDB v1.8及以上的版本
-* Protobuf v3.2.0及以上的版本
+* LevelDB v1.3及以上的版本
+* Protobuf v3.0.0及以上的版本
 * Voyager v1.0.0及以上版本
 * Skywalker v1.0.0及以上版本
 

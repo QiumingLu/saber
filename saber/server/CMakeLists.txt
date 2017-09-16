@@ -1,9 +1,6 @@
 file(GLOB tmp *.cc)
 set(Saber_SERVER_SRCS ${Saber_SERVER_SRCS} ${tmp})
 
-set(tmp "${CMAKE_CURRENT_SOURCE_DIR}/data_node.cc")
-exclude(Saber_SERVER_SRCS "${Saber_SERVER_SRCS}" ${tmp})
-
 set(Saber_SERVER_SRCS ${Saber_SERVER_SRCS} PARENT_SCOPE)
 
 set(

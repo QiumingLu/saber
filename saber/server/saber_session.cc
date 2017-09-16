@@ -59,7 +59,6 @@ bool SaberSession::OnMessage(std::unique_ptr<SaberMessage> message) {
 
   if (last_finished_) {
     last_finished_ = false;
-    // FIXME check the session has been moved?
     committer_->Commit(std::move(message));
   } else {
     pending_messages_.push_back(std::move(message));
