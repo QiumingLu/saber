@@ -51,9 +51,9 @@ Saber只支持Linux，FreeBSD等类Unix平台，不支持Windows平台。以下�
 * macOS 10.12，Clang 3.6.0
 
 ## 编译依赖
-* LevelDB v1.3及以上的版本
-* Protobuf v3.0.0及以上的版本
-* Voyager v1.0.0及以上版本
+* LevelDB   v1.3及以上版本
+* Protobuf  v3.0.0及以上版本
+* Voyager   v1.0.0及以上版本
 * Skywalker v1.0.0及以上版本
 
 ## 编译安装
