@@ -21,7 +21,7 @@ namespace {
 static const char* kCheckpoint = "CHECKPOINT-";
 }
 
-SaberDB::SaberDB(RunLoop* loop, const ServerOptions& options)
+SaberDB::SaberDB(voyager::EventLoop* loop, const ServerOptions& options)
     : kKeepCheckpointCount(options.keep_checkpoint_count),
       kMakeCheckpointInterval(options.make_checkpoint_interval),
       lock_(false),

@@ -15,18 +15,18 @@
 #include <vector>
 
 #include <skywalker/node.h>
+#include <voyager/core/bg_eventloop.h>
 
 #include "saber/proto/server.pb.h"
 #include "saber/server/data_tree.h"
 #include "saber/server/server_options.h"
 #include "saber/server/session_manager.h"
-#include "saber/util/runloop.h"
 
 namespace saber {
 
 class SaberDB : public skywalker::StateMachine, public skywalker::Checkpoint {
  public:
-  SaberDB(RunLoop* loop, const ServerOptions& options);
+  SaberDB(voyager::EventLoop* loop, const ServerOptions& options);
   virtual ~SaberDB();
 
   bool Recover();
@@ -115,7 +115,7 @@ class SaberDB : public skywalker::StateMachine, public skywalker::Checkpoint {
   std::default_random_engine generator_;
   std::uniform_int_distribution<uint32_t> distribution_;
 
-  RunLoop* loop_;
+  voyager::EventLoop* loop_;
 
   // No copying allowed
   SaberDB(const SaberDB&);

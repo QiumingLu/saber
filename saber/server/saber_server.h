@@ -13,6 +13,7 @@
 #include <utility>
 #include <vector>
 
+#include <voyager/core/bg_eventloop.h>
 #include <voyager/core/buffer.h>
 #include <voyager/core/eventloop.h>
 #include <voyager/core/sockaddr.h>
@@ -25,8 +26,6 @@
 #include "saber/proto/saber.pb.h"
 #include "saber/server/server_options.h"
 #include "saber/util/mutex.h"
-#include "saber/util/runloop.h"
-#include "saber/util/runloop_thread.h"
 
 namespace saber {
 
@@ -98,8 +97,8 @@ class SaberServer {
   std::vector<Mutex> mutexes_;
   std::vector<SessionMap> sessions_;
 
-  RunLoop* loop_;
-  RunLoopThread thread_;
+  voyager::EventLoop* loop_;
+  voyager::BGEventLoop thread_;
   voyager::TcpServer server_;
 
   // No copying allowed
