@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <stdio.h>
+#include <unistd.h>
 
 #include <saber/server/saber_server.h>
 #include <saber/util/logging.h>
