@@ -19,3 +19,7 @@ set(
   )
 
 install(FILES ${Saber_UTIL_HEADERS} DESTINATION include/saber/util)
+
+if (BUILD_TESTS) 
+  add_subdirectory(tests)
+endif()
