@@ -11,6 +11,15 @@
 #include "saber/util/logging.h"
 #include "saber/util/timeops.h"
 
+// The FALLTHROUGH_INTENDED macro can be used to annotate implicit fall-through
+// between switch labels. The real definition should be provided externally.
+// This one is a fallback version for unsupported compilers.
+#ifndef FALLTHROUGH_INTENDED
+#define FALLTHROUGH_INTENDED \
+  do {                       \
+  } while (0)
+#endif
+
 namespace saber {
 
 uint32_t Committer::kMaxDataSize = 1024 * 1024;
@@ -88,6 +97,7 @@ void Committer::HandleCommit(std::unique_ptr<SaberMessage> message) {
         message->set_data(response.SerializeAsString());
         break;
       }
+      FALLTHROUGH_INTENDED;
     }
     case MT_CREATE:
     case MT_DELETE:
