@@ -93,6 +93,7 @@ include_directories(${PROJECT_SOURCE_DIR} ${PROJECT_BINARY_DIR})
 include(cmake/Dependencies.cmake)
 include(cmake/Targets.cmake)
 
+saber_set_saber_link()
 saber_set_saber_client_link()
 saber_set_saber_server_link()
 
