@@ -23,21 +23,16 @@ SaberSession::SaberSession(uint32_t group_id, uint64_t session_id,
 SaberSession::~SaberSession() { db_->RemoveWatcher(group_id_, this); }
 
 void SaberSession::Connect(const voyager::TcpConnectionPtr& p) {
+  if (!closed_) {
+    return;
+  }
   loop_ = p->OwnerEventLoop();
-  closed_ = false;
-  last_finished_ = true;
   conn_wp_ = p;
   committer_->SetEventLoop(loop_);
+  closed_ = false;
+  last_finished_ = true;
   MutexLock lock(&mutex_);
   pending_messages_.clear();
-}
-
-void SaberSession::ShutDown() {
-  closed_ = true;
-  voyager::TcpConnectionPtr p = conn_wp_.lock();
-  if (p) {
-    p->ShutDown();
-  }
 }
 
 bool SaberSession::OnMessage(std::unique_ptr<SaberMessage> message) {
@@ -74,17 +69,32 @@ void SaberSession::OnCommitComplete(std::unique_ptr<SaberMessage> message) {
     codec_.SendMessage(conn_wp_.lock(), *message);
   }
 
+  std::unique_ptr<SaberMessage> next;
+  assert(!closed_);
+  assert(!last_finished_);
   if (message->type() != MT_MASTER && message->type() != MT_CLOSE) {
     MutexLock lock(&mutex_);
-    if (!pending_messages_.empty() && !closed_) {
-      assert(!last_finished_);
-      committer_->Commit(std::move(pending_messages_.front()));
+    if (!pending_messages_.empty()) {
+      next = std::move(pending_messages_.front());
       pending_messages_.pop_front();
-    } else {
-      last_finished_ = true;
     }
-  } else if (voyager::EventLoop::RunLoop() == loop_) {
+  } else {
     ShutDown();
+  }
+
+  if (next) {
+    committer_->Commit(std::move(next));
+  } else {
+    last_finished_ = true;
+  }
+}
+
+void SaberSession::ShutDown() {
+  closed_ = true;
+  pending_messages_.clear();
+  voyager::TcpConnectionPtr p = conn_wp_.lock();
+  if (p) {
+    p->ShutDown();
   }
 }
 

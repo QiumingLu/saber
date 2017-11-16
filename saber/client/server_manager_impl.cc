@@ -7,6 +7,7 @@
 #include <assert.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <random>
 
 #include <voyager/util/string_util.h>
