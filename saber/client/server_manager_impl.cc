@@ -7,7 +7,11 @@
 #include <assert.h>
 #include <unistd.h>
 
+#include <random>
+
 #include <voyager/util/string_util.h>
+
+#include "saber/util/timeops.h"
 
 namespace saber {
 
@@ -22,6 +26,8 @@ void ServerManagerImpl::UpdateServers(const std::string& servers) {
       servers_.push_back(voyager::SockAddr(s.substr(0, found), port));
     }
   }
+  std::shuffle(servers_.begin(), servers_.end(),
+               std::default_random_engine(NowMicros()));
   assert(!servers_.empty());
   next_ = 0;
 }

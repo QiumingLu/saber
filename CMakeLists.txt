@@ -98,3 +98,7 @@ saber_set_saber_client_link()
 saber_set_saber_server_link()
 
 add_subdirectory(saber)
+
+if (BUILD_TESTS)
+  add_subdirectory(benchmarks)
+endif()

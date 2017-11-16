@@ -129,10 +129,10 @@ bool SaberServer::Start() {
 
     const std::vector<voyager::EventLoop*>* loops = server_.AllLoops();
     for (auto& loop : *loops) {
-      loop->RunEvery(options_.tick_time,
-                     std::bind(&SaberServer::OnTimer, this));
       buckets_.insert(
           std::make_pair(loop, std::make_pair(BucketList(idle_ticks_), 0)));
+      loop->RunEvery(options_.tick_time,
+                     std::bind(&SaberServer::OnTimer, this));
     }
   } else {
     LOG_ERROR("Skywalker start failed!");

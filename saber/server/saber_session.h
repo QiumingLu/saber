@@ -15,6 +15,8 @@
 #include "saber/server/committer.h"
 #include "saber/server/saber_db.h"
 #include "saber/service/watcher.h"
+#include "saber/util/mutex.h"
+#include "saber/util/mutexlock.h"
 
 namespace saber {
 
@@ -53,10 +55,13 @@ class SaberSession : public Watcher {
   uint64_t version_;
 
   voyager::ProtobufCodec<SaberMessage> codec_;
+  voyager::EventLoop* loop_;
   std::weak_ptr<voyager::TcpConnection> conn_wp_;
   SaberDB* db_;
-  std::deque<std::unique_ptr<SaberMessage>> pending_messages_;
   CommitterPtr committer_;
+
+  Mutex mutex_;
+  std::deque<std::unique_ptr<SaberMessage>> pending_messages_;
 
   // No copying allowed
   SaberSession(const SaberSession&);

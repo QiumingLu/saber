@@ -245,8 +245,8 @@ void SaberClient::Connect(const voyager::SockAddr& addr) {
 }
 
 void SaberClient::TrySendInLoop(SaberMessage* message) {
-  codec_.SendMessage(client_->GetTcpConnectionPtr(), *message);
   outgoing_queue_.push_back(std::unique_ptr<SaberMessage>(message));
+  codec_.SendMessage(client_->GetTcpConnectionPtr(), *message);
 }
 
 void SaberClient::OnConnection(const voyager::TcpConnectionPtr& p) {
@@ -344,8 +344,9 @@ bool SaberClient::OnMessage(const voyager::TcpConnectionPtr& p,
   }
   if (type != MT_NOTIFICATION && type != MT_MASTER && type != MT_PING &&
       type != MT_CONNECT && type != MT_SERVERS) {
-    assert(!outgoing_queue_.empty());
-    assert(outgoing_queue_.front()->id() == message->id());
+    // FIXME
+    // assert(!outgoing_queue_.empty());
+    // assert(outgoing_queue_.front()->id() == message->id());
     while (!outgoing_queue_.empty() &&
            message->id() <= outgoing_queue_.front()->id()) {
       outgoing_queue_.pop_front();
