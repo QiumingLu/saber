@@ -340,7 +340,7 @@ bool SaberServer::CreateSession(uint32_t group_id, uint64_t session_id,
   if (it != sessions_[group_id].end()) {
     entry->session = it->second.lock();
     assert(entry->session);
-    entry->session->Connect(p);
+    entry->session->ReConnect(p);
   } else {
     b = false;
     entry->session.reset(

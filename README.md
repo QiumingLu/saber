@@ -43,7 +43,7 @@ Saber是一个分布式服务框架，主要参考了Google的Chubby和Apache的
 * 分布式队列
 
 ## 性能
-* 暂无全面的测试报告
+* 可参照benckmarks做压力测试。
 
 ## 兼容性
 Saber只支持Linux，FreeBSD等类Unix平台，不支持Windows平台。以下是一些曾测试的平台/编译器组合：

@@ -42,8 +42,31 @@ class Client {
     }
   }
 
+  void GetData() {
+    start_ = NowMicros();
+    GetDataRequest request;
+    request.set_path("/ls");
+    request.set_watch(false);
+    for (int i = 0; i < times_; ++i) {
+      client_.GetData(request, nullptr, nullptr,
+                      std::bind(&Client::OnGetData, this, std::placeholders::_1,
+                                std::placeholders::_2, std::placeholders::_3));
+    }
+  }
+
+  void OnGetData(const std::string& path, void* context,
+                 const GetDataResponse& response) {
+    if (++finish_ == times_) {
+      end_ = NowMicros();
+      double time = (double)(end_ - start_) / 1000000;
+      printf("Read Time: %f, TPS:%f\n", time, times_ / time);
+      g_latch->CountDown();
+      finish_ = 0;
+    }
+  }
+
   void SetData() {
-    start_ = saber::NowMicros();
+    start_ = NowMicros();
     SetDataRequest request;
     request.set_path("/ls");
     request.set_data("lock service");
@@ -58,10 +81,11 @@ class Client {
   void OnSetData(const std::string& path, void* context,
                  const SetDataResponse& response) {
     if (++finish_ == times_) {
-      end_ = saber::NowMicros();
+      end_ = NowMicros();
       double time = (double)(end_ - start_) / 1000000;
-      printf("Time: %f, TPS:%f\n", time, times_ / time);
+      printf("Write Time: %f, TPS:%f\n", time, times_ / time);
       g_latch->CountDown();
+      finish_ = 0;
     }
   }
 
@@ -86,8 +110,8 @@ int main(int argc, char** argv) {
     return -1;
   }
 
-  saber::SetLogLevel(saber::LOGLEVEL_DEBUG);
-  // saber::SetLogHandler(nullptr);
+  // saber::SetLogLevel(saber::LOGLEVEL_DEBUG);
+  saber::SetLogHandler(nullptr);
   saber::ClientOptions options;
   options.root = "/ls";
   options.servers = argv[1];
@@ -103,6 +127,15 @@ int main(int argc, char** argv) {
     clients.push_back(std::unique_ptr<saber::Client>(
         new saber::Client(threads[i].Loop(), options, times)));
     clients[i]->Start();
+  }
+
+  g_latch->Wait();
+  delete g_latch;
+
+  g_latch = new saber::CountDownLatch(c);
+
+  for (int i = 0; i < c; ++i) {
+    clients[i]->GetData();
   }
 
   g_latch->Wait();

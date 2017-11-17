@@ -342,13 +342,15 @@ bool SaberClient::OnMessage(const voyager::TcpConnectionPtr& p,
       break;
     }
   }
+  LOG_DEBUG("type: %d, id: %d, max id:%d, queue size:%d,", type,
+            (int)(message->id()), (int)message_id_,
+            (int)outgoing_queue_.size());
   if (type != MT_NOTIFICATION && type != MT_MASTER && type != MT_PING &&
       type != MT_CONNECT && type != MT_SERVERS) {
-    // FIXME
-    // assert(!outgoing_queue_.empty());
-    // assert(outgoing_queue_.front()->id() == message->id());
+    assert(!outgoing_queue_.empty());
+    assert(outgoing_queue_.front()->id() == message->id());
     while (!outgoing_queue_.empty() &&
-           message->id() <= outgoing_queue_.front()->id()) {
+           message->id() >= outgoing_queue_.front()->id()) {
       outgoing_queue_.pop_front();
     }
   }

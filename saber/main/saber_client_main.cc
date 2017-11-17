@@ -7,8 +7,8 @@
 #include <saber/util/logging.h>
 #include <saber/util/runloop.h>
 
-#include "saber/main/mysaber.h"
 #include "saber/main/default_watcher.h"
+#include "saber/main/mysaber.h"
 
 int main(int argc, char** argv) {
   if (argc != 2) {
