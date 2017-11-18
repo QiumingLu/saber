@@ -56,7 +56,8 @@ class Client {
 
   void OnGetData(const std::string& path, void* context,
                  const GetDataResponse& response) {
-    if (++finish_ == times_) {
+    printf("Read finish:%d\n", ++finish_);
+    if (finish_ == times_) {
       end_ = NowMicros();
       double time = (double)(end_ - start_) / 1000000;
       printf("Read Time: %f, TPS:%f\n", time, times_ / time);
@@ -80,7 +81,8 @@ class Client {
 
   void OnSetData(const std::string& path, void* context,
                  const SetDataResponse& response) {
-    if (++finish_ == times_) {
+    printf("Write finish:%d\n", ++finish_);
+    if (finish_ == times_) {
       end_ = NowMicros();
       double time = (double)(end_ - start_) / 1000000;
       printf("Write Time: %f, TPS:%f\n", time, times_ / time);
@@ -110,8 +112,8 @@ int main(int argc, char** argv) {
     return -1;
   }
 
-  // saber::SetLogLevel(saber::LOGLEVEL_DEBUG);
-  saber::SetLogHandler(nullptr);
+  saber::SetLogLevel(saber::LOGLEVEL_DEBUG);
+  // saber::SetLogHandler(nullptr);
   saber::ClientOptions options;
   options.root = "/ls";
   options.servers = argv[1];

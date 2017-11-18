@@ -8,7 +8,6 @@
 #include <atomic>
 #include <deque>
 #include <memory>
-#include <queue>
 #include <string>
 
 #include <voyager/core/eventloop.h>
@@ -80,10 +79,12 @@ class SaberClient {
   bool OnGetChildren(SaberMessage* message);
   void TriggerWatchers(const WatchedEvent& event);
   std::string GetRoot(const std::string& path) const;
+  void ClearMessage();
 
   const std::string kRoot;
 
   std::atomic<bool> has_started_;
+  bool can_send_;
   uint32_t message_id_;
   uint64_t session_id_;
 
@@ -95,14 +96,14 @@ class SaberClient {
   voyager::ProtobufCodec<SaberMessage> codec_;
   std::unique_ptr<voyager::TcpClient> client_;
 
-  std::queue<std::unique_ptr<CreateRequestT> > create_queue_;
-  std::queue<std::unique_ptr<DeleteRequestT> > delete_queue_;
-  std::queue<std::unique_ptr<ExistsRequestT> > exists_queue_;
-  std::queue<std::unique_ptr<GetDataRequestT> > get_data_queue_;
-  std::queue<std::unique_ptr<SetDataRequestT> > set_data_queue_;
-  std::queue<std::unique_ptr<GetACLRequestT> > get_acl_queue_;
-  std::queue<std::unique_ptr<SetACLRequestT> > set_acl_queue_;
-  std::queue<std::unique_ptr<GetChildrenRequestT> > children_queue_;
+  std::deque<std::unique_ptr<CreateRequestT> > create_queue_;
+  std::deque<std::unique_ptr<DeleteRequestT> > delete_queue_;
+  std::deque<std::unique_ptr<ExistsRequestT> > exists_queue_;
+  std::deque<std::unique_ptr<GetDataRequestT> > get_data_queue_;
+  std::deque<std::unique_ptr<SetDataRequestT> > set_data_queue_;
+  std::deque<std::unique_ptr<GetACLRequestT> > get_acl_queue_;
+  std::deque<std::unique_ptr<SetACLRequestT> > set_acl_queue_;
+  std::deque<std::unique_ptr<GetChildrenRequestT> > children_queue_;
 
   std::deque<std::unique_ptr<SaberMessage> > outgoing_queue_;
 
