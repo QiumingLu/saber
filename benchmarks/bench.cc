@@ -112,8 +112,8 @@ int main(int argc, char** argv) {
     return -1;
   }
 
-  saber::SetLogLevel(saber::LOGLEVEL_DEBUG);
-  // saber::SetLogHandler(nullptr);
+  // saber::SetLogLevel(saber::LOGLEVEL_DEBUG);
+  saber::SetLogHandler(nullptr);
   saber::ClientOptions options;
   options.root = "/ls";
   options.servers = argv[1];

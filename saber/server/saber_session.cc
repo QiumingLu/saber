@@ -25,7 +25,6 @@ SaberSession::~SaberSession() { db_->RemoveWatcher(group_id_, this); }
 void SaberSession::ReConnect(const voyager::TcpConnectionPtr& p) {
   MutexLock lock(&mutex_);
   closed_ = false;
-  last_finished_ = true;
   loop_ = p->OwnerEventLoop();
   conn_wp_ = p;
   committer_->SetEventLoop(loop_);
@@ -48,15 +47,21 @@ bool SaberSession::OnMessage(std::unique_ptr<SaberMessage> message) {
     message->set_data(request.SerializeAsString());
   }
 
-  MutexLock lock(&mutex_);
-  if (last_finished_) {
-    last_finished_ = false;
-    Commit(message.release());
-  } else {
-    if (message->type() == MT_MASTER) {
-      pending_messages_.clear();
+  bool next = false;
+  {
+    MutexLock lock(&mutex_);
+    if (last_finished_) {
+      next = true;
+      last_finished_ = false;
+    } else {
+      if (message->type() == MT_MASTER) {
+        pending_messages_.clear();
+      }
+      pending_messages_.push_back(std::move(message));
     }
-    pending_messages_.push_back(std::move(message));
+  }
+  if (next) {
+    committer_->Commit(std::move(message));
   }
   return true;
 }
@@ -77,20 +82,27 @@ void SaberSession::OnCommitComplete(std::unique_ptr<SaberMessage> message) {
     codec_.SendMessage(conn_wp_.lock(), *message);
   }
 
-  MutexLock lock(&mutex_);
-  if (message->type() != MT_MASTER && message->type() != MT_CLOSE) {
-    if (!pending_messages_.empty()) {
-      Commit(pending_messages_.front().release());
-      pending_messages_.pop_front();
+  SaberMessage* next = nullptr;
+  {
+    MutexLock lock(&mutex_);
+    if (message->type() != MT_MASTER && message->type() != MT_CLOSE) {
+      if (!pending_messages_.empty()) {
+        next = pending_messages_.front().release();
+        pending_messages_.pop_front();
+      }
     } else {
+      closed_ = true;
+      voyager::TcpConnectionPtr p = conn_wp_.lock();
+      if (p) {
+        p->ShutDown();
+      }
+    }
+    if (!next) {
       last_finished_ = true;
     }
-  } else if (!last_finished_) {
-    closed_ = true;
-    voyager::TcpConnectionPtr p = conn_wp_.lock();
-    if (p) {
-      p->ShutDown();
-    }
+  }
+  if (next) {
+    committer_->Commit(std::unique_ptr<SaberMessage>(next));
   }
 }
 
