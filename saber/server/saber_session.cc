@@ -15,19 +15,18 @@ SaberSession::SaberSession(uint32_t group_id, uint64_t session_id,
       last_finished_(true),
       group_id_(group_id),
       session_id_(session_id),
-      loop_(p->OwnerEventLoop()),
       conn_wp_(p),
       db_(db),
-      committer_(new Committer(group_id, this, loop_, db, node)) {}
+      committer_(new Committer(group_id, this, p->OwnerEventLoop(), db, node)) {
+}
 
 SaberSession::~SaberSession() { db_->RemoveWatcher(group_id_, this); }
 
 void SaberSession::ReConnect(const voyager::TcpConnectionPtr& p) {
   MutexLock lock(&mutex_);
   closed_ = false;
-  loop_ = p->OwnerEventLoop();
   conn_wp_ = p;
-  committer_->SetEventLoop(loop_);
+  committer_->SetEventLoop(p->OwnerEventLoop());
   pending_messages_.clear();
 }
 
@@ -64,17 +63,6 @@ bool SaberSession::OnMessage(std::unique_ptr<SaberMessage> message) {
     committer_->Commit(std::move(message));
   }
   return true;
-}
-
-void SaberSession::Commit(SaberMessage* next) {
-  std::shared_ptr<SaberSession> guard(shared_from_this());
-  loop_->QueueInLoop([guard, next]() {
-    if (!guard.unique()) {
-      guard->committer_->Commit(std::unique_ptr<SaberMessage>(next));
-    } else {
-      delete next;
-    }
-  });
 }
 
 void SaberSession::OnCommitComplete(std::unique_ptr<SaberMessage> message) {

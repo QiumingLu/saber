@@ -20,8 +20,7 @@
 
 namespace saber {
 
-class SaberSession : public Watcher,
-                     public std::enable_shared_from_this<SaberSession> {
+class SaberSession : public Watcher {
  public:
   SaberSession(uint32_t group_id, uint64_t session_id,
                const voyager::TcpConnectionPtr& p, SaberDB* db,
@@ -46,8 +45,6 @@ class SaberSession : public Watcher,
   virtual void Process(const WatchedEvent& event);
 
  private:
-  void Commit(SaberMessage* next);
-
   bool closed_;
   bool last_finished_;
   const uint32_t group_id_;
@@ -56,7 +53,6 @@ class SaberSession : public Watcher,
   uint64_t version_;
 
   voyager::ProtobufCodec<SaberMessage> codec_;
-  voyager::EventLoop* loop_;
   std::weak_ptr<voyager::TcpConnection> conn_wp_;
   SaberDB* db_;
   CommitterPtr committer_;
