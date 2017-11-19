@@ -3,30 +3,41 @@
 // found in the LICENSE file.
 
 #include "saber/server/saber_session.h"
+#include "saber/util/logging.h"
+#include "saber/util/mutexlock.h"
+#include "saber/util/timeops.h"
 
-#include <utility>
+// The FALLTHROUGH_INTENDED macro can be used to annotate implicit fall-through
+// between switch labels. The real definition should be provided externally.
+// This one is a fallback version for unsupported compilers.
+#ifndef FALLTHROUGH_INTENDED
+#define FALLTHROUGH_INTENDED \
+  do {                       \
+  } while (0)
+#endif
 
 namespace saber {
+
+uint32_t SaberSession::kMaxDataSize = 1024 * 1024;
 
 SaberSession::SaberSession(uint32_t group_id, uint64_t session_id,
                            const voyager::TcpConnectionPtr& p, SaberDB* db,
                            skywalker::Node* node)
-    : closed_(false),
-      last_finished_(true),
-      group_id_(group_id),
+    : group_id_(group_id),
       session_id_(session_id),
+      version_(0),
+      closed_(false),
+      last_finished_(true),
       conn_wp_(p),
       db_(db),
-      committer_(new Committer(group_id, this, p->OwnerEventLoop(), db, node)) {
-}
+      node_(node) {}
 
 SaberSession::~SaberSession() { db_->RemoveWatcher(group_id_, this); }
 
-void SaberSession::ReConnect(const voyager::TcpConnectionPtr& p) {
+void SaberSession::OnConnection(const voyager::TcpConnectionPtr& p) {
   MutexLock lock(&mutex_);
   closed_ = false;
   conn_wp_ = p;
-  committer_->SetEventLoop(p->OwnerEventLoop());
   pending_messages_.clear();
 }
 
@@ -60,20 +71,105 @@ bool SaberSession::OnMessage(std::unique_ptr<SaberMessage> message) {
     }
   }
   if (next) {
-    committer_->Commit(std::move(message));
+    HandleMessage(std::move(message));
   }
   return true;
 }
 
-void SaberSession::OnCommitComplete(std::unique_ptr<SaberMessage> message) {
-  if (message->type() != MT_PING) {
-    codec_.SendMessage(conn_wp_.lock(), *message);
+void SaberSession::HandleMessage(std::unique_ptr<SaberMessage> message) {
+  if (message->type() != MT_MASTER && node_->IsMaster(group_id_)) {
+    DoIt(std::move(message));
+  } else {
+    skywalker::Member i;
+    uint64_t version;
+    node_->GetMaster(group_id_, &i, &version);
+    Master master;
+    master.set_host(i.host);
+    master.set_port(atoi(i.context.c_str()));
+    message->set_type(MT_MASTER);
+    message->set_data(master.SerializeAsString());
+    Done(std::move(message));
+  }
+}
+
+void SaberSession::DoIt(std::unique_ptr<SaberMessage> message) {
+  bool done = true;
+  switch (message->type()) {
+    case MT_PING: {
+      break;
+    }
+    case MT_EXISTS: {
+      ExistsRequest request;
+      ExistsResponse response;
+      request.ParseFromString(message->data());
+      Watcher* watcher = request.watch() ? this : nullptr;
+      db_->Exists(group_id_, request, watcher, &response);
+      message->set_data(response.SerializeAsString());
+      break;
+    }
+    case MT_GETDATA: {
+      GetDataRequest request;
+      GetDataResponse response;
+      request.ParseFromString(message->data());
+      Watcher* watcher = request.watch() ? this : nullptr;
+      db_->GetData(group_id_, request, watcher, &response);
+      message->set_data(response.SerializeAsString());
+      break;
+    }
+    case MT_GETACL: {
+      GetACLRequest request;
+      GetACLResponse response;
+      request.ParseFromString(message->data());
+      db_->GetACL(group_id_, request, &response);
+      message->set_data(response.SerializeAsString());
+      break;
+    }
+    case MT_GETCHILDREN: {
+      GetChildrenRequest request;
+      GetChildrenResponse response;
+      request.ParseFromString(message->data());
+      Watcher* watcher = request.watch() ? this : nullptr;
+      db_->GetChildren(group_id_, request, watcher, &response);
+      message->set_data(response.SerializeAsString());
+      break;
+    }
+    // FIXME check version here may be more effective?
+    case MT_SETDATA: {
+      if (message->data().size() > kMaxDataSize) {
+        SetFailedState(message.get());
+        break;
+      }
+      FALLTHROUGH_INTENDED;
+    }
+    case MT_CREATE:
+    case MT_DELETE:
+    case MT_SETACL:
+    case MT_CLOSE: {
+      done = false;
+      Propose(std::move(message));
+      break;
+    }
+    default: {
+      assert(false);
+      LOG_ERROR("Invalid message type.");
+      break;
+    }
+  }
+  if (done) {
+    Done(std::move(message));
+  }
+}
+
+void SaberSession::Done(std::unique_ptr<SaberMessage> reply_message) {
+  if (reply_message->type() != MT_PING) {
+    codec_.SendMessage(conn_wp_.lock(), *reply_message);
   }
 
   SaberMessage* next = nullptr;
   {
     MutexLock lock(&mutex_);
-    if (message->type() != MT_MASTER && message->type() != MT_CLOSE) {
+    if (reply_message->type() != MT_MASTER &&
+        reply_message->type() != MT_CLOSE) {
       if (!pending_messages_.empty()) {
         next = pending_messages_.front().release();
         pending_messages_.pop_front();
@@ -90,7 +186,85 @@ void SaberSession::OnCommitComplete(std::unique_ptr<SaberMessage> message) {
     }
   }
   if (next) {
-    committer_->Commit(std::unique_ptr<SaberMessage>(next));
+    HandleMessage(std::unique_ptr<SaberMessage>(next));
+  }
+}
+
+void SaberSession::Propose(std::unique_ptr<SaberMessage> message) {
+  Transaction txn;
+  txn.set_session_id(session_id_);
+  txn.set_time(NowMillis());
+  SaberMessage* reply = message.release();
+  reply->set_extra_data(txn.SerializeAsString());
+  bool b = node_->Propose(
+      group_id_, db_->machine_id(), reply->SerializeAsString(), reply,
+      std::bind(&SaberSession::WeakCallback,
+                std::weak_ptr<SaberSession>(shared_from_this()),
+                std::placeholders::_1, std::placeholders::_2,
+                std::placeholders::_3));
+  if (!b) {
+    SetFailedState(reply);
+    reply->clear_extra_data();
+    Done(std::unique_ptr<SaberMessage>(reply));
+  }
+}
+
+void SaberSession::WeakCallback(std::weak_ptr<SaberSession> session_wp,
+                                uint64_t instance_id,
+                                const skywalker::Status& s, void* context) {
+  SaberMessage* reply_message = reinterpret_cast<SaberMessage*>(context);
+  assert(reply_message);
+  std::shared_ptr<SaberSession> session(session_wp.lock());
+  if (session) {
+    if (!s.ok()) {
+      SetFailedState(reply_message);
+    }
+    reply_message->clear_extra_data();
+    LOG_DEBUG("Group %u: session(id=%llu) propose:%s", session->group_id_,
+              (unsigned long long)session->session_id_, s.ToString().c_str());
+    session->Done(std::unique_ptr<SaberMessage>(reply_message));
+  } else {
+    delete reply_message;
+  }
+}
+
+void SaberSession::SetFailedState(SaberMessage* reply_message) {
+  switch (reply_message->type()) {
+    case MT_CREATE: {
+      CreateResponse response;
+      response.set_code(RC_FAILED);
+      reply_message->set_data(response.SerializeAsString());
+      break;
+    }
+    case MT_DELETE: {
+      DeleteResponse response;
+      response.set_code(RC_FAILED);
+      reply_message->set_data(response.SerializeAsString());
+      break;
+    }
+    case MT_SETDATA: {
+      SetDataResponse response;
+      response.set_code(RC_FAILED);
+      reply_message->set_data(response.SerializeAsString());
+      break;
+    }
+    case MT_SETACL: {
+      SetACLResponse response;
+      response.set_code(RC_FAILED);
+      reply_message->set_data(response.SerializeAsString());
+      break;
+    }
+    case MT_CLOSE: {
+      CloseResponse response;
+      response.set_code(RC_FAILED);
+      reply_message->set_data(response.SerializeAsString());
+      break;
+    }
+    default: {
+      assert(false);
+      LOG_ERROR("Invalid message type.");
+      break;
+    }
   }
 }
 

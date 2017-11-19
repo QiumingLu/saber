@@ -15,7 +15,6 @@
 #include <vector>
 
 #include <skywalker/node.h>
-#include <voyager/core/bg_eventloop.h>
 
 #include "saber/proto/server.pb.h"
 #include "saber/server/data_tree.h"

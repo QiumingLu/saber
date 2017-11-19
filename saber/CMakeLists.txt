@@ -5,6 +5,7 @@ set_source_files_properties(${proto_hdrs} ${proto_srcs} PROPERTIES COMPILE_FLAGS
 install(FILES ${proto_gen_folder}/saber.pb.h DESTINATION include/saber/proto)
 
 set(Saber_SRCS ${proto_srcs})
+add_subdirectory(public)
 add_subdirectory(service)
 add_subdirectory(util)
 

@@ -198,7 +198,6 @@ void SaberDB::KillSession(uint32_t group_id, uint64_t session_id,
 
 bool SaberDB::Execute(uint32_t group_id, uint64_t instance_id,
                       const std::string& value, void* context) {
-  bool result = true;
   SaberMessage message;
   message.ParseFromString(value);
   Transaction txn;
@@ -213,9 +212,15 @@ bool SaberDB::Execute(uint32_t group_id, uint64_t instance_id,
   switch (message.type()) {
     case MT_CONNECT: {
       ConnectRequest request;
+      ConnectResponse response;
       request.ParseFromString(message.data());
-      result = CreateSession(group_id, request.session_id(), instance_id,
-                             request.version());
+      if (!CreateSession(group_id, request.session_id(), instance_id,
+                         request.version())) {
+        response.set_code(RC_UNKNOWN);
+      }
+      if (reply_message) {
+        reply_message->set_data(response.SerializeAsString());
+      }
       break;
     }
     case MT_CLOSE: {
@@ -275,7 +280,7 @@ bool SaberDB::Execute(uint32_t group_id, uint64_t instance_id,
     }
   }
   MaybeMakeCheckpoint(group_id, instance_id);
-  return result;
+  return true;
 }
 
 void SaberDB::MaybeMakeCheckpoint(uint32_t group_id, uint64_t instance_id) {

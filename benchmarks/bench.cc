@@ -35,14 +35,16 @@ class Client {
                 const CreateResponse& response) {
     if (response.code() == RC_OK || response.code() == RC_NODE_EXISTS) {
       printf("create successful, begin to test!\n");
-      loop_->RunInLoop(std::bind(&Client::SetData, this));
+      g_latch->CountDown();
     } else {
       printf("create failed!\n");
       exit(0);
     }
   }
 
-  void GetData() {
+  void GetData() { loop_->RunInLoop(std::bind(&Client::GetDataInLoop, this)); }
+
+  void GetDataInLoop() {
     start_ = NowMicros();
     GetDataRequest request;
     request.set_path("/ls");
@@ -66,7 +68,9 @@ class Client {
     }
   }
 
-  void SetData() {
+  void SetData() { loop_->RunInLoop(std::bind(&Client::SetDataInLoop, this)); }
+
+  void SetDataInLoop() {
     start_ = NowMicros();
     SetDataRequest request;
     request.set_path("/ls");
@@ -112,7 +116,6 @@ int main(int argc, char** argv) {
     return -1;
   }
 
-  // saber::SetLogLevel(saber::LOGLEVEL_DEBUG);
   saber::SetLogHandler(nullptr);
   saber::ClientOptions options;
   options.root = "/ls";
@@ -129,6 +132,15 @@ int main(int argc, char** argv) {
     clients.push_back(std::unique_ptr<saber::Client>(
         new saber::Client(threads[i].Loop(), options, times)));
     clients[i]->Start();
+  }
+
+  g_latch->Wait();
+  delete g_latch;
+
+  g_latch = new saber::CountDownLatch(c);
+
+  for (int i = 0; i < c; ++i) {
+    clients[i]->SetData();
   }
 
   g_latch->Wait();
