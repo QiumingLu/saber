@@ -28,6 +28,23 @@ struct ServerMessage {
 };
 
 struct ServerOptions {
+  // The saber's thread model is:
+  //  ______________________________________________
+  // | name                   |        size         |
+  // |————————————————————————————————————————————--|
+  // |                                              |
+  // | main thread            |          1          |
+  // |                                              |
+  // | runloop thread         |          1          |
+  // |                                              |
+  // | voyager thread model   |          N          |
+  // |                                              |
+  // | skywalker thread model |          N          |
+  // |                                              |
+  //  -----------------------------------------------
+  // The saber' thread size is:
+  // 7 + server_thread_size + paxos_io_thread_size + paxos_callback_thread_size
+
   // Default: 2
   uint32_t server_thread_size;
 
