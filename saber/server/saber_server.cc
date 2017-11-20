@@ -46,8 +46,9 @@ SaberServer::SaberServer(voyager::EventLoop* loop, const ServerOptions& options)
       mutexes_(options_.paxos_group_size),
       sessions_(options_.paxos_group_size),
       monitor_(options.max_all_connections, options.max_ip_connections),
-      server_(loop, voyager::SockAddr(options.my_server_message.host,
-                                      options.my_server_message.client_port),
+      server_(loop,
+              voyager::SockAddr(options.my_server_message.host,
+                                options.my_server_message.client_port),
               "SaberServer", options.server_thread_size) {
   codec_.SetMessageCallback(std::bind(&SaberServer::OnMessage, this,
                                       std::placeholders::_1,
@@ -91,10 +92,11 @@ bool SaberServer::Start() {
   group_options.machines.push_back(db_.get());
 
   skywalker::Options skywalker_options;
+  skywalker_options.io_thread_size = options_.paxos_io_thread_size;
+  skywalker_options.callback_thread_size = options_.paxos_callback_thread_size;
   skywalker_options.my.id = options_.my_server_message.id;
   skywalker_options.my.host = options_.my_server_message.host;
   skywalker_options.my.port = options_.my_server_message.paxos_port;
-  skywalker_options.io_thread_size = options_.paxos_io_thread_size;
   skywalker_options.groups.resize(options_.paxos_group_size, group_options);
 
   skywalker_options.master_cb = [this](uint32_t group_id) {

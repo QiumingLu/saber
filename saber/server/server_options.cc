@@ -12,6 +12,7 @@ ServerMessage::ServerMessage()
 ServerOptions::ServerOptions()
     : server_thread_size(2),
       paxos_io_thread_size(2),
+      paxos_callback_thread_size(1),
       paxos_group_size(10),
       tick_time(3000000),
       session_timeout(4 * tick_time),
