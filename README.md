@@ -1,4 +1,4 @@
-# Saber -- 一个高性能、高可用的分布式服务框架
+# Saber -- 一个强一致、高可用的分布式服务框架
 ## 简介
 Saber是一个分布式服务框架，主要参考了Google的Chubby和Apache的Zookeeper，在Voyager和Skywalker的基础上实现的分布式锁服务。
 <br/>
@@ -13,8 +13,9 @@ Saber是一个分布式服务框架，主要参考了Google的Chubby和Apache的
 <br/>3. **service**: Saber的事件通知机制，对外开放事件通知接口。
 <br/>4. **client**: Saber的客户端实现，对外提供数据节点的创建、删除、读写等接口。
 <br/>5. **server**:  Saber的服务端实现，对外提供服务的启动、集群的管理等接口。
-<br/>6. **main**: Saber的可执行程序实现，包括Client端和Server端。
-<br/>7. **test**: Saber的使用和测试示例。
+<br/>6. **public**: Saber的对外版本号接口。
+<br/>7. **main**: Saber的可执行程序实现，包括Client端和Server端。
+<br/>8. **test**: Saber的使用和测试示例。
 
 ## 特性
 * 同时提供Client端和Server端的实现。
