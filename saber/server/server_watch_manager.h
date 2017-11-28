@@ -6,7 +6,6 @@
 #define SABER_SERVER_SERVER_WATCH_MANAGER_H_
 
 #include <memory>
-#include <set>
 #include <string>
 #include <unordered_map>
 

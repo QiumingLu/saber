@@ -4,17 +4,9 @@
 
 #include "saber/server/saber_session.h"
 #include "saber/util/logging.h"
+#include "saber/util/macros.h"
 #include "saber/util/mutexlock.h"
 #include "saber/util/timeops.h"
-
-// The FALLTHROUGH_INTENDED macro can be used to annotate implicit fall-through
-// between switch labels. The real definition should be provided externally.
-// This one is a fallback version for unsupported compilers.
-#ifndef FALLTHROUGH_INTENDED
-#define FALLTHROUGH_INTENDED \
-  do {                       \
-  } while (0)
-#endif
 
 namespace saber {
 
@@ -139,7 +131,7 @@ void SaberSession::DoIt(std::unique_ptr<SaberMessage> message) {
         SetFailedState(message.get());
         break;
       }
-      FALLTHROUGH_INTENDED;
+      SABER_FALLTHROUGH_INTENDED;
     }
     case MT_CREATE:
     case MT_DELETE:

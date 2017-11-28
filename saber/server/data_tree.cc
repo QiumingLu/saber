@@ -31,7 +31,7 @@ uint64_t DataTree::Recover(const std::string& s, size_t index) {
     uint32_t one = voyager::DecodeFixed32(p);
     node.ParseFromArray(p + 4, static_cast<int>(one));
     if (node.children_size() > 0) {
-      std::set<std::string>& children = childrens_[node.name()];
+      std::unordered_set<std::string>& children = childrens_[node.name()];
       for (int i = 0; i < node.children_size(); ++i) {
         children.insert(node.children(i));
       }
@@ -89,7 +89,7 @@ void DataTree::Create(const CreateRequest& request, const Transaction& txn,
         child.append(seq);
         path.append(seq);
       }
-      std::set<std::string>& children = childrens_[parent];
+      std::unordered_set<std::string>& children = childrens_[parent];
       if (children.find(child) == children.end()) {
         children.insert(child);
         Stat* tmp = it->second.mutable_stat();
@@ -151,7 +151,7 @@ void DataTree::Delete(const DeleteRequest& request, const Transaction& txn,
     it = nodes_.find(parent);
     if (it != nodes_.end()) {
       if (childrens_.find(parent) != childrens_.end()) {
-        std::set<std::string>& children = childrens_[parent];
+        std::unordered_set<std::string>& children = childrens_[parent];
         if (children.erase(child)) {
           Stat* tmp = it->second.mutable_stat();
           tmp->set_children_version(tmp->children_version() + 1);
@@ -291,7 +291,7 @@ void DataTree::GetChildren(const GetChildrenRequest& request, Watcher* watcher,
       response->set_code(RC_OK);
       *(response->mutable_stat()) = it->second.stat();
       if (childrens_.find(path) != childrens_.end()) {
-        const std::set<std::string>& children = childrens_[path];
+        const std::unordered_set<std::string>& children = childrens_[path];
         for (auto& i : children) {
           response->add_children(i);
         }
@@ -316,7 +316,7 @@ void DataTree::RemoveWatcher(Watcher* watcher) {
 void DataTree::KillSession(uint64_t session_id, const Transaction& txn) {
   auto it = ephemerals_.find(session_id);
   if (it != ephemerals_.end()) {
-    std::set<std::string> paths;
+    std::unordered_set<std::string> paths;
     paths.swap(it->second);
     ephemerals_.erase(it);
     DeleteRequest request;
@@ -336,29 +336,30 @@ void DataTree::KillSession(uint64_t session_id, const Transaction& txn) {
 }
 
 void DataTree::SerializeToString(std::string* s, size_t size) {
-  DataTree::SerializeToString(nodes_, childrens_, s, size);
+  SerializeToString(&nodes_, &childrens_, s, size);
 }
 
 std::unordered_map<std::string, DataNode>* DataTree::CopyNodes() const {
   return new std::unordered_map<std::string, DataNode>(nodes_);
 }
 
-std::unordered_map<std::string, std::set<std::string>>*
+std::unordered_map<std::string, std::unordered_set<std::string>>*
 DataTree::CopyChildrens() const {
-  return new std::unordered_map<std::string, std::set<std::string>>(childrens_);
+  return new std::unordered_map<std::string, std::unordered_set<std::string>>(
+      childrens_);
 }
 
 void DataTree::SerializeToString(
-    std::unordered_map<std::string, DataNode>& nodes,
-    std::unordered_map<std::string, std::set<std::string>>& childrens,
+    std::unordered_map<std::string, DataNode>* nodes,
+    std::unordered_map<std::string, std::unordered_set<std::string>>* childrens,
     std::string* s, size_t size) {
   size_t i = 0;
-  size_t all = size + 8 + 4 * nodes.size();
-  std::vector<uint32_t> v(nodes.size());
-  for (auto& it : nodes) {
+  size_t all = size + 8 + 4 * nodes->size();
+  std::vector<uint32_t> v(nodes->size());
+  for (auto& it : *nodes) {
     it.second.set_name(it.first);
-    auto children = childrens.find(it.first);
-    if (children != childrens.end()) {
+    auto children = childrens->find(it.first);
+    if (children != childrens->end()) {
       for (auto& child : children->second) {
         it.second.add_children(child);
       }
@@ -370,7 +371,7 @@ void DataTree::SerializeToString(
   i = 0;
   s->reserve(all);
   voyager::PutFixed64(s, all - 8 - size);
-  for (auto& it : nodes) {
+  for (auto& it : *nodes) {
     voyager::PutFixed32(s, v[i++]);
     it.second.AppendToString(s);
     it.second.clear_children();

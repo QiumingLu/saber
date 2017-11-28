@@ -51,7 +51,7 @@ struct ServerOptions {
   // Default: 2
   uint32_t paxos_io_thread_size;
 
-  // Default: 1
+  // Default: 2
   uint32_t paxos_callback_thread_size;
 
   // Default: 10

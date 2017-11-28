@@ -8,9 +8,9 @@
 #include <atomic>
 #include <memory>
 #include <random>
-#include <set>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -96,7 +96,8 @@ class SaberDB : public skywalker::StateMachine, public skywalker::Checkpoint {
   void MakeCheckpoint(
       uint32_t group_id, uint64_t instance_id,
       std::unordered_map<std::string, DataNode>* nodes,
-      std::unordered_map<std::string, std::set<std::string>>* childrens,
+      std::unordered_map<std::string, std::unordered_set<std::string>>*
+          childrens,
       std::unordered_map<uint64_t, uint64_t>* sessions);
   void CleanCheckpoint(uint32_t group_id);
 

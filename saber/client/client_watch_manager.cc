@@ -4,7 +4,6 @@
 
 #include "saber/client/client_watch_manager.h"
 
-#include <set>
 #include <utility>
 
 #include "saber/util/logging.h"
@@ -19,7 +18,7 @@ void ClientWatchManager::AddDataWatch(const std::string& path,
                                       Watcher* watcher) {
   auto it = data_watches_.find(path);
   if (it == data_watches_.end()) {
-    WatcherSetPtr watches(new std::set<Watcher*>());
+    WatcherSetPtr watches(new WatcherSet());
     watches->insert(watcher);
     data_watches_.insert(std::make_pair(path, std::move(watches)));
   } else {
@@ -31,7 +30,7 @@ void ClientWatchManager::AddExistsWatch(const std::string& path,
                                         Watcher* watcher) {
   auto it = exists_watches_.find(path);
   if (it == exists_watches_.end()) {
-    WatcherSetPtr watches(new std::set<Watcher*>());
+    WatcherSetPtr watches(new WatcherSet());
     watches->insert(watcher);
     exists_watches_.insert(std::make_pair(path, std::move(watches)));
   } else {
@@ -43,7 +42,7 @@ void ClientWatchManager::AddChildWatch(const std::string& path,
                                        Watcher* watcher) {
   auto it = child_watches_.find(path);
   if (it == child_watches_.end()) {
-    WatcherSetPtr watches(new std::set<Watcher*>());
+    WatcherSetPtr watches(new WatcherSet());
     watches->insert(watcher);
     child_watches_.insert(std::make_pair(path, std::move(watches)));
   } else {
@@ -55,7 +54,7 @@ WatcherSetPtr ClientWatchManager::Trigger(const WatchedEvent& event) {
   WatcherSetPtr result;
   switch (event.type()) {
     case ET_NONE: {
-      result.reset(new std::set<Watcher*>());
+      result.reset(new WatcherSet());
       if (watcher_) {
         result->insert(watcher_);
       }

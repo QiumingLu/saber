@@ -20,7 +20,7 @@ void ServerWatchManager::AddWatcher(const std::string& path, Watcher* watcher) {
   if (i != path_to_watches_.end()) {
     i->second->insert(watcher);
   } else {
-    WatcherSetPtr watches(new std::set<Watcher*>());
+    WatcherSetPtr watches(new WatcherSet());
     watches->insert(watcher);
     path_to_watches_.insert(std::make_pair(path, std::move(watches)));
   }
@@ -29,7 +29,7 @@ void ServerWatchManager::AddWatcher(const std::string& path, Watcher* watcher) {
   if (j != watch_to_paths_.end()) {
     j->second->insert(path);
   } else {
-    PathSetPtr paths(new std::set<std::string>());
+    PathSetPtr paths(new PathSet());
     paths->insert(path);
     watch_to_paths_.insert(std::make_pair(watcher, std::move(paths)));
   }

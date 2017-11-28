@@ -6,9 +6,9 @@
 #define SABER_SERVER_DATA_TREE_H_
 
 #include <memory>
-#include <set>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 
 #include "saber/proto/saber.pb.h"
 #include "saber/proto/server.pb.h"
@@ -63,21 +63,23 @@ class DataTree {
   // Copy all the childrens
   // No thread safe
   // Caller should delete the return value when it's no longer needed.
-  std::unordered_map<std::string, std::set<std::string>>* CopyChildrens() const;
+  std::unordered_map<std::string, std::unordered_set<std::string>>*
+  CopyChildrens() const;
 
   // Serialize all nodes, and append the result to the *s.
   // Thread safe
   static void SerializeToString(
-      std::unordered_map<std::string, DataNode>& nodes,
-      std::unordered_map<std::string, std::set<std::string>>& children,
+      std::unordered_map<std::string, DataNode>* nodes,
+      std::unordered_map<std::string, std::unordered_set<std::string>>*
+          childrens,
       std::string* s, size_t size);
 
  private:
   Mutex mutex_;
   std::unordered_map<std::string, DataNode> nodes_;
-  std::unordered_map<std::string, std::set<std::string>> childrens_;
+  std::unordered_map<std::string, std::unordered_set<std::string>> childrens_;
 
-  std::unordered_map<uint64_t, std::set<std::string>> ephemerals_;
+  std::unordered_map<uint64_t, std::unordered_set<std::string>> ephemerals_;
 
   ServerWatchManager data_watches_;
   ServerWatchManager child_watches_;

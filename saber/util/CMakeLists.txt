@@ -7,6 +7,7 @@ set(
   crc32c.h
   hash.h
   logging.h
+  macros.h
   mutex.h
   mutexlock.h
   runloop.h

@@ -292,12 +292,9 @@ void SaberDB::MaybeMakeCheckpoint(uint32_t group_id, uint64_t instance_id) {
          (instance_id - i > interval)) &&
         LockCheckpoint(group_id)) {
       // FIXME when the data is too much, may be can use sync serialization.
-      std::unordered_map<std::string, DataNode>* nodes =
-          trees_[group_id]->CopyNodes();
-      std::unordered_map<std::string, std::set<std::string>>* childrens =
-          trees_[group_id]->CopyChildrens();
-      std::unordered_map<uint64_t, uint64_t>* sessions =
-          sessions_[group_id]->CopySessions();
+      auto nodes = trees_[group_id]->CopyNodes();
+      auto childrens = trees_[group_id]->CopyChildrens();
+      auto sessions = sessions_[group_id]->CopySessions();
 
       loop_->QueueInLoop(
           [this, group_id, instance_id, nodes, childrens, sessions]() {
@@ -317,11 +314,11 @@ void SaberDB::MaybeMakeCheckpoint(uint32_t group_id, uint64_t instance_id) {
 void SaberDB::MakeCheckpoint(
     uint32_t group_id, uint64_t instance_id,
     std::unordered_map<std::string, DataNode>* nodes,
-    std::unordered_map<std::string, std::set<std::string>>* childrens,
+    std::unordered_map<std::string, std::unordered_set<std::string>>* childrens,
     std::unordered_map<uint64_t, uint64_t>* sessions) {
   std::string s;
   voyager::PutFixed64(&s, instance_id);
-  DataTree::SerializeToString(*nodes, *childrens, &s,
+  DataTree::SerializeToString(nodes, childrens, &s,
                               12 + 8 + 16 * sessions->size());
   SessionManager::SerializeToString(*sessions, &s);
   voyager::PutFixed32(&s, crc::crc32(0, s.c_str(), s.size()));
