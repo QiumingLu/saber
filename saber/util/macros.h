@@ -1,4 +1,3 @@
-
 // Copyright (c) 2017 Mirants Lu. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
@@ -16,6 +15,12 @@
 #if defined(__clang__) && defined(LANG_CXX11) && defined(__has_warning)
 #if __has_feature(cxx_attributes) && __has_warning("-Wimplicit-fallthrough")
 #define SABER_FALLTHROUGH_INTENDED [[clang::fallthrough]]  // NOLINT
+#endif
+#endif
+
+#if defined(__GNUC__)
+#if __GNUC__ >= 7
+#define SABER_FALLTHROUGH_INTENDED [[fallthrough]]
 #endif
 #endif
 

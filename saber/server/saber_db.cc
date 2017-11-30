@@ -9,8 +9,8 @@
 #include <algorithm>
 
 #include <skywalker/file.h>
-#include <voyager/util/coding.h>
 
+#include "saber/util/coding.h"
 #include "saber/util/crc32c.h"
 #include "saber/util/logging.h"
 #include "saber/util/timeops.h"
@@ -24,20 +24,25 @@ static const char* kCheckpoint = "CHECKPOINT-";
 SaberDB::SaberDB(RunLoop* loop, const ServerOptions& options)
     : kKeepCheckpointCount(options.keep_checkpoint_count),
       kMakeCheckpointInterval(options.make_checkpoint_interval),
+      kAsyncSerializeCheckpointData(options.async_serialize_checkpoint_data),
       lock_(false),
       doing_(false),
       checkpoint_storage_path_(options.checkpoint_storage_path),
       checkpoint_id_(options.paxos_group_size, UINTMAX_MAX),
       files_(options.paxos_group_size),
+      next_interval_(options.paxos_group_size),
       generator_((unsigned)NowMillis()),
       distribution_(1, kMakeCheckpointInterval / 2),
       loop_(loop) {
   if (checkpoint_storage_path_[checkpoint_storage_path_.size() - 1] != '/') {
     checkpoint_storage_path_.push_back('/');
   }
+  trees_.reserve(options.paxos_group_size);
+  sessions_.reserve(options.paxos_group_size);
   for (uint32_t i = 0; i < options.paxos_group_size; ++i) {
     trees_.push_back(std::unique_ptr<DataTree>(new DataTree()));
     sessions_.push_back(std::unique_ptr<SessionManager>(new SessionManager()));
+    next_interval_[i] = kMakeCheckpointInterval / 2 + distribution_(generator_);
   }
 }
 
@@ -72,7 +77,7 @@ bool SaberDB::Recover() {
       std::string fname = FileName(i, files_[i].back());
       ReadFileToString(skywalker::FileManager::Instance(), fname, &s);
       if (Checksum(&s)) {
-        uint64_t instance_id = voyager::DecodeFixed64(s.c_str());
+        uint64_t instance_id = DecodeFixed64(s.c_str());
         if (files_[i].back() != instance_id) {
           if (std::find(files_[i].begin(), files_[i].end(), instance_id) ==
               files_[i].end()) {
@@ -101,7 +106,7 @@ bool SaberDB::Recover() {
 bool SaberDB::Checksum(std::string* s) const {
   assert(s->size() > 4);
   if (s->size() > 4) {
-    uint32_t c = voyager::DecodeFixed32(s->c_str() + s->size() - 4);
+    uint32_t c = DecodeFixed32(s->c_str() + s->size() - 4);
     if (c == crc::crc32(0, s->c_str(), s->size() - 4)) {
       s->erase(s->size() - 4);
       return true;
@@ -121,12 +126,12 @@ void SaberDB::DeleteFile(const std::string& fname) const {
 }
 
 void SaberDB::Create(uint32_t group_id, const CreateRequest& request,
-                     const Transaction& txn, CreateResponse* response) const {
+                     const Transaction* txn, CreateResponse* response) const {
   trees_[group_id]->Create(request, txn, response);
 }
 
 void SaberDB::Delete(uint32_t group_id, const DeleteRequest& request,
-                     const Transaction& txn, DeleteResponse* response) const {
+                     const Transaction* txn, DeleteResponse* response) const {
   trees_[group_id]->Delete(request, txn, response);
 }
 
@@ -141,7 +146,7 @@ void SaberDB::GetData(uint32_t group_id, const GetDataRequest& request,
 }
 
 void SaberDB::SetData(uint32_t group_id, const SetDataRequest& request,
-                      const Transaction& txn, SetDataResponse* response) const {
+                      const Transaction* txn, SetDataResponse* response) const {
   trees_[group_id]->SetData(request, txn, response);
 }
 
@@ -151,7 +156,7 @@ void SaberDB::GetACL(uint32_t group_id, const GetACLRequest& request,
 }
 
 void SaberDB::SetACL(uint32_t group_id, const SetACLRequest& request,
-                     const Transaction& txn, SetACLResponse* response) const {
+                     const Transaction* txn, SetACLResponse* response) const {
   trees_[group_id]->SetACL(request, txn, response);
 }
 
@@ -159,6 +164,26 @@ void SaberDB::GetChildren(uint32_t group_id, const GetChildrenRequest& request,
                           Watcher* watcher,
                           GetChildrenResponse* response) const {
   trees_[group_id]->GetChildren(request, watcher, response);
+}
+
+void SaberDB::CheckCreate(uint32_t group_id, const CreateRequest& request,
+                          CreateResponse* response) const {
+  trees_[group_id]->Create(request, nullptr, response, true);
+}
+
+void SaberDB::CheckDelete(uint32_t group_id, const DeleteRequest& request,
+                          DeleteResponse* response) const {
+  trees_[group_id]->Delete(request, nullptr, response, true);
+}
+
+void SaberDB::CheckSetData(uint32_t group_id, const SetDataRequest& request,
+                           SetDataResponse* response) const {
+  trees_[group_id]->SetData(request, nullptr, response, true);
+}
+
+void SaberDB::CheckSetACL(uint32_t group_id, const SetACLRequest& request,
+                          SetACLResponse* response) const {
+  trees_[group_id]->SetACL(request, nullptr, response, true);
 }
 
 void SaberDB::RemoveWatcher(uint32_t group_id, Watcher* watcher) const {
@@ -192,7 +217,7 @@ bool SaberDB::CloseSession(uint32_t group_id, uint64_t session_id,
 }
 
 void SaberDB::KillSession(uint32_t group_id, uint64_t session_id,
-                          const Transaction& txn) const {
+                          const Transaction* txn) const {
   trees_[group_id]->KillSession(session_id, txn);
 }
 
@@ -228,7 +253,7 @@ bool SaberDB::Execute(uint32_t group_id, uint64_t instance_id,
       request.ParseFromString(message.data());
       for (int i = 0; i < request.session_id_size(); ++i) {
         if (CloseSession(group_id, request.session_id(i), request.version(i))) {
-          KillSession(group_id, request.session_id(i), txn);
+          KillSession(group_id, request.session_id(i), &txn);
         }
       }
       break;
@@ -237,7 +262,7 @@ bool SaberDB::Execute(uint32_t group_id, uint64_t instance_id,
       CreateRequest request;
       CreateResponse response;
       request.ParseFromString(message.data());
-      Create(group_id, request, txn, &response);
+      Create(group_id, request, &txn, &response);
       if (reply_message) {
         reply_message->set_data(response.SerializeAsString());
       }
@@ -247,7 +272,7 @@ bool SaberDB::Execute(uint32_t group_id, uint64_t instance_id,
       DeleteRequest request;
       DeleteResponse response;
       request.ParseFromString(message.data());
-      Delete(group_id, request, txn, &response);
+      Delete(group_id, request, &txn, &response);
       if (reply_message) {
         reply_message->set_data(response.SerializeAsString());
       }
@@ -257,7 +282,7 @@ bool SaberDB::Execute(uint32_t group_id, uint64_t instance_id,
       SetDataRequest request;
       SetDataResponse response;
       request.ParseFromString(message.data());
-      SetData(group_id, request, txn, &response);
+      SetData(group_id, request, &txn, &response);
       if (reply_message) {
         reply_message->set_data(response.SerializeAsString());
       }
@@ -267,7 +292,7 @@ bool SaberDB::Execute(uint32_t group_id, uint64_t instance_id,
       SetACLRequest request;
       SetACLResponse response;
       request.ParseFromString(message.data());
-      SetACL(group_id, request, txn, &response);
+      SetACL(group_id, request, &txn, &response);
       if (reply_message) {
         reply_message->set_data(response.SerializeAsString());
       }
@@ -287,24 +312,38 @@ void SaberDB::MaybeMakeCheckpoint(uint32_t group_id, uint64_t instance_id) {
   bool expected = false;
   if (doing_.compare_exchange_strong(expected, true)) {
     uint64_t i = GetCheckpointInstanceId(group_id);
-    uint32_t interval = kMakeCheckpointInterval / 2 + distribution_(generator_);
-    if (((i == UINTMAX_MAX && instance_id > interval) ||
-         (instance_id - i > interval)) &&
+    if (((i == UINTMAX_MAX && instance_id > next_interval_[group_id]) ||
+         (instance_id - i > next_interval_[group_id])) &&
         LockCheckpoint(group_id)) {
-      // FIXME when the data is too much, may be can use sync serialization.
-      auto nodes = trees_[group_id]->CopyNodes();
-      auto childrens = trees_[group_id]->CopyChildrens();
-      auto sessions = sessions_[group_id]->CopySessions();
-
-      loop_->QueueInLoop(
-          [this, group_id, instance_id, nodes, childrens, sessions]() {
-            MakeCheckpoint(group_id, instance_id, nodes, childrens, sessions);
-            UnLockCheckpoint(group_id);
-            delete sessions;
-            delete childrens;
-            delete nodes;
-            doing_ = false;
-          });
+      if (kAsyncSerializeCheckpointData) {
+        auto nodes = trees_[group_id]->CopyNodes();
+        auto childrens = trees_[group_id]->CopyChildrens();
+        auto sessions = sessions_[group_id]->CopySessions();
+        loop_->QueueInLoop(
+            [this, group_id, instance_id, nodes, childrens, sessions]() {
+              MakeCheckpoint(group_id, instance_id, nodes, childrens, sessions);
+              UnLockCheckpoint(group_id);
+              delete sessions;
+              delete childrens;
+              delete nodes;
+              doing_ = false;
+            });
+      } else {
+        size_t size = 1024 * (trees_[group_id]->NodeSize()) +
+                      20 * (sessions_[group_id]->SessionSize());
+        std::string* s = new std::string();
+        s->reserve(size);
+        PutFixed64(s, instance_id);
+        trees_[group_id]->SerializeToString(s);
+        sessions_[group_id]->SerializeToString(s);
+        PutFixed32(s, crc::crc32(0, s->c_str(), s->size()));
+        loop_->QueueInLoop([this, group_id, instance_id, s]() {
+          MakeCheckpoint(group_id, instance_id, *s);
+          UnLockCheckpoint(group_id);
+          delete s;
+          doing_ = false;
+        });
+      }
     } else {
       doing_ = false;
     }
@@ -316,12 +355,18 @@ void SaberDB::MakeCheckpoint(
     std::unordered_map<std::string, DataNode>* nodes,
     std::unordered_map<std::string, std::unordered_set<std::string>>* childrens,
     std::unordered_map<uint64_t, uint64_t>* sessions) {
+  size_t size = 1024 * nodes->size() + 20 * sessions->size();
   std::string s;
-  voyager::PutFixed64(&s, instance_id);
-  DataTree::SerializeToString(nodes, childrens, &s,
-                              12 + 8 + 16 * sessions->size());
+  s.reserve(size);
+  PutFixed64(&s, instance_id);
+  DataTree::SerializeToString(*nodes, *childrens, &s);
   SessionManager::SerializeToString(*sessions, &s);
-  voyager::PutFixed32(&s, crc::crc32(0, s.c_str(), s.size()));
+  PutFixed32(&s, crc::crc32(0, s.c_str(), s.size()));
+  MakeCheckpoint(group_id, instance_id, s);
+}
+
+void SaberDB::MakeCheckpoint(uint32_t group_id, uint64_t instance_id,
+                             const std::string& s) {
   std::string fname = FileName(group_id, instance_id);
   skywalker::Status status = skywalker::WriteStringToFileSync(
       skywalker::FileManager::Instance(), s, fname);
@@ -335,6 +380,8 @@ void SaberDB::MakeCheckpoint(
     LOG_INFO("Group %u: make checkpoint failed.", group_id);
     DeleteFile(fname);
   }
+  next_interval_[group_id] =
+      kMakeCheckpointInterval / 2 + distribution_(generator_);
 }
 
 void SaberDB::CleanCheckpoint(uint32_t group_id) {

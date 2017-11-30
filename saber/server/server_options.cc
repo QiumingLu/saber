@@ -22,6 +22,7 @@ ServerOptions::ServerOptions()
       keep_log_count(1000000),
       log_sync_interval(10),
       keep_checkpoint_count(3),
-      make_checkpoint_interval(200000) {}
+      make_checkpoint_interval(200000),
+      async_serialize_checkpoint_data(true) {}
 
 }  // namespace saber

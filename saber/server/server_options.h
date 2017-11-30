@@ -84,6 +84,9 @@ struct ServerOptions {
   // Default: 200000
   uint32_t make_checkpoint_interval;
 
+  // Default: true
+  bool async_serialize_checkpoint_data;
+
   // Default: ""
   std::string log_storage_path;
 

@@ -29,6 +29,9 @@ class SessionManager {
 
   bool CloseSession(uint64_t session_id, uint64_t version);
 
+  // No thread safe
+  size_t SessionSize() const { return sessions_.size(); }
+
   // Serialize all sessions, and append the result to the *s;
   // No thread safe
   void SerializeToString(std::string* s) const;

@@ -7,50 +7,63 @@
 #include <utility>
 #include <vector>
 
-#include <voyager/util/coding.h>
-
+#include "saber/util/coding.h"
 #include "saber/util/logging.h"
 #include "saber/util/mutexlock.h"
 
 namespace saber {
+
+static inline void AppendToString(std::string* s, size_t value) {
+  PutFixed32(s, static_cast<uint32_t>(value));
+}
 
 DataTree::DataTree() { nodes_.insert(std::make_pair("", DataNode())); }
 
 DataTree::~DataTree() {}
 
 uint64_t DataTree::Recover(const std::string& s, size_t index) {
-  const char* p = s.c_str();
-  p += index;
-  uint64_t size = voyager::DecodeFixed64(p);
-  p += 8;
-  index += 8;
-  uint64_t all = index + size;
-  assert(all <= s.size());
-  DataNode node;
-  while (index < all) {
-    uint32_t one = voyager::DecodeFixed32(p);
-    node.ParseFromArray(p + 4, static_cast<int>(one));
-    if (node.children_size() > 0) {
-      std::unordered_set<std::string>& children = childrens_[node.name()];
-      for (int i = 0; i < node.children_size(); ++i) {
-        children.insert(node.children(i));
+  const char* base = s.c_str();
+  const char* p = base + index;
+
+  uint32_t size = DecodeFixed32(p);
+  p += 4;
+
+  for (uint32_t i = 0; i < size; ++i) {
+    uint32_t len = DecodeFixed32(p);
+    p += 4;
+    std::string name(p, len);
+    p += len;
+
+    DataNode& node = nodes_[name];
+
+    len = DecodeFixed32(p);
+    p += 4;
+    node.ParseFromArray(p, len);
+    p += len;
+
+    len = DecodeFixed32(p);
+    p += 4;
+
+    if (len > 0) {
+      std::unordered_set<std::string>& children = childrens_[name];
+      for (uint32_t idx = 0; idx < len; ++idx) {
+        uint32_t temp = DecodeFixed32(p);
+        p += 4;
+        children.insert(std::string(p, temp));
+        p += temp;
       }
-      node.clear_children();
     }
+
     if (node.stat().ephemeral_id() != 0) {
-      ephemerals_[node.stat().ephemeral_id()].insert(node.name());
+      ephemerals_[node.stat().ephemeral_id()].insert(name);
     }
-    nodes_[node.name()].Swap(&node);
-    nodes_[node.name()].clear_name();
-    p = p + 4 + one;
-    index = index + 4 + one;
   }
-  assert(index == all);
-  return index;
+
+  return (p - base);
 }
 
-void DataTree::Create(const CreateRequest& request, const Transaction& txn,
-                      CreateResponse* response) {
+void DataTree::Create(const CreateRequest& request, const Transaction* txn,
+                      CreateResponse* response, bool only_check) {
   std::string path = request.path();
   size_t found = path.find_last_of('/');
   std::string parent = path.substr(0, found);
@@ -62,64 +75,75 @@ void DataTree::Create(const CreateRequest& request, const Transaction& txn,
     return;
   }
 
-  DataNode node;
-  Stat* stat = node.mutable_stat();
-  stat->set_group_id(txn.group_id());
-  stat->set_created_id(txn.instance_id());
-  stat->set_modified_id(txn.instance_id());
-  stat->set_created_time(txn.time());
-  stat->set_modified_time(txn.time());
-  stat->set_version(0);
-  stat->set_children_version(0);
-  stat->set_acl_version(0);
-  stat->set_data_len(static_cast<uint32_t>(request.data().size()));
-  stat->set_children_num(0);
-  stat->set_children_id(txn.instance_id());
-  node.set_data(request.data());
-  *(node.mutable_acl()) = request.acl();
   {
     MutexLock lock(&mutex_);
     auto it = nodes_.find(parent);
-    if (it != nodes_.end()) {
-      if (request.type() == NT_PERSISTENT_SEQUENTIAL ||
-          request.type() == NT_EPHEMERAL_SEQUENTIAL) {
+    if (it == nodes_.end()) {
+      response->set_code(RC_NO_PARENT);
+      return;
+    }
+
+    // TODO
+    if (!CheckACL(it->second, kCreate, nullptr)) {
+      response->set_code(RC_NO_AUTH);
+      return;
+    }
+    bool b = false;
+    if (request.type() == NT_PERSISTENT_SEQUENTIAL ||
+        request.type() == NT_EPHEMERAL_SEQUENTIAL) {
+      b = true;
+      if (!only_check) {
         char seq[16];
         snprintf(seq, sizeof(seq), "_%010d",
                  it->second.stat().children_version() + 1);
         child.append(seq);
         path.append(seq);
       }
-      std::unordered_set<std::string>& children = childrens_[parent];
-      if (children.find(child) == children.end()) {
-        children.insert(child);
-        Stat* tmp = it->second.mutable_stat();
-        tmp->set_children_version(tmp->children_version() + 1);
-        tmp->set_children_num(static_cast<uint32_t>(children.size()));
-        tmp->set_children_id(txn.instance_id());
-        nodes_[path].Swap(&node);
-        response->set_code(RC_OK);
-        response->set_path(path);
-      } else {
-        response->set_code(RC_NODE_EXISTS);
-      }
+    }
+    std::unordered_set<std::string>& children = childrens_[parent];
+    if (!b && children.find(child) != children.end()) {
+      response->set_code(RC_NODE_EXISTS);
+    } else if (only_check) {
+      response->set_code(RC_OK);
     } else {
-      response->set_code(RC_NO_PARENT);
+      children.insert(child);
+      Stat* tmp = it->second.mutable_stat();
+      tmp->set_children_version(tmp->children_version() + 1);
+      tmp->set_children_num(static_cast<uint32_t>(children.size()));
+      tmp->set_children_id(txn->instance_id());
+      DataNode& node = nodes_[path];
+      Stat* stat = node.mutable_stat();
+      stat->set_group_id(txn->group_id());
+      stat->set_created_id(txn->instance_id());
+      stat->set_modified_id(txn->instance_id());
+      stat->set_created_time(txn->time());
+      stat->set_modified_time(txn->time());
+      stat->set_version(0);
+      stat->set_children_version(0);
+      stat->set_acl_version(0);
+      stat->set_data_len(static_cast<uint32_t>(request.data().size()));
+      stat->set_children_num(0);
+      stat->set_children_id(txn->instance_id());
+      node.set_data(request.data());
+      *(node.mutable_acl()) = request.acl();
+      if (request.type() == NT_EPHEMERAL ||
+          request.type() == NT_EPHEMERAL_SEQUENTIAL) {
+        stat->set_ephemeral_id(txn->session_id());
+        ephemerals_[stat->ephemeral_id()].insert(path);
+      }
+      response->set_code(RC_OK);
+      response->set_path(path);
     }
   }
-  if (response->code() == RC_OK) {
-    if (request.type() == NT_EPHEMERAL ||
-        request.type() == NT_EPHEMERAL_SEQUENTIAL) {
-      stat->set_ephemeral_id(txn.session_id());
-      ephemerals_[stat->ephemeral_id()].insert(path);
-    }
+  if (!only_check && response->code() == RC_OK) {
     data_watches_.TriggerWatcher(path, ET_NODE_CREATED);
     child_watches_.TriggerWatcher(parent.empty() ? "/" : parent,
                                   ET_NODE_CHILDREN_CHANGED);
   }
 }
 
-void DataTree::Delete(const DeleteRequest& request, const Transaction& txn,
-                      DeleteResponse* response) {
+void DataTree::Delete(const DeleteRequest& request, const Transaction* txn,
+                      DeleteResponse* response, bool only_check) {
   const std::string& path = request.path();
   size_t found = path.find_last_of('/');
   std::string parent = path.substr(0, found);
@@ -138,6 +162,17 @@ void DataTree::Delete(const DeleteRequest& request, const Transaction& txn,
       return;
     }
 
+    auto p_it = nodes_.find(parent);
+    // TODO
+    if (p_it != nodes_.end() && !CheckACL(p_it->second, kDelete, nullptr)) {
+      response->set_code(RC_NO_AUTH);
+      return;
+    }
+    if (only_check) {
+      response->set_code(RC_OK);
+      return;
+    }
+
     if (it->second.stat().ephemeral_id() != 0) {
       auto e = ephemerals_.find(it->second.stat().ephemeral_id());
       if (e != ephemerals_.end()) {
@@ -148,15 +183,14 @@ void DataTree::Delete(const DeleteRequest& request, const Transaction& txn,
       }
     }
     nodes_.erase(it);
-    it = nodes_.find(parent);
-    if (it != nodes_.end()) {
+    if (p_it != nodes_.end()) {
       if (childrens_.find(parent) != childrens_.end()) {
         std::unordered_set<std::string>& children = childrens_[parent];
         if (children.erase(child)) {
-          Stat* tmp = it->second.mutable_stat();
+          Stat* tmp = p_it->second.mutable_stat();
           tmp->set_children_version(tmp->children_version() + 1);
           tmp->set_children_num(static_cast<uint32_t>(children.size()));
-          tmp->set_children_id(txn.instance_id());
+          tmp->set_children_id(txn->instance_id());
         }
         if (children.empty()) {
           childrens_.erase(parent);
@@ -199,9 +233,14 @@ void DataTree::GetData(const GetDataRequest& request, Watcher* watcher,
     MutexLock lock(&mutex_);
     auto it = nodes_.find(path);
     if (it != nodes_.end()) {
-      response->set_code(RC_OK);
-      response->set_data(it->second.data());
-      *(response->mutable_stat()) = it->second.stat();
+      // TODO
+      if (CheckACL(it->second, kRead, nullptr)) {
+        response->set_code(RC_OK);
+        response->set_data(it->second.data());
+        *(response->mutable_stat()) = it->second.stat();
+      } else {
+        response->set_code(RC_NO_AUTH);
+      }
     } else {
       response->set_code(RC_NO_NODE);
     }
@@ -214,8 +253,8 @@ void DataTree::GetData(const GetDataRequest& request, Watcher* watcher,
   }
 }
 
-void DataTree::SetData(const SetDataRequest& request, const Transaction& txn,
-                       SetDataResponse* response) {
+void DataTree::SetData(const SetDataRequest& request, const Transaction* txn,
+                       SetDataResponse* response, bool only_check) {
   const std::string& path = request.path();
   const std::string& data = request.data();
 
@@ -226,10 +265,14 @@ void DataTree::SetData(const SetDataRequest& request, const Transaction& txn,
       int version = it->second.stat().version();
       if (request.version() != -1 && request.version() != version) {
         response->set_code(RC_BAD_VERSION);
+      } else if (!CheckACL(it->second, kWrite, nullptr)) {
+        response->set_code(RC_NO_AUTH);
+      } else if (only_check) {
+        response->set_code(RC_OK);
       } else {
         Stat* stat = it->second.mutable_stat();
-        stat->set_modified_id(txn.instance_id());
-        stat->set_modified_time(txn.time());
+        stat->set_modified_id(txn->instance_id());
+        stat->set_modified_time(txn->time());
         stat->set_version(version + 1);
         stat->set_data_len(static_cast<int>(data.size()));
         it->second.set_data(data);
@@ -241,7 +284,7 @@ void DataTree::SetData(const SetDataRequest& request, const Transaction& txn,
     }
   }
 
-  if (response->code() == RC_OK) {
+  if (!only_check && response->code() == RC_OK) {
     data_watches_.TriggerWatcher(path, ET_NODE_DATA_CHANGED);
   }
 }
@@ -259,8 +302,8 @@ void DataTree::GetACL(const GetACLRequest& request, GetACLResponse* response) {
   }
 }
 
-void DataTree::SetACL(const SetACLRequest& request, const Transaction& txn,
-                      SetACLResponse* response) {
+void DataTree::SetACL(const SetACLRequest& request, const Transaction* txn,
+                      SetACLResponse* response, bool only_check) {
   const std::string& path = request.path();
 
   MutexLock lock(&mutex_);
@@ -269,6 +312,10 @@ void DataTree::SetACL(const SetACLRequest& request, const Transaction& txn,
     int version = it->second.stat().acl_version();
     if (request.version() != -1 && request.version() != version) {
       response->set_code(RC_BAD_VERSION);
+    } else if (!CheckACL(it->second, kAdmin, nullptr)) {
+      response->set_code(RC_NO_AUTH);
+    } else if (only_check) {
+      response->set_code(RC_OK);
     } else {
       *(it->second.mutable_acl()) = request.acl();
       it->second.mutable_stat()->set_acl_version(version + 1);
@@ -288,13 +335,18 @@ void DataTree::GetChildren(const GetChildrenRequest& request, Watcher* watcher,
     MutexLock lock(&mutex_);
     auto it = nodes_.find(path);
     if (it != nodes_.end()) {
-      response->set_code(RC_OK);
-      *(response->mutable_stat()) = it->second.stat();
-      if (childrens_.find(path) != childrens_.end()) {
-        const std::unordered_set<std::string>& children = childrens_[path];
-        for (auto& i : children) {
-          response->add_children(i);
+      // TODO
+      if (CheckACL(it->second, kRead, nullptr)) {
+        response->set_code(RC_OK);
+        *(response->mutable_stat()) = it->second.stat();
+        if (childrens_.find(path) != childrens_.end()) {
+          const std::unordered_set<std::string>& children = childrens_[path];
+          for (auto& i : children) {
+            response->add_children(i);
+          }
         }
+      } else {
+        response->set_code(RC_NO_AUTH);
       }
     } else {
       response->set_code(RC_NO_NODE);
@@ -308,12 +360,37 @@ void DataTree::GetChildren(const GetChildrenRequest& request, Watcher* watcher,
   }
 }
 
+// TODO
+bool DataTree::CheckACL(const DataNode& node, Permissions perm,
+                        const std::vector<Id>* ids) {
+  if (kSkipACL) {
+    return true;
+  }
+  if (node.acl_size() == 0) {
+    return true;
+  }
+  for (auto& id : *ids) {
+    if (id.scheme() == "super") {
+      return true;
+    }
+  }
+  for (int i = 0; i < node.acl_size(); ++i) {
+    const ACL& a = node.acl(i);
+    if ((a.perms() & perm) != 0) {
+      if (a.id().scheme() == "world" && a.id().id() == "anyone") {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 void DataTree::RemoveWatcher(Watcher* watcher) {
   data_watches_.RemoveWatcher(watcher);
   child_watches_.RemoveWatcher(watcher);
 }
 
-void DataTree::KillSession(uint64_t session_id, const Transaction& txn) {
+void DataTree::KillSession(uint64_t session_id, const Transaction* txn) {
   auto it = ephemerals_.find(session_id);
   if (it != ephemerals_.end()) {
     std::unordered_set<std::string> paths;
@@ -335,8 +412,8 @@ void DataTree::KillSession(uint64_t session_id, const Transaction& txn) {
   }
 }
 
-void DataTree::SerializeToString(std::string* s, size_t size) {
-  SerializeToString(&nodes_, &childrens_, s, size);
+void DataTree::SerializeToString(std::string* s) const {
+  SerializeToString(nodes_, childrens_, s);
 }
 
 std::unordered_map<std::string, DataNode>* DataTree::CopyNodes() const {
@@ -350,32 +427,27 @@ DataTree::CopyChildrens() const {
 }
 
 void DataTree::SerializeToString(
-    std::unordered_map<std::string, DataNode>* nodes,
-    std::unordered_map<std::string, std::unordered_set<std::string>>* childrens,
-    std::string* s, size_t size) {
-  size_t i = 0;
-  size_t all = size + 8 + 4 * nodes->size();
-  std::vector<uint32_t> v(nodes->size());
-  for (auto& it : *nodes) {
-    it.second.set_name(it.first);
-    auto children = childrens->find(it.first);
-    if (children != childrens->end()) {
-      for (auto& child : children->second) {
-        it.second.add_children(child);
-      }
-    }
-    v[i] = static_cast<uint32_t>(it.second.ByteSizeLong());
-    all += v[i];
-    ++i;
-  }
-  i = 0;
-  s->reserve(all);
-  voyager::PutFixed64(s, all - 8 - size);
-  for (auto& it : *nodes) {
-    voyager::PutFixed32(s, v[i++]);
+    const std::unordered_map<std::string, DataNode>& nodes,
+    const std::unordered_map<std::string, std::unordered_set<std::string>>&
+        childrens,
+    std::string* s) {
+  AppendToString(s, nodes.size());
+  for (auto& it : nodes) {
+    AppendToString(s, it.first.size());
+    s->append(it.first);
+    AppendToString(s, it.second.ByteSizeLong());
     it.second.AppendToString(s);
-    it.second.clear_children();
-    it.second.clear_name();
+    auto iter = childrens.find(it.first);
+    if (iter != childrens.end()) {
+      const std::unordered_set<std::string>& children = iter->second;
+      AppendToString(s, children.size());
+      for (auto& child : children) {
+        AppendToString(s, child.size());
+        s->append(child);
+      }
+    } else {
+      AppendToString(s, 0);
+    }
   }
 }
 

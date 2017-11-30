@@ -13,6 +13,7 @@
 #include "saber/proto/saber.pb.h"
 #include "saber/proto/server.pb.h"
 #include "saber/server/server_watch_manager.h"
+#include "saber/service/acl.h"
 #include "saber/util/mutex.h"
 
 namespace saber {
@@ -24,11 +25,11 @@ class DataTree {
 
   uint64_t Recover(const std::string& s, size_t index);
 
-  void Create(const CreateRequest& request, const Transaction& txn,
-              CreateResponse* response);
+  void Create(const CreateRequest& request, const Transaction* txn,
+              CreateResponse* response, bool only_check = false);
 
-  void Delete(const DeleteRequest& request, const Transaction& txn,
-              DeleteResponse* response);
+  void Delete(const DeleteRequest& request, const Transaction* txn,
+              DeleteResponse* response, bool only_check = false);
 
   void Exists(const ExistsRequest& request, Watcher* watcher,
               ExistsResponse* response);
@@ -36,24 +37,27 @@ class DataTree {
   void GetData(const GetDataRequest& request, Watcher* watcher,
                GetDataResponse* response);
 
-  void SetData(const SetDataRequest& request, const Transaction& txn,
-               SetDataResponse* response);
+  void SetData(const SetDataRequest& request, const Transaction* txn,
+               SetDataResponse* response, bool only_check = false);
 
   void GetACL(const GetACLRequest& request, GetACLResponse* response);
 
-  void SetACL(const SetACLRequest& request, const Transaction& txn,
-              SetACLResponse* response);
+  void SetACL(const SetACLRequest& request, const Transaction* txn,
+              SetACLResponse* response, bool only_check = false);
 
   void GetChildren(const GetChildrenRequest& request, Watcher* watcher,
                    GetChildrenResponse* response);
 
   void RemoveWatcher(Watcher* watcher);
 
-  void KillSession(uint64_t session_id, const Transaction& txn);
+  void KillSession(uint64_t session_id, const Transaction* txn);
+
+  // No thread safe
+  size_t NodeSize() const { return nodes_.size(); }
 
   // Serialize all nodes, and append the result to the *s;
   // No thread safe
-  void SerializeToString(std::string* s, size_t size);
+  void SerializeToString(std::string* s) const;
 
   // Copy all the nodes
   // No thread safe
@@ -69,12 +73,18 @@ class DataTree {
   // Serialize all nodes, and append the result to the *s.
   // Thread safe
   static void SerializeToString(
-      std::unordered_map<std::string, DataNode>* nodes,
-      std::unordered_map<std::string, std::unordered_set<std::string>>*
+      const std::unordered_map<std::string, DataNode>& nodes,
+      const std::unordered_map<std::string, std::unordered_set<std::string>>&
           childrens,
-      std::string* s, size_t size);
+      std::string* s);
 
  private:
+  // TODO
+  bool CheckACL(const DataNode& node, Permissions perm,
+                const std::vector<Id>* ids);
+
+  static const bool kSkipACL = true;
+
   Mutex mutex_;
   std::unordered_map<std::string, DataNode> nodes_;
   std::unordered_map<std::string, std::unordered_set<std::string>> childrens_;

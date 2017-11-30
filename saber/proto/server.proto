@@ -12,8 +12,6 @@ message Transaction {
 
 message DataNode {
   Stat stat = 1;
-  bytes name = 2;
-  bytes data = 3;
-  repeated ACL acl = 4;
-  repeated bytes children = 5;
+  bytes data = 2;
+  repeated ACL acl = 3;
 }

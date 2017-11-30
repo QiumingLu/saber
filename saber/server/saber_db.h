@@ -43,6 +43,18 @@ class SaberDB : public skywalker::StateMachine, public skywalker::Checkpoint {
   void GetChildren(uint32_t group_id, const GetChildrenRequest& request,
                    Watcher* watcher, GetChildrenResponse* response) const;
 
+  void CheckCreate(uint32_t group_id, const CreateRequest& request,
+                   CreateResponse* response) const;
+
+  void CheckDelete(uint32_t group_id, const DeleteRequest& request,
+                   DeleteResponse* response) const;
+
+  void CheckSetData(uint32_t group_id, const SetDataRequest& request,
+                    SetDataResponse* response) const;
+
+  void CheckSetACL(uint32_t group_id, const SetACLRequest& request,
+                   SetACLResponse* response) const;
+
   void RemoveWatcher(uint32_t group_id, Watcher* watcher) const;
 
   bool FindSession(uint32_t group_id, uint64_t session_id,
@@ -75,22 +87,22 @@ class SaberDB : public skywalker::StateMachine, public skywalker::Checkpoint {
   void DeleteFile(const std::string& fname) const;
 
   void Create(uint32_t group_id, const CreateRequest& request,
-              const Transaction& txn, CreateResponse* response) const;
+              const Transaction* txn, CreateResponse* response) const;
 
   void Delete(uint32_t group_id, const DeleteRequest& request,
-              const Transaction& txn, DeleteResponse* response) const;
+              const Transaction* txn, DeleteResponse* response) const;
 
   void SetData(uint32_t group_id, const SetDataRequest& request,
-               const Transaction& txn, SetDataResponse* response) const;
+               const Transaction* txn, SetDataResponse* response) const;
 
   void SetACL(uint32_t group_id, const SetACLRequest& request,
-              const Transaction& txn, SetACLResponse* response) const;
+              const Transaction* txn, SetACLResponse* response) const;
   bool CreateSession(uint32_t group_id, uint64_t session_id,
                      uint64_t new_version, uint64_t old_version) const;
   bool CloseSession(uint32_t group_id, uint64_t session_id,
                     uint64_t version) const;
   void KillSession(uint32_t group_id, uint64_t session_id,
-                   const Transaction& txn) const;
+                   const Transaction* txn) const;
 
   void MaybeMakeCheckpoint(uint32_t group_id, uint64_t instance_id);
   void MakeCheckpoint(
@@ -99,10 +111,13 @@ class SaberDB : public skywalker::StateMachine, public skywalker::Checkpoint {
       std::unordered_map<std::string, std::unordered_set<std::string>>*
           childrens,
       std::unordered_map<uint64_t, uint64_t>* sessions);
+  void MakeCheckpoint(uint32_t group_id, uint64_t instance_id,
+                      const std::string& s);
   void CleanCheckpoint(uint32_t group_id);
 
   const uint32_t kKeepCheckpointCount;
   const uint32_t kMakeCheckpointInterval;
+  const bool kAsyncSerializeCheckpointData;
 
   std::atomic<bool> lock_;
   std::atomic<bool> doing_;
@@ -112,7 +127,7 @@ class SaberDB : public skywalker::StateMachine, public skywalker::Checkpoint {
   std::vector<std::vector<uint64_t>> files_;
   std::vector<std::unique_ptr<DataTree>> trees_;
   std::vector<std::unique_ptr<SessionManager>> sessions_;
-
+  std::vector<uint32_t> next_interval_;
   std::default_random_engine generator_;
   std::uniform_int_distribution<uint32_t> distribution_;
 

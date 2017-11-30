@@ -125,20 +125,60 @@ void SaberSession::DoIt(std::unique_ptr<SaberMessage> message) {
       message->set_data(response.SerializeAsString());
       break;
     }
-    // FIXME check version here may be more effective?
+    case MT_CREATE: {
+      CreateRequest request;
+      CreateResponse response;
+      request.ParseFromString(message->data());
+      db_->CheckCreate(group_id_, request, &response);
+      if (response.code() != RC_OK) {
+        message->set_data(response.SerializeAsString());
+      } else {
+        done = false;
+      }
+      break;
+    }
+    case MT_DELETE: {
+      DeleteRequest request;
+      DeleteResponse response;
+      request.ParseFromString(message->data());
+      db_->CheckDelete(group_id_, request, &response);
+      if (response.code() != RC_OK) {
+        message->set_data(response.SerializeAsString());
+      } else {
+        done = false;
+      }
+      break;
+    }
     case MT_SETDATA: {
-      if (message->data().size() > kMaxDataSize) {
+      SetDataRequest request;
+      SetDataResponse response;
+      request.ParseFromString(message->data());
+      if (request.data().size() > kMaxDataSize) {
         SetFailedState(message.get());
         break;
       }
-      SABER_FALLTHROUGH_INTENDED;
+      db_->CheckSetData(group_id_, request, &response);
+      if (response.code() != RC_OK) {
+        message->set_data(response.SerializeAsString());
+      } else {
+        done = false;
+      }
+      break;
     }
-    case MT_CREATE:
-    case MT_DELETE:
-    case MT_SETACL:
+    case MT_SETACL: {
+      SetACLRequest request;
+      SetACLResponse response;
+      request.ParseFromString(message->data());
+      db_->CheckSetACL(group_id_, request, &response);
+      if (response.code() != RC_OK) {
+        message->set_data(response.SerializeAsString());
+      } else {
+        done = false;
+      }
+      break;
+    }
     case MT_CLOSE: {
       done = false;
-      Propose(std::move(message));
       break;
     }
     default: {
@@ -149,6 +189,8 @@ void SaberSession::DoIt(std::unique_ptr<SaberMessage> message) {
   }
   if (done) {
     Done(std::move(message));
+  } else {
+    Propose(std::move(message));
   }
 }
 
