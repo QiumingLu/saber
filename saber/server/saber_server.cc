@@ -5,7 +5,6 @@
 #include "saber/server/saber_server.h"
 #include "saber/server/saber_db.h"
 #include "saber/server/saber_session.h"
-#include "saber/util/hash.h"
 #include "saber/util/logging.h"
 #include "saber/util/mutexlock.h"
 #include "saber/util/sequence_number.h"
@@ -446,8 +445,7 @@ uint32_t SaberServer::Shard(const std::string& s) const {
   if (node_->group_size() == 1) {
     return 0;
   } else {
-    return (Hash(s.c_str(), s.size(), 0) %
-            static_cast<uint32_t>(node_->group_size()));
+    return (voyager::Hash32(s) % static_cast<uint32_t>(node_->group_size()));
   }
 }
 

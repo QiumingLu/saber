@@ -15,7 +15,11 @@ namespace saber {
 class Client {
  public:
   Client(voyager::EventLoop* loop, const ClientOptions& options, int times)
-      : times_(times), finish_(0), loop_(loop), client_(loop, options) {}
+      : times_(times),
+        finish_(0),
+        loop_(loop),
+        client_(loop, options),
+        path_(options.root) {}
 
   void Start() {
     client_.Connect();
@@ -24,7 +28,7 @@ class Client {
 
   void Create() {
     CreateRequest request;
-    request.set_path("/ls");
+    request.set_path(path_);
     request.set_data("lock service");
     client_.Create(request, nullptr,
                    std::bind(&Client::OnCreate, this, std::placeholders::_1,
@@ -47,7 +51,7 @@ class Client {
   void GetDataInLoop() {
     start_ = NowMicros();
     GetDataRequest request;
-    request.set_path("/ls");
+    request.set_path(path_);
     request.set_watch(false);
     for (int i = 0; i < times_; ++i) {
       client_.GetData(request, nullptr, nullptr,
@@ -58,8 +62,8 @@ class Client {
 
   void OnGetData(const std::string& path, void* context,
                  const GetDataResponse& response) {
-    printf("Read finish:%d\n", ++finish_);
-    if (finish_ == times_) {
+    // printf("Read finish:%d\n", ++finish_);
+    if (++finish_ == times_) {
       end_ = NowMicros();
       double time = (double)(end_ - start_) / 1000000;
       printf("Read Time: %f, TPS:%f\n", time, times_ / time);
@@ -73,7 +77,7 @@ class Client {
   void SetDataInLoop() {
     start_ = NowMicros();
     SetDataRequest request;
-    request.set_path("/ls");
+    request.set_path(path_);
     request.set_data("lock service");
     request.set_version(-1);
     for (int i = 0; i < times_; ++i) {
@@ -85,8 +89,8 @@ class Client {
 
   void OnSetData(const std::string& path, void* context,
                  const SetDataResponse& response) {
-    printf("Write finish:%d\n", ++finish_);
-    if (finish_ == times_) {
+    // printf("Write finish:%d\n", ++finish_);
+    if (++finish_ == times_) {
       end_ = NowMicros();
       double time = (double)(end_ - start_) / 1000000;
       printf("Write Time: %f, TPS:%f\n", time, times_ / time);
@@ -102,6 +106,7 @@ class Client {
   uint64_t end_;
   voyager::EventLoop* loop_;
   Saber client_;
+  std::string path_;
 
   Client(const Client&);
   void operator=(const Client&);
@@ -118,41 +123,45 @@ int main(int argc, char** argv) {
 
   saber::SetLogHandler(nullptr);
   saber::ClientOptions options;
-  options.root = "/ls";
+  // options.root = "/ls";
   options.servers = argv[1];
 
   int c = atoi(argv[2]);
   int times = atoi(argv[3]);
 
   g_latch = new saber::CountDownLatch(c);
-
   std::vector<voyager::BGEventLoop> threads(c);
   std::vector<std::unique_ptr<saber::Client>> clients;
   for (int i = 0; i < c; ++i) {
+    options.root = "/ls-" + std::to_string(i);
     clients.push_back(std::unique_ptr<saber::Client>(
         new saber::Client(threads[i].Loop(), options, times)));
     clients[i]->Start();
   }
-
   g_latch->Wait();
+  printf("All create successful, begin to test!\n");
   delete g_latch;
 
   g_latch = new saber::CountDownLatch(c);
-
+  uint64_t start = saber::NowMicros();
   for (int i = 0; i < c; ++i) {
     clients[i]->SetData();
   }
-
   g_latch->Wait();
+  uint64_t end = saber::NowMicros();
+  double time = (double)(end - start) / 1000000;
+  printf("All Write Time:%f, TPS:%f\n", time, c * times / time);
   delete g_latch;
 
   g_latch = new saber::CountDownLatch(c);
-
+  start = saber::NowMicros();
   for (int i = 0; i < c; ++i) {
     clients[i]->GetData();
   }
-
   g_latch->Wait();
+  end = saber::NowMicros();
+  time = (double)(end - start) / 1000000;
+  printf("All Read Time:%f, TPS:%f\n", time, c * times / time);
   delete g_latch;
 
   return 0;

@@ -5,8 +5,6 @@ set(Saber_SRCS ${Saber_SRCS} PARENT_SCOPE)
 set(
   Saber_UTIL_HEADERS
   coding.h
-  crc32c.h
-  hash.h
   logging.h
   macros.h
   mutex.h

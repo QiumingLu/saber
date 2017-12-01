@@ -9,9 +9,9 @@
 #include <algorithm>
 
 #include <skywalker/file.h>
+#include <voyager/util/crc32c.h>
 
 #include "saber/util/coding.h"
-#include "saber/util/crc32c.h"
 #include "saber/util/logging.h"
 #include "saber/util/timeops.h"
 
@@ -19,6 +19,10 @@ namespace saber {
 
 namespace {
 static const char* kCheckpoint = "CHECKPOINT-";
+}
+
+inline static uint32_t Value(const char* data, size_t n) {
+  return voyager::crc32c::Value(data, n);
 }
 
 SaberDB::SaberDB(RunLoop* loop, const ServerOptions& options)
@@ -107,7 +111,7 @@ bool SaberDB::Checksum(std::string* s) const {
   assert(s->size() > 4);
   if (s->size() > 4) {
     uint32_t c = DecodeFixed32(s->c_str() + s->size() - 4);
-    if (c == crc::crc32(0, s->c_str(), s->size() - 4)) {
+    if (c == Value(s->c_str(), s->size() - 4)) {
       s->erase(s->size() - 4);
       return true;
     }
@@ -336,7 +340,7 @@ void SaberDB::MaybeMakeCheckpoint(uint32_t group_id, uint64_t instance_id) {
         PutFixed64(s, instance_id);
         trees_[group_id]->SerializeToString(s);
         sessions_[group_id]->SerializeToString(s);
-        PutFixed32(s, crc::crc32(0, s->c_str(), s->size()));
+        PutFixed32(s, Value(s->c_str(), s->size()));
         loop_->QueueInLoop([this, group_id, instance_id, s]() {
           MakeCheckpoint(group_id, instance_id, *s);
           UnLockCheckpoint(group_id);
@@ -361,7 +365,7 @@ void SaberDB::MakeCheckpoint(
   PutFixed64(&s, instance_id);
   DataTree::SerializeToString(*nodes, *childrens, &s);
   SessionManager::SerializeToString(*sessions, &s);
-  PutFixed32(&s, crc::crc32(0, s.c_str(), s.size()));
+  PutFixed32(&s, Value(s.c_str(), s.size()));
   MakeCheckpoint(group_id, instance_id, s);
 }
 

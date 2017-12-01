@@ -22,6 +22,7 @@
 #include <voyager/core/tcp_monitor.h>
 #include <voyager/core/tcp_server.h>
 #include <voyager/protobuf/protobuf_codec.h>
+#include <voyager/util/hash.h>
 
 #include "saber/proto/saber.pb.h"
 #include "saber/server/server_options.h"
