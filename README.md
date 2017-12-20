@@ -54,8 +54,8 @@ Saber只支持Linux，FreeBSD等类Unix平台，不支持Windows平台。以下�
 ## 编译依赖
 * LevelDB   v1.3及以上版本
 * Protobuf  v3.0.0及以上版本
-* Voyager   v1.0.1及以上版本
-* Skywalker v1.0.1及以上版本
+* Voyager   v1.0.2及以上版本
+* Skywalker v1.0.2及以上版本
 
 ## 编译安装
 (1) LevelDB编译安装(https://github.com/google/leveldb/blob/master/README.md) 

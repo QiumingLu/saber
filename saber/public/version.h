@@ -9,7 +9,7 @@
 
 #define SABER_MAJOR_VERSION 1
 #define SABER_MINOR_VERSION 0
-#define SABER_PATCH_VERSION 1
+#define SABER_PATCH_VERSION 2
 
 // SABER_VERSION_SUFFIX is non-empty for pre-releases (e.g. "-alpha",
 // "-alpha.1",
