@@ -142,7 +142,7 @@ bool SaberServer::Start() {
 void SaberServer::OnConnection(const voyager::TcpConnectionPtr& p) {
   bool result = monitor_.OnConnection(p);
   if (result) {
-    EntryPtr entry(new Entry(this, p));
+    EntryPtr entry = std::make_shared<Entry>(this, p);
     UpdateBuckets(p, entry);
     p->SetContext(new Context(entry));
   }
@@ -338,8 +338,8 @@ bool SaberServer::CreateSession(uint32_t group_id, uint64_t session_id,
     entry->session->OnConnection(entry->conn_wp.lock());
   } else {
     b = false;
-    entry->session.reset(new SaberSession(
-        group_id, session_id, entry->conn_wp.lock(), db_.get(), node_.get()));
+    entry->session = std::make_shared<SaberSession>(
+        group_id, session_id, entry->conn_wp.lock(), db_.get(), node_.get());
     sessions_[group_id].insert(std::make_pair(session_id, entry->session));
   }
   entry->session->set_version(version);

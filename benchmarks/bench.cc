@@ -12,6 +12,15 @@ saber::CountDownLatch* g_latch = nullptr;
 
 namespace saber {
 
+class ClientWatcher : public Watcher {
+ public:
+  virtual void Process(const WatchedEvent& event) {
+    if (event.type() == ET_NONE && event.state() == SS_DISCONNECTED) {
+      g_latch->CountDown();
+    }
+  }
+};
+
 class Client {
  public:
   Client(voyager::EventLoop* loop, const ClientOptions& options, int times)
@@ -25,6 +34,8 @@ class Client {
     client_.Connect();
     Create();
   }
+
+  void Stop() { client_.Close(); }
 
   void Create() {
     CreateRequest request;
@@ -122,9 +133,11 @@ int main(int argc, char** argv) {
   }
 
   saber::SetLogHandler(nullptr);
+  saber::ClientWatcher watcher;
   saber::ClientOptions options;
   // options.root = "/ls";
   options.servers = argv[1];
+  options.watcher = &watcher;
 
   int c = atoi(argv[2]);
   int times = atoi(argv[3]);
@@ -162,6 +175,12 @@ int main(int argc, char** argv) {
   end = saber::NowMicros();
   time = (double)(end - start) / 1000000;
   printf("All Read Time:%f, TPS:%f\n", time, c * times / time);
+  delete g_latch;
+
+  g_latch = new saber::CountDownLatch(c);
+  for (int i = 0; i < c; ++i) {
+    clients[i]->Stop();
+  }
   delete g_latch;
 
   return 0;

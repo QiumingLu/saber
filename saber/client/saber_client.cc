@@ -36,7 +36,7 @@ SaberClient::SaberClient(voyager::EventLoop* loop, const ClientOptions& options)
 
 SaberClient::~SaberClient() {
   if (has_started_) {
-    Close();
+    LOG_FATAL("Don't forget to call the Close() function.");
   }
   delete server_manager_impl_;
 }
