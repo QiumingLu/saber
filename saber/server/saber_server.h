@@ -8,8 +8,6 @@
 #include <map>
 #include <memory>
 #include <string>
-#include <unordered_map>
-#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -48,7 +46,7 @@ class SaberServer {
   struct Context;
   struct Entry;
   typedef std::shared_ptr<Entry> EntryPtr;
-  typedef std::unordered_set<EntryPtr> Bucket;
+  typedef std::vector<EntryPtr> Bucket;
   typedef std::vector<Bucket> BucketList;
   typedef std::unordered_map<uint64_t, std::weak_ptr<SaberSession>> SessionMap;
 

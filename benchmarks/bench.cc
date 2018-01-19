@@ -181,6 +181,7 @@ int main(int argc, char** argv) {
   for (int i = 0; i < c; ++i) {
     clients[i]->Stop();
   }
+  g_latch->Wait();
   delete g_latch;
 
   return 0;
