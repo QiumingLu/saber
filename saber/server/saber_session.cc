@@ -3,6 +3,9 @@
 // found in the LICENSE file.
 
 #include "saber/server/saber_session.h"
+
+#include <voyager/core/eventloop.h>
+
 #include "saber/util/logging.h"
 #include "saber/util/macros.h"
 #include "saber/util/mutexlock.h"
@@ -195,8 +198,9 @@ void SaberSession::DoIt(std::unique_ptr<SaberMessage> message) {
 }
 
 void SaberSession::Done(std::unique_ptr<SaberMessage> reply_message) {
+  voyager::TcpConnectionPtr p = conn_wp_.lock();
   if (reply_message->type() != MT_PING) {
-    codec_.SendMessage(conn_wp_.lock(), *reply_message);
+    codec_.SendMessage(p, *reply_message);
   }
 
   SaberMessage* next = nullptr;
@@ -210,7 +214,6 @@ void SaberSession::Done(std::unique_ptr<SaberMessage> reply_message) {
       }
     } else {
       closed_ = true;
-      voyager::TcpConnectionPtr p = conn_wp_.lock();
       if (p) {
         p->ShutDown();
       }
@@ -220,7 +223,14 @@ void SaberSession::Done(std::unique_ptr<SaberMessage> reply_message) {
     }
   }
   if (next) {
-    HandleMessage(std::unique_ptr<SaberMessage>(next));
+    if (p) {
+      // FIXME
+      p->OwnerEventLoop()->QueueInLoop([this, next]() {
+        HandleMessage(std::unique_ptr<SaberMessage>(next));
+      });
+    } else {
+      delete next;
+    }
   }
 }
 

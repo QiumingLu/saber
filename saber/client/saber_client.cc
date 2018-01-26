@@ -422,21 +422,21 @@ bool SaberClient::OnCreate(SaberMessage* message) {
   CreateResponse response;
   response.set_code(RC_UNKNOWN);
   auto request = std::move(create_queue_.front());
+  create_queue_.pop_front();
   assert(message->id() == request->message_id);
   while (message->id() > request->message_id) {
     request->callback(request->path, request->context, response);
-    create_queue_.pop_front();
     if (create_queue_.empty()) {
       return false;
     }
     request = std::move(create_queue_.front());
+    create_queue_.pop_front();
   }
   if (message->id() != request->message_id) {
     return false;
   }
   response.ParseFromString(message->data());
   request->callback(request->path, request->context, response);
-  create_queue_.pop_front();
   return true;
 }
 
@@ -447,21 +447,21 @@ bool SaberClient::OnDelete(SaberMessage* message) {
   DeleteResponse response;
   response.set_code(RC_UNKNOWN);
   auto request = std::move(delete_queue_.front());
+  delete_queue_.pop_front();
   assert(message->id() == request->message_id);
   while (message->id() > request->message_id) {
     request->callback(request->path, request->context, response);
-    delete_queue_.pop_front();
     if (delete_queue_.empty()) {
       return false;
     }
     request = std::move(delete_queue_.front());
+    delete_queue_.pop_front();
   }
   if (message->id() != request->message_id) {
     return false;
   }
   response.ParseFromString(message->data());
   request->callback(request->path, request->context, response);
-  delete_queue_.pop_front();
   return true;
 }
 
@@ -472,14 +472,15 @@ bool SaberClient::OnExists(SaberMessage* message) {
   ExistsResponse response;
   response.set_code(RC_UNKNOWN);
   auto request = std::move(exists_queue_.front());
+  exists_queue_.pop_front();
   assert(message->id() == request->message_id);
   while (message->id() > request->message_id) {
     request->callback(request->path, request->context, response);
-    exists_queue_.pop_front();
     if (exists_queue_.empty()) {
       return false;
     }
     request = std::move(exists_queue_.front());
+    exists_queue_.pop_front();
   }
   if (message->id() != request->message_id) {
     return false;
@@ -493,7 +494,6 @@ bool SaberClient::OnExists(SaberMessage* message) {
       watch_manager_.AddExistsWatch(request->path, request->watcher);
     }
   }
-  exists_queue_.pop_front();
   return true;
 }
 
@@ -504,14 +504,15 @@ bool SaberClient::OnGetData(SaberMessage* message) {
   GetDataResponse response;
   response.set_code(RC_UNKNOWN);
   auto request = std::move(get_data_queue_.front());
+  get_data_queue_.pop_front();
   assert(message->id() == request->message_id);
   while (message->id() > request->message_id) {
     request->callback(request->path, request->context, response);
-    get_data_queue_.pop_front();
     if (get_data_queue_.empty()) {
       return false;
     }
     request = std::move(get_data_queue_.front());
+    get_data_queue_.pop_front();
   }
   if (message->id() != request->message_id) {
     return false;
@@ -521,7 +522,6 @@ bool SaberClient::OnGetData(SaberMessage* message) {
     watch_manager_.AddDataWatch(request->path, request->watcher);
   }
   request->callback(request->path, request->context, response);
-  get_data_queue_.pop_front();
   return true;
 }
 
@@ -532,22 +532,21 @@ bool SaberClient::OnSetData(SaberMessage* message) {
   SetDataResponse response;
   response.set_code(RC_UNKNOWN);
   auto request = std::move(set_data_queue_.front());
+  set_data_queue_.pop_front();
   assert(message->id() == request->message_id);
   while (message->id() > request->message_id) {
     request->callback(request->path, request->context, response);
-    set_data_queue_.pop_front();
     if (set_data_queue_.empty()) {
       return false;
     }
     request = std::move(set_data_queue_.front());
+    set_data_queue_.pop_front();
   }
   if (message->id() != request->message_id) {
     return false;
   }
   response.ParseFromString(message->data());
   request->callback(request->path, request->context, response);
-  set_data_queue_.pop_front();
-
   return true;
 }
 
@@ -558,22 +557,21 @@ bool SaberClient::OnGetACL(SaberMessage* message) {
   GetACLResponse response;
   response.set_code(RC_UNKNOWN);
   auto request = std::move(get_acl_queue_.front());
+  get_acl_queue_.pop_front();
   assert(message->id() == request->message_id);
   while (message->id() > request->message_id) {
     request->callback(request->path, request->context, response);
-    get_acl_queue_.pop_front();
     if (get_acl_queue_.empty()) {
       return false;
     }
     request = std::move(get_acl_queue_.front());
+    get_acl_queue_.pop_front();
   }
   if (message->id() != request->message_id) {
     return false;
   }
   response.ParseFromString(message->data());
   request->callback(request->path, request->context, response);
-  get_acl_queue_.pop_front();
-
   return true;
 }
 
@@ -584,21 +582,21 @@ bool SaberClient::OnSetACL(SaberMessage* message) {
   SetACLResponse response;
   response.set_code(RC_UNKNOWN);
   auto request = std::move(set_acl_queue_.front());
+  set_acl_queue_.pop_front();
   assert(message->id() == request->message_id);
   while (message->id() > request->message_id) {
     request->callback(request->path, request->context, response);
-    set_acl_queue_.pop_front();
     if (set_acl_queue_.empty()) {
       return false;
     }
     request = std::move(set_acl_queue_.front());
+    set_acl_queue_.pop_front();
   }
   if (message->id() != request->message_id) {
     return false;
   }
   response.ParseFromString(message->data());
   request->callback(request->path, request->context, response);
-  set_acl_queue_.pop_front();
   return true;
 }
 
@@ -609,14 +607,15 @@ bool SaberClient::OnGetChildren(SaberMessage* message) {
   GetChildrenResponse response;
   response.set_code(RC_UNKNOWN);
   auto request = std::move(children_queue_.front());
+  children_queue_.pop_front();
   assert(message->id() == request->message_id);
   while (message->id() > request->message_id) {
     request->callback(request->path, request->context, response);
-    children_queue_.pop_front();
     if (children_queue_.empty()) {
       return false;
     }
     request = std::move(children_queue_.front());
+    children_queue_.pop_front();
   }
   if (message->id() != request->message_id) {
     return false;
@@ -626,8 +625,6 @@ bool SaberClient::OnGetChildren(SaberMessage* message) {
     watch_manager_.AddChildWatch(request->path, request->watcher);
   }
   request->callback(request->path, request->context, response);
-  children_queue_.pop_front();
-
   return true;
 }
 
