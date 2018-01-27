@@ -45,13 +45,13 @@ struct ServerOptions {
   // The saber' thread size is:
   // 7 + server_thread_size + paxos_io_thread_size + paxos_callback_thread_size
 
-  // Default: 2
+  // Default: 3
   uint32_t server_thread_size;
 
   // Default: 2
   uint32_t paxos_io_thread_size;
 
-  // Default: 2
+  // Default: 1
   uint32_t paxos_callback_thread_size;
 
   // Default: 10
