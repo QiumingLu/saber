@@ -7,7 +7,6 @@
 #include <voyager/core/eventloop.h>
 
 #include "saber/util/logging.h"
-#include "saber/util/macros.h"
 #include "saber/util/mutexlock.h"
 #include "saber/util/timeops.h"
 
@@ -206,7 +205,7 @@ void SaberSession::Done(std::unique_ptr<SaberMessage> reply_message) {
   SaberMessage* next = nullptr;
   {
     MutexLock lock(&mutex_);
-    if (reply_message->type() != MT_MASTER &&
+    if (p && reply_message->type() != MT_MASTER &&
         reply_message->type() != MT_CLOSE) {
       if (!pending_messages_.empty()) {
         next = pending_messages_.front().release();
@@ -214,6 +213,7 @@ void SaberSession::Done(std::unique_ptr<SaberMessage> reply_message) {
       }
     } else {
       closed_ = true;
+      pending_messages_.clear();
       if (p) {
         p->ShutDown();
       }

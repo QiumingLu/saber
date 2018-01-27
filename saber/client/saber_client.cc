@@ -44,7 +44,6 @@ SaberClient::~SaberClient() {
 void SaberClient::Connect() {
   bool expected = false;
   if (has_started_.compare_exchange_strong(expected, true)) {
-    ClearMessage();
     Connect(server_manager_->GetNext());
   } else {
     LOG_WARN("SaberClient has connected, don't call it again!");
@@ -57,8 +56,14 @@ void SaberClient::Close() {
     assert(client_);
     SaberMessage message;
     message.set_type(MT_CLOSE);
-    codec_.SendMessage(client_->GetTcpConnectionPtr(), message);
+    voyager::TcpConnectionPtr p = client_->GetTcpConnectionPtr();
+    if (p) {
+      codec_.SendMessage(p, message);
+    }
     client_->Close();
+    if (!p) {
+      CloseAll();
+    }
   } else {
     LOG_WARN("SaberClient has closed, don't call it again!");
   }
@@ -251,7 +256,6 @@ void SaberClient::TrySendInLoop(SaberMessage* message) {
 
 void SaberClient::OnConnection(const voyager::TcpConnectionPtr& p) {
   LOG_DEBUG("SaberClient::OnConnection - connect successfully!");
-  can_send_ = false;
   ConnectRequest request;
   request.set_session_id(session_id_);
   SaberMessage message;
@@ -265,39 +269,37 @@ void SaberClient::OnConnection(const voyager::TcpConnectionPtr& p) {
 
 void SaberClient::OnFailue() {
   LOG_DEBUG("SaberClient::OnFailue - connect failed!");
+  can_send_ = false;
+  master_.clear_host();
   if (has_started_) {
     Connect(server_manager_->GetNext());
+  } else {
+    CloseAll();
   }
-  master_.clear_host();
 }
 
 void SaberClient::OnClose(const voyager::TcpConnectionPtr& p) {
   LOG_DEBUG("SaberClient::OnClose - connect close!");
+  can_send_ = false;
+  loop_->RemoveTimer(timer_);
   if (has_started_) {
     if (master_.host().empty() == false) {
-      voyager::SockAddr addr(master_.host(),
-                             static_cast<uint16_t>(master_.port()));
-      Connect(addr);
+      Connect(voyager::SockAddr(master_.host(), (uint16_t)master_.port()));
     } else {
-      SleepForMicroseconds(100000);
-      Connect(server_manager_->GetNext());
+      // SleepForMicroseconds(100000);
+      loop_->RunAfter(100000, [this]() {
+        if (has_started_) {
+          Connect(server_manager_->GetNext());
+        }
+      });
     }
   } else {
-    WatchedEvent event;
-    event.set_type(ET_NONE);
-    event.set_state(SS_DISCONNECTED);
-    TriggerWatchers(event);
-    session_id_ = 0;
-    ClearMessage();
+    CloseAll();
   }
-  loop_->RemoveTimer(timer_);
 }
 
 bool SaberClient::OnMessage(const voyager::TcpConnectionPtr& p,
                             std::unique_ptr<SaberMessage> message) {
-  LOG_DEBUG("type: %d, id: %d, max id:%d, queue size:%d.", message->type(),
-            (int)(message->id()), (int)message_id_,
-            (int)outgoing_queue_.size());
   MessageType type = message->type();
   switch (type) {
     case MT_NOTIFICATION:
@@ -658,6 +660,15 @@ void SaberClient::ClearMessage() {
   set_acl_queue_.clear();
   children_queue_.clear();
   outgoing_queue_.clear();
+}
+
+void SaberClient::CloseAll() {
+  session_id_ = 0;
+  ClearMessage();
+  WatchedEvent event;
+  event.set_type(ET_NONE);
+  event.set_state(SS_DISCONNECTED);
+  TriggerWatchers(event);
 }
 
 }  // namespace saber

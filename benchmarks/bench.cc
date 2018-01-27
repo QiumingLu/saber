@@ -73,8 +73,9 @@ class Client {
 
   void OnGetData(const std::string& path, void* context,
                  const GetDataResponse& response) {
-    // printf("Read finish:%d\n", ++finish_);
-    if (++finish_ == times_) {
+    ++finish_;
+    // printf("Read finish:%d\n", finish_);
+    if (finish_ == times_) {
       end_ = NowMicros();
       double time = (double)(end_ - start_) / 1000000;
       printf("Read Time: %f, TPS:%f\n", time, times_ / time);
@@ -100,8 +101,9 @@ class Client {
 
   void OnSetData(const std::string& path, void* context,
                  const SetDataResponse& response) {
-    // printf("Write finish:%d\n", ++finish_);
-    if (++finish_ == times_) {
+    ++finish_;
+    // printf("Write finish:%d\n", finish_);
+    if (finish_ == times_) {
       end_ = NowMicros();
       double time = (double)(end_ - start_) / 1000000;
       printf("Write Time: %f, TPS:%f\n", time, times_ / time);
@@ -165,6 +167,8 @@ int main(int argc, char** argv) {
   double time = (double)(end - start) / 1000000;
   printf("All Write Time:%f, TPS:%f\n", time, c * times / time);
   delete g_latch;
+
+  saber::SleepForMicroseconds(1000000);
 
   g_latch = new saber::CountDownLatch(c);
   start = saber::NowMicros();

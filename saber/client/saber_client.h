@@ -80,6 +80,7 @@ class SaberClient {
   void TriggerWatchers(const WatchedEvent& event);
   std::string GetRoot(const std::string& path) const;
   void ClearMessage();
+  void CloseAll();
 
   const std::string kRoot;
 

@@ -19,11 +19,6 @@ class Watcher {
   virtual ~Watcher() {}
 
   virtual void Process(const WatchedEvent& event) = 0;
-
- private:
-  // No copying allowed
-  Watcher(const Watcher&);
-  void operator=(const Watcher&);
 };
 
 typedef std::unordered_set<Watcher*> WatcherSet;
