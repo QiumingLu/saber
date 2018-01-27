@@ -54,16 +54,13 @@ void SaberClient::Close() {
   bool expected = true;
   if (has_started_.compare_exchange_strong(expected, false)) {
     assert(client_);
-    SaberMessage message;
-    message.set_type(MT_CLOSE);
     voyager::TcpConnectionPtr p = client_->GetTcpConnectionPtr();
     if (p) {
+      SaberMessage message;
+      message.set_type(MT_CLOSE);
       codec_.SendMessage(p, message);
     }
     client_->Close();
-    if (!p) {
-      CloseAll();
-    }
   } else {
     LOG_WARN("SaberClient has closed, don't call it again!");
   }
@@ -274,7 +271,7 @@ void SaberClient::OnFailue() {
   if (has_started_) {
     Connect(server_manager_->GetNext());
   } else {
-    CloseAll();
+    FinishClose();
   }
 }
 
@@ -294,7 +291,7 @@ void SaberClient::OnClose(const voyager::TcpConnectionPtr& p) {
       });
     }
   } else {
-    CloseAll();
+    FinishClose();
   }
 }
 
@@ -304,9 +301,6 @@ bool SaberClient::OnMessage(const voyager::TcpConnectionPtr& p,
   switch (type) {
     case MT_NOTIFICATION:
       OnNotification(message.get());
-      break;
-    case MT_CONNECT:
-      OnConnect(message.get());
       break;
     case MT_CREATE:
       OnCreate(message.get());
@@ -338,10 +332,15 @@ bool SaberClient::OnMessage(const voyager::TcpConnectionPtr& p,
       client_->Close();
       break;
     }
+    case MT_PING:
+      break;
+    case MT_CONNECT:
+      OnConnect(message.get());
+      break;
+    case MT_CLOSE:
+      break;
     case MT_SERVERS:
       server_manager_->UpdateServers(message->data());
-      break;
-    case MT_PING:
       break;
     default: {
       assert(false);
@@ -350,7 +349,7 @@ bool SaberClient::OnMessage(const voyager::TcpConnectionPtr& p,
     }
   }
   if (type != MT_NOTIFICATION && type != MT_MASTER && type != MT_PING &&
-      type != MT_CONNECT && type != MT_SERVERS) {
+      type != MT_CONNECT && type != MT_SERVERS && type != MT_CLOSE) {
     assert(!outgoing_queue_.empty());
     assert(outgoing_queue_.front()->id() == message->id());
     while (!outgoing_queue_.empty() &&
@@ -662,7 +661,7 @@ void SaberClient::ClearMessage() {
   outgoing_queue_.clear();
 }
 
-void SaberClient::CloseAll() {
+void SaberClient::FinishClose() {
   session_id_ = 0;
   ClearMessage();
   WatchedEvent event;
