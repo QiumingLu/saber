@@ -24,7 +24,7 @@
 
 namespace saber {
 
-class SaberClient {
+class SaberClient : public std::enable_shared_from_this<SaberClient> {
  public:
   SaberClient(voyager::EventLoop* loop, const ClientOptions& options);
   ~SaberClient();
@@ -57,6 +57,8 @@ class SaberClient {
                    void* context, const GetChildrenCallback& cb);
 
  private:
+  static void WeakCallback(std::weak_ptr<SaberClient> client_wp,
+                           const voyager::TcpConnectionPtr& p);
   void CloseInLoop();
   void Connect(const voyager::SockAddr& addr);
   void TrySendInLoop(SaberMessage* message);
@@ -78,13 +80,14 @@ class SaberClient {
   bool OnGetACL(SaberMessage* message);
   bool OnSetACL(SaberMessage* message);
   bool OnGetChildren(SaberMessage* message);
+  void TriggerState();
   void TriggerWatchers(const WatchedEvent& event);
   void ClearMessage();
-  void FinishClose();
 
   const std::string kRoot;
 
   std::atomic<bool> has_started_;
+  SessionState state_;
   bool can_send_;
   uint32_t message_id_;
   uint64_t session_id_;

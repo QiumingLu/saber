@@ -50,7 +50,8 @@ class Saber {
                    void* context, const GetChildrenCallback& cb);
 
  private:
-  std::unique_ptr<SaberClient> client_;
+  std::atomic<bool> connect_;
+  std::shared_ptr<SaberClient> client_;
 
   // No copying allowed
   Saber(const Saber&);

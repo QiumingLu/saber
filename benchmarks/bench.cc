@@ -15,8 +15,30 @@ namespace saber {
 class ClientWatcher : public Watcher {
  public:
   virtual void Process(const WatchedEvent& event) {
-    if (event.type() == ET_NONE && event.state() == SS_DISCONNECTED) {
-      g_latch->CountDown();
+    if (event.type() == ET_NONE) {
+      std::string s;
+      switch (event.state()) {
+        case SS_CONNECTING:
+          s = "Connecting";
+          break;
+        case SS_CONNECTED:
+          s = "Connected";
+          break;
+        case SS_DISCONNECTED:
+          s = "Disconnected";
+          break;
+        case SS_EXPIRED:
+          s = "Expired";
+          break;
+        case SS_AUTHFAILED:
+          s = "AuthFailed";
+          break;
+        default:
+          s = "Unknown";
+          assert(false);
+          break;
+      }
+      printf("Session state: %s\n", s.c_str());
     }
   }
 };
@@ -187,12 +209,9 @@ int main(int argc, char** argv) {
   printf("All Read Time:%f, TPS:%f\n", time, c * read_times / time);
   delete g_latch;
 
-  g_latch = new saber::CountDownLatch(c);
   for (int i = 0; i < c; ++i) {
     clients[i]->Stop();
   }
-  g_latch->Wait();
-  delete g_latch;
 
   return 0;
 }

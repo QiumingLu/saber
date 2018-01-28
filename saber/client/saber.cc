@@ -4,17 +4,36 @@
 
 #include "saber/client/saber.h"
 #include "saber/client/saber_client.h"
+#include "saber/util/logging.h"
 
 namespace saber {
 
 Saber::Saber(voyager::EventLoop* loop, const ClientOptions& options)
-    : client_(new SaberClient(loop, options)) {}
+    : connect_(false), client_(new SaberClient(loop, options)) {}
 
-Saber::~Saber() {}
+Saber::~Saber() {
+  if (connect_) {
+    client_->Close();
+  }
+}
 
-void Saber::Connect() { client_->Connect(); }
+void Saber::Connect() {
+  bool expected = false;
+  if (connect_.compare_exchange_strong(expected, true)) {
+    client_->Connect();
+  } else {
+    LOG_WARN("Saber client has connected, don't call it again!");
+  }
+}
 
-void Saber::Close() { client_->Close(); }
+void Saber::Close() {
+  bool expected = true;
+  if (connect_.compare_exchange_strong(expected, false)) {
+    client_->Close();
+  } else {
+    LOG_WARN("Saber client has closed, don't call it again!");
+  }
+}
 
 bool Saber::Create(const CreateRequest& request, void* context,
                    const CreateCallback& cb) {

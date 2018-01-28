@@ -2,10 +2,11 @@ syntax = "proto3";
 package saber;
 
 enum SessionState {
-  SS_CONNECTED = 0;
-  SS_DISCONNECTED = 1;
-  SS_EXPIRED = 2;
-  SS_AUTHFAILED = 3;
+  SS_CONNECTING = 0;
+  SS_CONNECTED = 1;
+  SS_DISCONNECTED = 2;
+  SS_EXPIRED = 3;
+  SS_AUTHFAILED = 4;
 }
 
 enum EventType {

@@ -9,6 +9,9 @@ namespace saber {
 std::string ToString(SessionState state) {
   std::string s;
   switch (state) {
+    case SS_CONNECTING:
+      s = "Connecting";
+      break;
     case SS_CONNECTED:
       s = "Connected";
       break;
