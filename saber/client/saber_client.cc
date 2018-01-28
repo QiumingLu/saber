@@ -11,6 +11,17 @@
 
 namespace saber {
 
+static std::string GetRoot(const std::string& path) {
+  size_t i = 0;
+  for (i = 1; i < path.size(); ++i) {
+    if (path[i] == '/') {
+      break;
+    }
+  }
+  assert(i > 1);
+  return path.substr(0, i);
+}
+
 SaberClient::SaberClient(voyager::EventLoop* loop, const ClientOptions& options)
     : kRoot(options.root),
       has_started_(false),
@@ -51,6 +62,10 @@ void SaberClient::Connect() {
 }
 
 void SaberClient::Close() {
+  loop_->RunInLoop(std::bind(&SaberClient::CloseInLoop, this));
+}
+
+void SaberClient::CloseInLoop() {
   bool expected = true;
   if (has_started_.compare_exchange_strong(expected, false)) {
     assert(client_);
@@ -231,6 +246,10 @@ bool SaberClient::GetChildren(const GetChildrenRequest& request,
 }
 
 void SaberClient::Connect(const voyager::SockAddr& addr) {
+  if (!has_started_) {
+    FinishClose();
+    return;
+  }
   client_.reset(new voyager::TcpClient(loop_, addr, "SaberClient"));
   client_->SetConnectionCallback(
       [this](const voyager::TcpConnectionPtr& p) { OnConnection(p); });
@@ -268,38 +287,28 @@ void SaberClient::OnFailue() {
   LOG_DEBUG("SaberClient::OnFailue - connect failed!");
   can_send_ = false;
   master_.clear_host();
-  if (has_started_) {
-    Connect(server_manager_->GetNext());
-  } else {
-    FinishClose();
-  }
+  Connect(server_manager_->GetNext());
 }
 
 void SaberClient::OnClose(const voyager::TcpConnectionPtr& p) {
   LOG_DEBUG("SaberClient::OnClose - connect close!");
   can_send_ = false;
   loop_->RemoveTimer(timer_);
-  if (has_started_) {
-    if (master_.host().empty() == false) {
-      Connect(voyager::SockAddr(master_.host(), (uint16_t)master_.port()));
-    } else {
-      // SleepForMicroseconds(100000);
-      loop_->RunAfter(100000, [this]() {
-        if (has_started_) {
-          Connect(server_manager_->GetNext());
-        }
-      });
-    }
+  if (master_.host().empty() == false) {
+    Connect(voyager::SockAddr(master_.host(), (uint16_t)master_.port()));
   } else {
-    FinishClose();
+    // SleepForMicroseconds(100000);
+    loop_->RunAfter(100000, [this]() { Connect(server_manager_->GetNext()); });
   }
 }
 
 bool SaberClient::OnMessage(const voyager::TcpConnectionPtr& p,
                             std::unique_ptr<SaberMessage> message) {
+  bool done = true;
   MessageType type = message->type();
   switch (type) {
     case MT_NOTIFICATION:
+      done = false;
       OnNotification(message.get());
       break;
     case MT_CREATE:
@@ -327,29 +336,34 @@ bool SaberClient::OnMessage(const voyager::TcpConnectionPtr& p,
       OnGetChildren(message.get());
       break;
     case MT_MASTER: {
+      done = false;
       master_.ParseFromString(message->data());
       LOG_DEBUG("The master is %s:%d.", master_.host().c_str(), master_.port());
       client_->Close();
       break;
     }
     case MT_PING:
+      done = false;
       break;
     case MT_CONNECT:
+      done = false;
       OnConnect(message.get());
       break;
     case MT_CLOSE:
+      done = false;
       break;
     case MT_SERVERS:
+      done = false;
       server_manager_->UpdateServers(message->data());
       break;
     default: {
       assert(false);
+      done = false;
       LOG_ERROR("Invalid message type.");
       break;
     }
   }
-  if (type != MT_NOTIFICATION && type != MT_MASTER && type != MT_PING &&
-      type != MT_CONNECT && type != MT_SERVERS && type != MT_CLOSE) {
+  if (done) {
     assert(!outgoing_queue_.empty());
     assert(outgoing_queue_.front()->id() == message->id());
     while (!outgoing_queue_.empty() &&
@@ -389,8 +403,9 @@ void SaberClient::OnConnect(SaberMessage* message) {
     } else {
       event.set_state(SS_EXPIRED);
     }
+    auto p = client_->GetTcpConnectionPtr();
     for (auto& i : outgoing_queue_) {
-      codec_.SendMessage(client_->GetTcpConnectionPtr(), *i);
+      codec_.SendMessage(p, *i);
     }
     can_send_ = true;
     uint64_t timeout = response.timeout();
@@ -636,17 +651,6 @@ void SaberClient::TriggerWatchers(const WatchedEvent& event) {
       it->Process(event);
     }
   }
-}
-
-std::string SaberClient::GetRoot(const std::string& path) const {
-  size_t i = 0;
-  for (i = 1; i < path.size(); ++i) {
-    if (path[i] == '/') {
-      break;
-    }
-  }
-  assert(i > 1);
-  return path.substr(0, i);
 }
 
 void SaberClient::ClearMessage() {

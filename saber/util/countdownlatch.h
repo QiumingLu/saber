@@ -25,7 +25,7 @@ class CountDownLatch {
     MutexLock lock(&mutex_);
     --count_;
     if (count_ == 0) {
-      cond_.Signal();
+      cond_.SignalAll();
     }
   }
 

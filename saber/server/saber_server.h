@@ -59,12 +59,14 @@ class SaberServer {
   void OnTimer();
   void UpdateBuckets(const voyager::TcpConnectionPtr& p, const EntryPtr& entry);
   bool HandleMessage(const EntryPtr& p, std::unique_ptr<SaberMessage> message);
-  bool OnConnectRequest(uint32_t group_id, const EntryPtr& entry,
+  bool OnConnectRequest(const std::string& root, uint32_t group_id,
+                        const EntryPtr& entry,
                         std::unique_ptr<SaberMessage> message);
   void OnConnectResponse(const EntryPtr& entry,
                          std::unique_ptr<SaberMessage> message);
   void OnCloseRequest(uint32_t group_id, const CloseRequest& request);
-  bool CreateSession(uint32_t group_id, uint64_t session_id, uint64_t version,
+  bool CreateSession(const std::string& root, uint32_t group_id,
+                     uint64_t session_id, uint64_t version,
                      const EntryPtr& entry);
   void CloseSession(const std::shared_ptr<SaberSession>& session);
   void CleanSessions(uint32_t group_id);

@@ -57,6 +57,7 @@ class SaberClient {
                    void* context, const GetChildrenCallback& cb);
 
  private:
+  void CloseInLoop();
   void Connect(const voyager::SockAddr& addr);
   void TrySendInLoop(SaberMessage* message);
   void OnConnection(const voyager::TcpConnectionPtr& p);
@@ -78,7 +79,6 @@ class SaberClient {
   bool OnSetACL(SaberMessage* message);
   bool OnGetChildren(SaberMessage* message);
   void TriggerWatchers(const WatchedEvent& event);
-  std::string GetRoot(const std::string& path) const;
   void ClearMessage();
   void FinishClose();
 

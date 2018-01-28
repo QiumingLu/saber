@@ -26,7 +26,7 @@ class SaberSession : public Watcher,
  public:
   static uint32_t kMaxDataSize;
 
-  SaberSession(uint32_t group_id, uint64_t session_id,
+  SaberSession(const std::string& root, uint32_t group_id, uint64_t session_id,
                const voyager::TcpConnectionPtr& p, SaberDB* db,
                skywalker::Node* node);
   virtual ~SaberSession();
@@ -57,6 +57,8 @@ class SaberSession : public Watcher,
   void DoIt(std::unique_ptr<SaberMessage> message);
   void Done(std::unique_ptr<SaberMessage> message);
   void Propose(std::unique_ptr<SaberMessage> message);
+
+  const std::string kRoot;
 
   const uint32_t group_id_;
   const uint64_t session_id_;

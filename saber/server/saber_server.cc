@@ -45,9 +45,8 @@ SaberServer::SaberServer(voyager::EventLoop* loop, const ServerOptions& options)
       mutexes_(options_.paxos_group_size),
       sessions_(options_.paxos_group_size),
       monitor_(options.max_all_connections, options.max_ip_connections),
-      server_(loop,
-              voyager::SockAddr(options.my_server_message.host,
-                                options.my_server_message.client_port),
+      server_(loop, voyager::SockAddr(options.my_server_message.host,
+                                      options.my_server_message.client_port),
               "SaberServer", options.server_thread_size) {
   codec_.SetMessageCallback(std::bind(&SaberServer::OnMessage, this,
                                       std::placeholders::_1,
@@ -208,10 +207,11 @@ bool SaberServer::HandleMessage(const EntryPtr& entry,
     return false;
   }
 
-  uint32_t group_id = Shard(message->extra_data());
+  std::string root = message->extra_data();
   message->clear_extra_data();
+  uint32_t group_id = Shard(root);
   if (node_->IsMaster(group_id)) {
-    return OnConnectRequest(group_id, entry, std::move(message));
+    return OnConnectRequest(root, group_id, entry, std::move(message));
   } else {
     skywalker::Member i;
     uint64_t version;
@@ -226,7 +226,8 @@ bool SaberServer::HandleMessage(const EntryPtr& entry,
   }
 }
 
-bool SaberServer::OnConnectRequest(uint32_t group_id, const EntryPtr& entry,
+bool SaberServer::OnConnectRequest(const std::string& root, uint32_t group_id,
+                                   const EntryPtr& entry,
                                    std::unique_ptr<SaberMessage> message) {
   // Ignore the repeated request.
   if (entry->started) {
@@ -283,7 +284,7 @@ bool SaberServer::OnConnectRequest(uint32_t group_id, const EntryPtr& entry,
 
   bool b = node_->Propose(
       group_id, db_->machine_id(), value, reply,
-      [this, group_id, session_id, entry](
+      [this, root, group_id, session_id, entry](
           uint64_t instance_id, const skywalker::Status& s, void* context) {
         SaberMessage* r = reinterpret_cast<SaberMessage*>(context);
         ConnectResponse res;
@@ -291,7 +292,7 @@ bool SaberServer::OnConnectRequest(uint32_t group_id, const EntryPtr& entry,
         if (res.code() != RC_OK) {
           entry->started = false;
         } else {
-          if (CreateSession(group_id, session_id, instance_id, entry)) {
+          if (CreateSession(root, group_id, session_id, instance_id, entry)) {
             res.set_code(RC_RECONNECT);
           }
           res.set_session_id(session_id);
@@ -327,8 +328,9 @@ void SaberServer::OnCloseRequest(uint32_t group_id,
       });
 }
 
-bool SaberServer::CreateSession(uint32_t group_id, uint64_t session_id,
-                                uint64_t version, const EntryPtr& entry) {
+bool SaberServer::CreateSession(const std::string& root, uint32_t group_id,
+                                uint64_t session_id, uint64_t version,
+                                const EntryPtr& entry) {
   bool b = true;
   MutexLock lock(&mutexes_[group_id]);
   auto it = sessions_[group_id].find(session_id);
@@ -338,8 +340,9 @@ bool SaberServer::CreateSession(uint32_t group_id, uint64_t session_id,
     entry->session->OnConnection(entry->conn_wp.lock());
   } else {
     b = false;
-    entry->session = std::make_shared<SaberSession>(
-        group_id, session_id, entry->conn_wp.lock(), db_.get(), node_.get());
+    entry->session = std::make_shared<SaberSession>(root, group_id, session_id,
+                                                    entry->conn_wp.lock(),
+                                                    db_.get(), node_.get());
     sessions_[group_id].insert(std::make_pair(session_id, entry->session));
   }
   entry->session->set_version(version);

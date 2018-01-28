@@ -14,10 +14,23 @@ namespace saber {
 
 uint32_t SaberSession::kMaxDataSize = 1024 * 1024;
 
-SaberSession::SaberSession(uint32_t group_id, uint64_t session_id,
+static std::string GetRoot(const std::string& path) {
+  size_t i = 0;
+  for (i = 1; i < path.size(); ++i) {
+    if (path[i] == '/') {
+      break;
+    }
+  }
+  assert(i > 1);
+  return path.substr(0, i);
+}
+
+SaberSession::SaberSession(const std::string& root, uint32_t group_id,
+                           uint64_t session_id,
                            const voyager::TcpConnectionPtr& p, SaberDB* db,
                            skywalker::Node* node)
-    : group_id_(group_id),
+    : kRoot(root),
+      group_id_(group_id),
       session_id_(session_id),
       version_(0),
       closed_(false),
@@ -96,6 +109,7 @@ void SaberSession::DoIt(std::unique_ptr<SaberMessage> message) {
       ExistsRequest request;
       ExistsResponse response;
       request.ParseFromString(message->data());
+      assert(GetRoot(request.path()) == kRoot);
       Watcher* watcher = request.watch() ? this : nullptr;
       db_->Exists(group_id_, request, watcher, &response);
       message->set_data(response.SerializeAsString());
@@ -105,6 +119,7 @@ void SaberSession::DoIt(std::unique_ptr<SaberMessage> message) {
       GetDataRequest request;
       GetDataResponse response;
       request.ParseFromString(message->data());
+      assert(GetRoot(request.path()) == kRoot);
       Watcher* watcher = request.watch() ? this : nullptr;
       db_->GetData(group_id_, request, watcher, &response);
       message->set_data(response.SerializeAsString());
@@ -114,6 +129,7 @@ void SaberSession::DoIt(std::unique_ptr<SaberMessage> message) {
       GetACLRequest request;
       GetACLResponse response;
       request.ParseFromString(message->data());
+      assert(GetRoot(request.path()) == kRoot);
       db_->GetACL(group_id_, request, &response);
       message->set_data(response.SerializeAsString());
       break;
@@ -122,6 +138,7 @@ void SaberSession::DoIt(std::unique_ptr<SaberMessage> message) {
       GetChildrenRequest request;
       GetChildrenResponse response;
       request.ParseFromString(message->data());
+      assert(GetRoot(request.path()) == kRoot);
       Watcher* watcher = request.watch() ? this : nullptr;
       db_->GetChildren(group_id_, request, watcher, &response);
       message->set_data(response.SerializeAsString());
@@ -131,6 +148,10 @@ void SaberSession::DoIt(std::unique_ptr<SaberMessage> message) {
       CreateRequest request;
       CreateResponse response;
       request.ParseFromString(message->data());
+      if (GetRoot(request.path()) != kRoot) {
+        SetFailedState(message.get());
+        break;
+      }
       db_->CheckCreate(group_id_, request, &response);
       if (response.code() != RC_OK) {
         message->set_data(response.SerializeAsString());
@@ -143,6 +164,10 @@ void SaberSession::DoIt(std::unique_ptr<SaberMessage> message) {
       DeleteRequest request;
       DeleteResponse response;
       request.ParseFromString(message->data());
+      if (GetRoot(request.path()) != kRoot) {
+        SetFailedState(message.get());
+        break;
+      }
       db_->CheckDelete(group_id_, request, &response);
       if (response.code() != RC_OK) {
         message->set_data(response.SerializeAsString());
@@ -155,7 +180,8 @@ void SaberSession::DoIt(std::unique_ptr<SaberMessage> message) {
       SetDataRequest request;
       SetDataResponse response;
       request.ParseFromString(message->data());
-      if (request.data().size() > kMaxDataSize) {
+      if (GetRoot(request.path()) != kRoot ||
+          request.data().size() > kMaxDataSize) {
         SetFailedState(message.get());
         break;
       }
@@ -171,6 +197,10 @@ void SaberSession::DoIt(std::unique_ptr<SaberMessage> message) {
       SetACLRequest request;
       SetACLResponse response;
       request.ParseFromString(message->data());
+      if (GetRoot(request.path()) != kRoot) {
+        SetFailedState(message.get());
+        break;
+      }
       db_->CheckSetACL(group_id_, request, &response);
       if (response.code() != RC_OK) {
         message->set_data(response.SerializeAsString());
@@ -223,14 +253,9 @@ void SaberSession::Done(std::unique_ptr<SaberMessage> reply_message) {
     }
   }
   if (next) {
-    if (p) {
-      // FIXME
-      p->OwnerEventLoop()->QueueInLoop([this, next]() {
-        HandleMessage(std::unique_ptr<SaberMessage>(next));
-      });
-    } else {
-      delete next;
-    }
+    // FIXME
+    p->OwnerEventLoop()->QueueInLoop(
+        [this, next]() { HandleMessage(std::unique_ptr<SaberMessage>(next)); });
   }
 }
 
