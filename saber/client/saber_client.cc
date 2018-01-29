@@ -326,6 +326,7 @@ void SaberClient::OnClose(const voyager::TcpConnectionPtr& p) {
 bool SaberClient::OnMessage(const voyager::TcpConnectionPtr& p,
                             std::unique_ptr<SaberMessage> message) {
   bool done = true;
+  bool result = true;
   MessageType type = message->type();
   switch (type) {
     case MT_NOTIFICATION:
@@ -333,28 +334,28 @@ bool SaberClient::OnMessage(const voyager::TcpConnectionPtr& p,
       OnNotification(message.get());
       break;
     case MT_CREATE:
-      OnCreate(message.get());
+      result = OnCreate(message.get());
       break;
     case MT_DELETE:
-      OnDelete(message.get());
+      result = OnDelete(message.get());
       break;
     case MT_EXISTS:
-      OnExists(message.get());
+      result = OnExists(message.get());
       break;
     case MT_GETDATA:
-      OnGetData(message.get());
+      result = OnGetData(message.get());
       break;
     case MT_SETDATA:
-      OnSetData(message.get());
+      result = OnSetData(message.get());
       break;
     case MT_GETACL:
-      OnGetACL(message.get());
+      result = OnGetACL(message.get());
       break;
     case MT_SETACL:
-      OnSetACL(message.get());
+      result = OnSetACL(message.get());
       break;
     case MT_GETCHILDREN:
-      OnGetChildren(message.get());
+      result = OnGetChildren(message.get());
       break;
     case MT_MASTER: {
       done = false;
@@ -391,6 +392,10 @@ bool SaberClient::OnMessage(const voyager::TcpConnectionPtr& p,
            message->id() >= outgoing_queue_.front()->id()) {
       outgoing_queue_.pop_front();
     }
+  }
+  if (!result) {
+    LOG_ERROR("OnMessage error, type:%d, id:%d", message->type(),
+              message->id());
   }
   return type == MT_MASTER ? false : true;
 }

@@ -162,11 +162,12 @@ int main(int argc, char** argv) {
   }
 
   // saber::SetLogHandler(nullptr);
+  // saber::SetLogLevel(saber::LOGLEVEL_DEBUG);
   saber::ClientWatcher watcher;
   saber::ClientOptions options;
   // options.root = "/ls";
   options.servers = argv[1];
-  options.watcher = &watcher;
+  // options.watcher = &watcher;
 
   int c = atoi(argv[2]);
   int write_times = atoi(argv[3]);
