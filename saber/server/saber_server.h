@@ -68,7 +68,7 @@ class SaberServer {
   bool CreateSession(const std::string& root, uint32_t group_id,
                      uint64_t session_id, uint64_t version,
                      const EntryPtr& entry);
-  void CloseSession(const std::shared_ptr<SaberSession>& session);
+  void CloseSession(SaberSession* session);
   void CleanSessions(uint32_t group_id);
 
   void NewServers(uint32_t group_id);

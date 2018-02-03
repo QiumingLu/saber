@@ -81,12 +81,14 @@ void SaberClient::CloseInLoop() {
     voyager::TcpConnectionPtr p = client_->GetTcpConnectionPtr();
     if (p) {
       // FIXME
+      p->StopRead();
       p->SetCloseCallback(std::bind(&SaberClient::WeakCallback,
                                     shared_from_this(), std::placeholders::_1));
       SaberMessage message;
       message.set_type(MT_CLOSE);
       codec_.SendMessage(p, message);
     }
+    loop_->RemoveTimer(delay_);
     client_->Close();
   }
 }
@@ -319,7 +321,8 @@ void SaberClient::OnClose(const voyager::TcpConnectionPtr& p) {
     Connect(voyager::SockAddr(master_.host(), (uint16_t)master_.port()));
   } else {
     // SleepForMicroseconds(100000);
-    loop_->RunAfter(100000, [this]() { Connect(server_manager_->GetNext()); });
+    delay_ = loop_->RunAfter(100000,
+                             [this]() { Connect(server_manager_->GetNext()); });
   }
 }
 

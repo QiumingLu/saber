@@ -112,6 +112,7 @@ class SaberClient : public std::enable_shared_from_this<SaberClient> {
   std::deque<std::unique_ptr<SaberMessage> > outgoing_queue_;
 
   voyager::TimerId timer_;
+  voyager::TimerId delay_;
   Master master_;
 
   // No copying allowed

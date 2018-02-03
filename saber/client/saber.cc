@@ -9,7 +9,7 @@
 namespace saber {
 
 Saber::Saber(voyager::EventLoop* loop, const ClientOptions& options)
-    : connect_(false), client_(new SaberClient(loop, options)) {}
+    : connect_(false), client_(std::make_shared<SaberClient>(loop, options)) {}
 
 Saber::~Saber() {
   if (connect_) {
