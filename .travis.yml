@@ -12,7 +12,7 @@ git:
 before_script:
 - "./build_travis.sh"
 script:
-- "./build.sh"
+- "cmake . && make"
 env:
   global:
     secure: XybLW8KcGr9WppaToElUbNUNRuS8/HdeIUKc6s7tab/QgN/EM47vXVeehKRyH/sxbQzzQWwsE6MZEKjbZDmwY1DIvScNfsVzpSH0EhVTq8MA8NMvH6SJDm7M5EHfEyz5dWDfbLI40cD13rIYupjSGnbC74fw8lRdgHXIapUmkuOifN4HQvCgoO9mdxWki5RN9/8dykmtLDo2vS9X/yfL1qR4NgW9Y9Cp1oUc96vhpoGlXT8MIclt9C84L2TXocWTAnYJ+QxqbcpA+ZJ72CpcMUmcjfN6aNCPJYv3i4qV1nBLx/y/jaMb97DMu5Ksy30eVwmUlREiWNjBbHjXXZdgOmTpQdTlDymJMjVYoiTt6zZVBFfz0JxP3LShezZ/Y6tCKvX2O/ZEX8/B7F6r1882PFzQyvaX8rq7SYmM0fqGMXtFJHFOxgTusKEhOrXQ4UeZqKuLFWqBe4K+ZIfyHnQce0aSMEIVUArDh6GXWyY+SBpg9Vgl6xlqa2IQgUo7cNAr7JoUOZqjCMJSZgKBTWdlk/AD0ZJccamB4B+EGw+217Wox6Nuvk35eoEAvFZyRJm3mAjSdRJpYx5VG8S+U31P0qf2R32wWFvBYjEZdO+D6IFKJr6ywbO9uLpGRefm/Qn0HlncKUcj4QJ+FLoQ988oR7ThcpSa28UWRshPZiib1M8=
