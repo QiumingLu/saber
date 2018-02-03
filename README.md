@@ -2,12 +2,7 @@
 ## 简介
 Saber是一个分布式服务框架，主要参考了Google的Chubby和Apache的Zookeeper，在Voyager和Skywalker的基础上实现的分布式锁服务。
 <br/>
-<br/>
-[![Build Status](https://travis-ci.org/QiumingLu/saber.svg?branch=master)](https://travis-ci.org/QiumingLu/saber)
-<a href="https://scan.coverity.com/projects/qiuminglu-saber">
-  <img alt="Coverity Scan Build Status"
-       src="https://scan.coverity.com/projects/15037/badge.svg"/>
-</a>
+<br/>[![Build Status](https://travis-ci.org/QiumingLu/saber.svg?branch=master)](https://travis-ci.org/QiumingLu/saber)
 <br/>
 <br/>Author: Mirants Lu (mirantslu@gmail.com) 
 <br/>
