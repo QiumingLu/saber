@@ -41,7 +41,7 @@ SaberSession::SaberSession(const std::string& root, uint32_t group_id,
 
 SaberSession::~SaberSession() { db_->RemoveWatcher(group_id_, this); }
 
-void SaberSession::OnConnection(const voyager::TcpConnectionPtr& p) {
+void SaberSession::OnConnect(const voyager::TcpConnectionPtr& p) {
   MutexLock lock(&mutex_);
   closed_ = false;
   conn_wp_ = p;
@@ -245,7 +245,7 @@ void SaberSession::Done(std::unique_ptr<SaberMessage> reply_message) {
       closed_ = true;
       pending_messages_.clear();
       if (p) {
-        p->ShutDown();
+        p->ForceClose();
       }
     }
     if (!next) {

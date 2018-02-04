@@ -41,7 +41,7 @@ class SaberSession : public Watcher,
     return conn_wp_.lock();
   }
 
-  void OnConnection(const voyager::TcpConnectionPtr& p);
+  void OnConnect(const voyager::TcpConnectionPtr& p);
 
   bool OnMessage(std::unique_ptr<SaberMessage> message);
 

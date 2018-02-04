@@ -18,16 +18,20 @@ struct SaberServer::Context {
 };
 
 struct SaberServer::Entry {
-  explicit Entry(const voyager::TcpConnectionPtr& p)
-      : index(-1), started(false), conn_wp(p) {}
+  Entry(SaberServer* owner, const voyager::TcpConnectionPtr& p)
+      : owner_(owner), index(-1), started(false), conn_wp(p) {}
 
   ~Entry() {
     voyager::TcpConnectionPtr p = conn_wp.lock();
     if (p) {
       p->ShutDown();
     }
+    if (session) {
+      owner_->CloseSession(session);
+    }
   }
 
+  SaberServer* owner_;
   int index;
   std::atomic<bool> started;
   std::weak_ptr<voyager::TcpConnection> conn_wp;
@@ -41,9 +45,8 @@ SaberServer::SaberServer(voyager::EventLoop* loop, const ServerOptions& options)
       mutexes_(options_.paxos_group_size),
       sessions_(options_.paxos_group_size),
       monitor_(options.max_all_connections, options.max_ip_connections),
-      server_(loop,
-              voyager::SockAddr(options.my_server_message.host,
-                                options.my_server_message.client_port),
+      server_(loop, voyager::SockAddr(options.my_server_message.host,
+                                      options.my_server_message.client_port),
               "SaberServer", options.server_thread_size) {
   codec_.SetMessageCallback(std::bind(&SaberServer::OnMessage, this,
                                       std::placeholders::_1,
@@ -138,7 +141,7 @@ bool SaberServer::Start() {
 void SaberServer::OnConnection(const voyager::TcpConnectionPtr& p) {
   bool result = monitor_.OnConnection(p);
   if (result) {
-    EntryPtr entry = std::make_shared<Entry>(p);
+    EntryPtr entry = std::make_shared<Entry>(this, p);
     UpdateBuckets(p, entry);
     p->SetContext(new Context(entry));
   }
@@ -161,7 +164,7 @@ bool SaberServer::OnMessage(const voyager::TcpConnectionPtr& p,
     if (b) {
       UpdateBuckets(p, entry);
     } else {
-      p->ShutDown();
+      p->ForceClose();
     }
   }
   return b;
@@ -198,6 +201,7 @@ bool SaberServer::HandleMessage(const EntryPtr& entry,
                                 std::unique_ptr<SaberMessage> message) {
   if (message->type() != MT_CONNECT) {
     if (entry->session) {
+      assert(entry->session->GetTcpConnectionPtr() == entry->conn_wp.lock());
       return entry->session->OnMessage(std::move(message));
     }
     // FIXME only ignore the message?
@@ -334,25 +338,28 @@ bool SaberServer::CreateSession(const std::string& root, uint32_t group_id,
   if (it != sessions_[group_id].end()) {
     entry->session = it->second.lock();
     assert(entry->session);
-    entry->session->OnConnection(entry->conn_wp.lock());
+    entry->session->OnConnect(entry->conn_wp.lock());
   } else {
     b = false;
-    entry->session.reset(
-        new SaberSession(root, group_id, session_id, entry->conn_wp.lock(),
-                         db_.get(), node_.get()),
-        std::bind(&SaberServer::CloseSession, this, std::placeholders::_1));
+    entry->session = std::make_shared<SaberSession>(root, group_id, session_id,
+                                                    entry->conn_wp.lock(),
+                                                    db_.get(), node_.get());
     sessions_[group_id].insert(std::make_pair(session_id, entry->session));
   }
   entry->session->set_version(version);
   return b;
 }
 
-void SaberServer::CloseSession(SaberSession* session) {
-  {
-    MutexLock lock(&mutexes_[session->group_id()]);
+void SaberServer::CloseSession(const std::shared_ptr<SaberSession>& session) {
+  bool need_kill = false;
+  mutexes_[session->group_id()].Lock();
+  if (session.unique()) {
     sessions_[session->group_id()].erase(session->session_id());
+    need_kill = true;
   }
-  if (node_->IsMaster(session->group_id()) &&
+  mutexes_[session->group_id()].UnLock();
+
+  if (need_kill && node_->IsMaster(session->group_id()) &&
       db_->FindSession(session->group_id(), session->session_id(),
                        session->version())) {
     CloseRequest request;
@@ -360,7 +367,6 @@ void SaberServer::CloseSession(SaberSession* session) {
     request.add_version(session->version());
     OnCloseRequest(session->group_id(), request);
   }
-  delete session;
 }
 
 void SaberServer::CleanSessions(uint32_t group_id) {
@@ -411,7 +417,7 @@ void SaberServer::NewServers(uint32_t group_id) {
   node_->GetMembership(group_id, &members, &version);
 
   std::string s;
-  s.resize(24 * members.size());
+  s.reserve(24 * members.size());
   for (auto& i : members) {
     s.append(i.host);
     s.append(":");

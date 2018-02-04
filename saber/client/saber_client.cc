@@ -71,26 +71,28 @@ void SaberClient::Connect() {
 }
 
 void SaberClient::Close() {
-  loop_->RunInLoop(std::bind(&SaberClient::CloseInLoop, shared_from_this()));
+  bool expected = true;
+  if (has_started_.compare_exchange_strong(expected, false)) {
+    loop_->RunInLoop(std::bind(&SaberClient::CloseInLoop, shared_from_this()));
+  }
 }
 
 void SaberClient::CloseInLoop() {
-  bool expected = true;
-  if (has_started_.compare_exchange_strong(expected, false)) {
-    assert(client_);
-    voyager::TcpConnectionPtr p = client_->GetTcpConnectionPtr();
-    if (p) {
-      // FIXME
-      p->StopRead();
-      p->SetCloseCallback(std::bind(&SaberClient::WeakCallback,
-                                    shared_from_this(), std::placeholders::_1));
-      SaberMessage message;
-      message.set_type(MT_CLOSE);
-      codec_.SendMessage(p, message);
-    }
+  assert(client_);
+  voyager::TcpConnectionPtr p = client_->GetTcpConnectionPtr();
+  if (p) {
+    // FIXME
+    p->StopRead();
+    p->SetCloseCallback(std::bind(&SaberClient::WeakCallback,
+                                  shared_from_this(), std::placeholders::_1));
+    SaberMessage message;
+    message.set_type(MT_CLOSE);
+    codec_.SendMessage(p, message);
+    loop_->RemoveTimer(timer_);
+  } else {
     loop_->RemoveTimer(delay_);
-    client_->Close();
   }
+  client_->Close();
 }
 
 bool SaberClient::Create(const CreateRequest& request, void* context,
@@ -106,7 +108,7 @@ bool SaberClient::Create(const CreateRequest& request, void* context,
 
   loop_->RunInLoop([this, message, r]() {
     r->message_id = ++message_id_;
-    message->set_id(r->message_id);
+    message->set_id(message_id_);
     create_queue_.push_back(std::unique_ptr<CreateRequestT>(r));
     TrySendInLoop(message);
   });
@@ -126,7 +128,7 @@ bool SaberClient::Delete(const DeleteRequest& request, void* context,
 
   loop_->RunInLoop([this, message, r]() {
     r->message_id = ++message_id_;
-    message->set_id(r->message_id);
+    message->set_id(message_id_);
     delete_queue_.push_back(std::unique_ptr<DeleteRequestT>(r));
     TrySendInLoop(message);
   });
@@ -146,7 +148,7 @@ bool SaberClient::Exists(const ExistsRequest& request, Watcher* watcher,
 
   loop_->RunInLoop([this, message, r]() {
     r->message_id = ++message_id_;
-    message->set_id(r->message_id);
+    message->set_id(message_id_);
     exists_queue_.push_back(std::unique_ptr<ExistsRequestT>(r));
     TrySendInLoop(message);
   });
@@ -167,7 +169,7 @@ bool SaberClient::GetData(const GetDataRequest& request, Watcher* watcher,
 
   loop_->RunInLoop([this, message, r]() {
     r->message_id = ++message_id_;
-    message->set_id(r->message_id);
+    message->set_id(message_id_);
     get_data_queue_.push_back(std::unique_ptr<GetDataRequestT>(r));
     TrySendInLoop(message);
   });
@@ -188,7 +190,7 @@ bool SaberClient::SetData(const SetDataRequest& request, void* context,
 
   loop_->RunInLoop([this, message, r]() {
     r->message_id = ++message_id_;
-    message->set_id(r->message_id);
+    message->set_id(message_id_);
     set_data_queue_.push_back(std::unique_ptr<SetDataRequestT>(r));
     TrySendInLoop(message);
   });
@@ -208,7 +210,7 @@ bool SaberClient::GetACL(const GetACLRequest& request, void* context,
 
   loop_->RunInLoop([this, message, r]() {
     r->message_id = ++message_id_;
-    message->set_id(r->message_id);
+    message->set_id(message_id_);
     get_acl_queue_.push_back(std::unique_ptr<GetACLRequestT>(r));
     TrySendInLoop(message);
   });
@@ -228,7 +230,7 @@ bool SaberClient::SetACL(const SetACLRequest& request, void* context,
 
   loop_->RunInLoop([this, message, r]() {
     r->message_id = ++message_id_;
-    message->set_id(r->message_id);
+    message->set_id(message_id_);
     set_acl_queue_.push_back(std::unique_ptr<SetACLRequestT>(r));
     TrySendInLoop(message);
   });
@@ -250,7 +252,7 @@ bool SaberClient::GetChildren(const GetChildrenRequest& request,
 
   loop_->RunInLoop([this, message, r]() {
     r->message_id = ++message_id_;
-    message->set_id(r->message_id);
+    message->set_id(message_id_);
     children_queue_.push_back(std::unique_ptr<GetChildrenRequestT>(r));
     TrySendInLoop(message);
   });
@@ -320,7 +322,6 @@ void SaberClient::OnClose(const voyager::TcpConnectionPtr& p) {
   if (master_.host().empty() == false) {
     Connect(voyager::SockAddr(master_.host(), (uint16_t)master_.port()));
   } else {
-    // SleepForMicroseconds(100000);
     delay_ = loop_->RunAfter(100000,
                              [this]() { Connect(server_manager_->GetNext()); });
   }
@@ -388,6 +389,18 @@ bool SaberClient::OnMessage(const voyager::TcpConnectionPtr& p,
       break;
     }
   }
+  if (!result) {
+    if (outgoing_queue_.empty()) {
+      LOG_WARN("Invalid message, type:%d, id:%d, but outgoing_queue_ is empty.",
+               type, message->id());
+    } else {
+      LOG_WARN(
+          "Invalid message, type:%d, id:%d, but the front of outgoing_queue_ "
+          "type:%d, id: %d.",
+          type, message->id(), outgoing_queue_.front()->type(),
+          outgoing_queue_.front()->id());
+    }
+  }
   if (done) {
     assert(!outgoing_queue_.empty());
     assert(outgoing_queue_.front()->id() == message->id());
@@ -395,10 +408,6 @@ bool SaberClient::OnMessage(const voyager::TcpConnectionPtr& p,
            message->id() >= outgoing_queue_.front()->id()) {
       outgoing_queue_.pop_front();
     }
-  }
-  if (!result) {
-    LOG_ERROR("OnMessage error, type:%d, id:%d", message->type(),
-              message->id());
   }
   return type == MT_MASTER ? false : true;
 }
