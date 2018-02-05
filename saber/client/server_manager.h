@@ -25,11 +25,6 @@ class ServerManager {
   virtual voyager::SockAddr GetNext() = 0;
 
   virtual void OnConnection() = 0;
-
- private:
-  // No copying allowed
-  ServerManager(const ServerManager&);
-  void operator=(const ServerManager&);
 };
 
 }  // namespace saber
