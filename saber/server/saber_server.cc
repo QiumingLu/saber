@@ -44,6 +44,7 @@ SaberServer::SaberServer(voyager::EventLoop* loop, const ServerOptions& options)
       idle_ticks_(options_.session_timeout / options_.tick_time),
       mutexes_(options_.paxos_group_size),
       sessions_(options_.paxos_group_size),
+      loop_(nullptr),
       monitor_(options.max_all_connections, options.max_ip_connections),
       server_(loop, voyager::SockAddr(options.my_server_message.host,
                                       options.my_server_message.client_port),

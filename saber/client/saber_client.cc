@@ -83,8 +83,9 @@ void SaberClient::CloseInLoop() {
   if (p) {
     // FIXME
     p->StopRead();
-    p->SetCloseCallback(std::bind(&SaberClient::WeakCallback,
-                                  shared_from_this(), std::placeholders::_1));
+    p->SetCloseCallback(std::bind(
+        &SaberClient::WeakCallback,
+        std::weak_ptr<SaberClient>(shared_from_this()), std::placeholders::_1));
     SaberMessage message;
     message.set_type(MT_CLOSE);
     codec_.SendMessage(p, message);

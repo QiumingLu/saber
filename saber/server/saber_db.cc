@@ -62,7 +62,6 @@ bool SaberDB::Recover() {
     return false;
   }
 
-  char* end;
   std::string s;
   std::vector<std::string> files;
   for (uint32_t i = 0; i < files_.size(); ++i) {
@@ -72,7 +71,7 @@ bool SaberDB::Recover() {
     for (auto& file : files) {
       size_t found = file.find_first_of("-");
       if (found != std::string::npos) {
-        files_[i].push_back(strtoull(file.substr(found + 1).c_str(), &end, 10));
+        files_[i].push_back(std::stoull(file.substr(found + 1)));
       }
     }
     std::sort(files_[i].begin(), files_[i].end());

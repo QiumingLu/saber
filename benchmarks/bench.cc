@@ -1,5 +1,7 @@
 #include <stdio.h>
+#include <stdlib.h>
 
+#include <string>
 #include <vector>
 
 #include <saber/client/saber.h>
@@ -50,6 +52,8 @@ class Client {
       : write_times_(write_times),
         read_times_(read_times),
         finish_(0),
+        start_(0),
+        end_(0),
         loop_(loop),
         client_(loop, options),
         path_(options.root) {}
@@ -169,9 +173,9 @@ int main(int argc, char** argv) {
   options.servers = argv[1];
   // options.watcher = &watcher;
 
-  int c = atoi(argv[2]);
-  int write_times = atoi(argv[3]);
-  int read_times = atoi(argv[4]);
+  int c = std::stoi(argv[2]);
+  int write_times = std::stoi(argv[3]);
+  int read_times = std::stoi(argv[4]);
 
   g_latch = new saber::CountDownLatch(c);
   std::vector<voyager::BGEventLoop> threads(c);

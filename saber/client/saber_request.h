@@ -21,7 +21,7 @@ class SaberRequest {
   Callback callback;
 
   SaberRequest(const std::string& p, Watcher* w, void* ctx, const Callback& cb)
-      : path(p), watcher(w), context(ctx), callback(cb) {}
+      : message_id(0), path(p), watcher(w), context(ctx), callback(cb) {}
 };
 
 typedef SaberRequest<CreateCallback> CreateRequestT;
