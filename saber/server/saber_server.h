@@ -24,7 +24,6 @@
 
 #include "saber/proto/saber.pb.h"
 #include "saber/server/server_options.h"
-#include "saber/util/mutex.h"
 #include "saber/util/runloop.h"
 #include "saber/util/runloop_thread.h"
 
@@ -90,7 +89,7 @@ class SaberServer {
   std::map<voyager::EventLoop*, std::pair<BucketList, int>> buckets_;
 
   // FIXME Use a class to manage it?
-  std::vector<Mutex> mutexes_;
+  std::vector<std::mutex> mutexes_;
   std::vector<SessionMap> sessions_;
 
   std::unique_ptr<SaberDB> db_;

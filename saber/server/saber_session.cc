@@ -7,7 +7,6 @@
 #include <voyager/core/eventloop.h>
 
 #include "saber/util/logging.h"
-#include "saber/util/mutexlock.h"
 #include "saber/util/timeops.h"
 
 namespace saber {
@@ -42,7 +41,7 @@ SaberSession::SaberSession(const std::string& root, uint32_t group_id,
 SaberSession::~SaberSession() { db_->RemoveWatcher(group_id_, this); }
 
 void SaberSession::OnConnect(const voyager::TcpConnectionPtr& p) {
-  MutexLock lock(&mutex_);
+  std::unique_lock<std::mutex> lock(mutex_);
   closed_ = false;
   conn_wp_ = p;
   pending_messages_.clear();
@@ -66,7 +65,7 @@ bool SaberSession::OnMessage(std::unique_ptr<SaberMessage> message) {
 
   bool next = false;
   {
-    MutexLock lock(&mutex_);
+    std::unique_lock<std::mutex> lock(mutex_);
     if (last_finished_) {
       next = true;
       last_finished_ = false;
@@ -234,7 +233,7 @@ void SaberSession::Done(std::unique_ptr<SaberMessage> reply_message) {
 
   SaberMessage* next = nullptr;
   {
-    MutexLock lock(&mutex_);
+    std::unique_lock<std::mutex> lock(mutex_);
     if (p && reply_message->type() != MT_MASTER &&
         reply_message->type() != MT_CLOSE) {
       if (!pending_messages_.empty()) {

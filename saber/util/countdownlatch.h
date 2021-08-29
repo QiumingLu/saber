@@ -5,38 +5,39 @@
 #ifndef SABER_UTIL_COUNTDOWNLATCH_H_
 #define SABER_UTIL_COUNTDOWNLATCH_H_
 
-#include "saber/util/mutexlock.h"
+#include <condition_variable>
+#include <mutex>
 
 namespace saber {
 
 class CountDownLatch {
  public:
   explicit CountDownLatch(int count)
-      : mutex_(), cond_(&mutex_), count_(count) {}
+      : count_(count) {}
 
   void Wait() {
-    MutexLock lock(&mutex_);
+    std::unique_lock<std::mutex> lock(mutex_);
     while (count_ > 0) {
-      cond_.Wait();
+      cond_.wait(lock);
     }
   }
 
   void CountDown() {
-    MutexLock lock(&mutex_);
+    std::unique_lock<std::mutex> lock(mutex_);
     --count_;
     if (count_ == 0) {
-      cond_.SignalAll();
+      cond_.notify_one();
     }
   }
 
   int GetCount() const {
-    MutexLock lock(&mutex_);
+    std::unique_lock<std::mutex> lock(mutex_);
     return count_;
   }
 
  private:
-  mutable Mutex mutex_;
-  Condition cond_;
+  mutable std::mutex mutex_;
+  std::condition_variable cond_;
   int count_;
 
   // No copying allowed

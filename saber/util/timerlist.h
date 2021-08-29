@@ -10,9 +10,12 @@
 #include <set>
 #include <utility>
 
-#include "saber/util/runloop.h"
-
 namespace saber {
+
+class RunLoop;
+class Timer;
+typedef std::pair<uint64_t, Timer*> TimerId;
+typedef std::function<void ()> TimerProcCallback;
 
 class TimerList {
  public:

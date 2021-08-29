@@ -7,7 +7,6 @@
 #include <assert.h>
 
 #include "saber/util/coding.h"
-#include "saber/util/mutexlock.h"
 
 namespace saber {
 
@@ -27,7 +26,7 @@ uint64_t SessionManager::Recover(const std::string& s, size_t index) {
 }
 
 bool SessionManager::FindSession(uint64_t session_id, uint64_t* version) const {
-  MutexLock lock(&mutex_);
+  std::unique_lock<std::mutex> lock(mutex_);
   auto it = sessions_.find(session_id);
   if (it != sessions_.end()) {
     *version = it->second;
@@ -37,7 +36,7 @@ bool SessionManager::FindSession(uint64_t session_id, uint64_t* version) const {
 }
 
 bool SessionManager::FindSession(uint64_t session_id, uint64_t version) const {
-  MutexLock lock(&mutex_);
+  std::unique_lock<std::mutex> lock(mutex_);
   auto it = sessions_.find(session_id);
   if (it != sessions_.end()) {
     return it->second == version;
@@ -47,7 +46,7 @@ bool SessionManager::FindSession(uint64_t session_id, uint64_t version) const {
 
 bool SessionManager::CreateSession(uint64_t session_id, uint64_t new_version,
                                    uint64_t old_version) {
-  MutexLock lock(&mutex_);
+  std::unique_lock<std::mutex> lock(mutex_);
   if (old_version != 0) {
     auto it = sessions_.find(session_id);
     if (it != sessions_.end() && it->second == old_version) {
@@ -63,7 +62,7 @@ bool SessionManager::CreateSession(uint64_t session_id, uint64_t new_version,
 }
 
 bool SessionManager::CloseSession(uint64_t session_id, uint64_t version) {
-  MutexLock lock(&mutex_);
+  std::unique_lock<std::mutex> lock(mutex_);
   auto it = sessions_.find(session_id);
   if (it != sessions_.end()) {
     if (it->second == version) {

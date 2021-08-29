@@ -8,8 +8,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-
-#include "saber/util/mutex.h"
+#include <mutex>
 
 namespace saber {
 
@@ -47,7 +46,7 @@ class SessionManager {
       const std::unordered_map<uint64_t, uint64_t>& sessions, std::string* s);
 
  private:
-  mutable Mutex mutex_;
+  mutable std::mutex mutex_;
   std::unordered_map<uint64_t, uint64_t> sessions_;
 
   // No copying allowed

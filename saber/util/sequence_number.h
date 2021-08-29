@@ -5,8 +5,7 @@
 #ifndef SABER_UTIL_SEQUENCE_NUMBER_H_
 #define SABER_UTIL_SEQUENCE_NUMBER_H_
 
-#include "saber/util/mutex.h"
-#include "saber/util/mutexlock.h"
+#include <mutex>
 
 namespace saber {
 
@@ -15,7 +14,7 @@ class SequenceNumber {
  public:
   SequenceNumber(T max) : max_(max), num_(0) {}
   T GetNext() {
-    MutexLock lock(&mutex_);
+    std::unique_lock<std::mutex> lock(mutex_);
     if (num_ >= max_) {
       num_ = 0;
     }
@@ -23,7 +22,7 @@ class SequenceNumber {
   }
 
  private:
-  Mutex mutex_;
+  std::mutex mutex_;
   T max_;
   T num_;
 

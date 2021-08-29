@@ -9,7 +9,6 @@
 
 #include "saber/util/coding.h"
 #include "saber/util/logging.h"
-#include "saber/util/mutexlock.h"
 
 namespace saber {
 
@@ -76,7 +75,7 @@ void DataTree::Create(const CreateRequest& request, const Transaction* txn,
   }
 
   {
-    MutexLock lock(&mutex_);
+    std::unique_lock<std::mutex> lock(mutex_);
     auto it = nodes_.find(parent);
     if (it == nodes_.end()) {
       response->set_code(RC_NO_PARENT);
@@ -150,7 +149,7 @@ void DataTree::Delete(const DeleteRequest& request, const Transaction* txn,
   std::string child = path.substr(found + 1);
 
   {
-    MutexLock lock(&mutex_);
+    std::unique_lock<std::mutex> lock(mutex_);
     auto it = nodes_.find(path);
     if (it == nodes_.end()) {
       response->set_code(RC_NO_NODE);
@@ -215,7 +214,7 @@ void DataTree::Exists(const ExistsRequest& request, Watcher* watcher,
     data_watches_.AddWatcher(path, watcher);
   }
 
-  MutexLock lock(&mutex_);
+  std::unique_lock<std::mutex> lock(mutex_);
   auto it = nodes_.find(path);
   if (it != nodes_.end()) {
     response->set_code(RC_OK);
@@ -230,7 +229,7 @@ void DataTree::GetData(const GetDataRequest& request, Watcher* watcher,
   const std::string& path = request.path();
 
   {
-    MutexLock lock(&mutex_);
+    std::unique_lock<std::mutex> lock(mutex_);
     auto it = nodes_.find(path);
     if (it != nodes_.end()) {
       // TODO
@@ -259,7 +258,7 @@ void DataTree::SetData(const SetDataRequest& request, const Transaction* txn,
   const std::string& data = request.data();
 
   {
-    MutexLock lock(&mutex_);
+    std::unique_lock<std::mutex> lock(mutex_);
     auto it = nodes_.find(path);
     if (it != nodes_.end()) {
       int version = it->second.stat().version();
@@ -291,7 +290,7 @@ void DataTree::SetData(const SetDataRequest& request, const Transaction* txn,
 
 void DataTree::GetACL(const GetACLRequest& request, GetACLResponse* response) {
   const std::string& path = request.path();
-  MutexLock lock(&mutex_);
+  std::unique_lock<std::mutex> lock(mutex_);
   auto it = nodes_.find(path);
   if (it != nodes_.end()) {
     response->set_code(RC_OK);
@@ -306,7 +305,7 @@ void DataTree::SetACL(const SetACLRequest& request, const Transaction* txn,
                       SetACLResponse* response, bool only_check) {
   const std::string& path = request.path();
 
-  MutexLock lock(&mutex_);
+  std::unique_lock<std::mutex> lock(mutex_);
   auto it = nodes_.find(path);
   if (it != nodes_.end()) {
     int version = it->second.stat().acl_version();
@@ -332,7 +331,7 @@ void DataTree::GetChildren(const GetChildrenRequest& request, Watcher* watcher,
   const std::string& path = request.path();
 
   {
-    MutexLock lock(&mutex_);
+    std::unique_lock<std::mutex> lock(mutex_);
     auto it = nodes_.find(path);
     if (it != nodes_.end()) {
       // TODO

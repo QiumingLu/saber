@@ -7,6 +7,7 @@
 
 #include <deque>
 #include <memory>
+#include <mutex>
 #include <utility>
 
 #include <skywalker/node.h>
@@ -17,7 +18,6 @@
 #include "saber/proto/saber.pb.h"
 #include "saber/server/saber_db.h"
 #include "saber/service/watcher.h"
-#include "saber/util/mutex.h"
 
 namespace saber {
 
@@ -72,7 +72,7 @@ class SaberSession : public Watcher,
   SaberDB* db_;
   skywalker::Node* node_;
 
-  Mutex mutex_;
+  std::mutex mutex_;
   std::deque<std::unique_ptr<SaberMessage>> pending_messages_;
 
   // No copying allowed

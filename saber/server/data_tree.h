@@ -6,6 +6,7 @@
 #define SABER_SERVER_DATA_TREE_H_
 
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -14,7 +15,6 @@
 #include "saber/proto/server.pb.h"
 #include "saber/server/server_watch_manager.h"
 #include "saber/service/acl.h"
-#include "saber/util/mutex.h"
 
 namespace saber {
 
@@ -85,7 +85,7 @@ class DataTree {
 
   static const bool kSkipACL = true;
 
-  Mutex mutex_;
+  std::mutex mutex_;
   std::unordered_map<std::string, DataNode> nodes_;
   std::unordered_map<std::string, std::unordered_set<std::string>> childrens_;
 

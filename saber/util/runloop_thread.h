@@ -5,9 +5,11 @@
 #ifndef SABER_UTIL_RUNLOOP_THREAD_H_
 #define SABER_UTIL_RUNLOOP_THREAD_H_
 
-#include "saber/util/mutex.h"
+#include <condition_variable>
+#include <memory>
+#include <mutex>
+#include <thread>
 #include "saber/util/runloop.h"
-#include "saber/util/thread.h"
 
 namespace saber {
 
@@ -19,14 +21,12 @@ class RunLoopThread {
   RunLoop* Loop();
 
  private:
-  static void* StartRunLoop(void* data);
-
   void ThreadFunc();
 
   RunLoop* loop_;
-  Mutex mu_;
-  Condition cond_;
-  Thread thread_;
+  std::mutex mu_;
+  std::condition_variable cond_;
+  std::unique_ptr<std::thread> thread_;
 
   // No copying allowed
   RunLoopThread(const RunLoopThread&);

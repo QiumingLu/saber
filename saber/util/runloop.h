@@ -2,32 +2,25 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SABER_UTIL_RUNLOOP_H_
-#define SABER_UTIL_RUNLOOP_H_
+#ifndef SKYWALKER_UTIL_RUNLOOP_H_
+#define SKYWALKER_UTIL_RUNLOOP_H_
 
 #include <stdint.h>
-
+#include <condition_variable>
 #include <functional>
-#include <memory>
-#include <utility>
+#include <mutex>
+#include <thread>
 #include <vector>
 
-#include "saber/util/mutex.h"
+#include "saber/util/timerlist.h"
 
 namespace saber {
-
-class Timer;
-class TimerList;
-
-typedef std::pair<uint64_t, Timer*> TimerId;
-typedef std::function<void()> TimerProcCallback;
 
 class RunLoop {
  public:
   typedef std::function<void()> Func;
 
   RunLoop();
-  ~RunLoop();
 
   void Loop();
   void Exit();
@@ -52,12 +45,12 @@ class RunLoop {
 
  private:
   bool exit_;
-  const uint64_t tid_;
+  const std::thread::id tid_;
 
-  Mutex mutex_;
-  Condition cond_;
+  std::mutex mutex_;
+  std::condition_variable cond_;
   std::vector<Func> funcs_;
-  std::unique_ptr<TimerList> timers_;
+  TimerList timers_;
 
   // No copying allowed
   RunLoop(const RunLoop&);

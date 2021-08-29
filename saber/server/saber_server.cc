@@ -6,7 +6,6 @@
 #include "saber/server/saber_db.h"
 #include "saber/server/saber_session.h"
 #include "saber/util/logging.h"
-#include "saber/util/mutexlock.h"
 #include "saber/util/sequence_number.h"
 #include "saber/util/timeops.h"
 
@@ -246,7 +245,7 @@ bool SaberServer::OnConnectRequest(const std::string& root, uint32_t group_id,
   if (session_id != 0) {
     // Check whether the session still exists or has been moved.
     {
-      MutexLock lock(&mutexes_[group_id]);
+      std::unique_lock<std::mutex> lock(mutexes_[group_id]);
       auto it = sessions_[group_id].find(session_id);
       if (it != sessions_[group_id].end()) {
         std::shared_ptr<SaberSession> session = it->second.lock();
@@ -334,7 +333,7 @@ bool SaberServer::CreateSession(const std::string& root, uint32_t group_id,
                                 uint64_t session_id, uint64_t version,
                                 const EntryPtr& entry) {
   bool b = true;
-  MutexLock lock(&mutexes_[group_id]);
+  std::unique_lock<std::mutex> lock(mutexes_[group_id]);
   auto it = sessions_[group_id].find(session_id);
   if (it != sessions_[group_id].end()) {
     entry->session = it->second.lock();
@@ -353,12 +352,13 @@ bool SaberServer::CreateSession(const std::string& root, uint32_t group_id,
 
 void SaberServer::CloseSession(const std::shared_ptr<SaberSession>& session) {
   bool need_kill = false;
-  mutexes_[session->group_id()].Lock();
-  if (session.unique()) {
-    sessions_[session->group_id()].erase(session->session_id());
-    need_kill = true;
+  {
+    std::unique_lock<std::mutex> lock(mutexes_[session->group_id()]);
+    if (session.unique()) {
+      sessions_[session->group_id()].erase(session->session_id());
+      need_kill = true;
+    }
   }
-  mutexes_[session->group_id()].UnLock();
 
   if (need_kill && node_->IsMaster(session->group_id()) &&
       db_->FindSession(session->group_id(), session->session_id(),
@@ -375,7 +375,7 @@ void SaberServer::CleanSessions(uint32_t group_id) {
     return;
   }
   if (!node_->IsMaster(group_id)) {
-    MutexLock lock(&mutexes_[group_id]);
+    std::unique_lock<std::mutex> lock(mutexes_[group_id]);
     for (auto& it : sessions_[group_id]) {
       auto session = it.second.lock();
       if (session) {
@@ -394,14 +394,15 @@ void SaberServer::CleanSessions(uint32_t group_id) {
   }
   loop_->RunAfter(8000000, [this, group_id, sessions]() {
     CloseRequest request;
-    mutexes_[group_id].Lock();
-    for (auto& it : *sessions) {
-      if (sessions_[group_id].find(it.first) == sessions_[group_id].end()) {
-        request.add_session_id(it.first);
-        request.add_version(it.second);
+    {
+      std::unique_lock<std::mutex> lock(mutexes_[group_id]);
+      for (auto& it : *sessions) {
+        if (sessions_[group_id].find(it.first) == sessions_[group_id].end()) {
+          request.add_session_id(it.first);
+          request.add_version(it.second);
+        }
       }
     }
-    mutexes_[group_id].UnLock();
     if (request.session_id_size() > 0) {
       OnCloseRequest(group_id, request);
     }
@@ -432,7 +433,7 @@ void SaberServer::NewServers(uint32_t group_id) {
   message.set_data(std::move(s));
   message.set_extra_data(std::to_string(version));
 
-  MutexLock lock(&mutexes_[group_id]);
+  std::unique_lock<std::mutex> lock(mutexes_[group_id]);
   for (auto& it : sessions_[group_id]) {
     auto session = it.second.lock();
     if (session) {

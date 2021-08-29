@@ -1,5 +1,6 @@
 .DS_Store
 *.swp
+.vscode/
 build/
 test/test1/checkpoint
 test/test2/checkpoint
