@@ -7,11 +7,8 @@ set(
   coding.h
   logging.h
   macros.h
-  mutex.h
-  mutexlock.h
   runloop.h
   runloop_thread.h
-  thread.h
   timeops.h
   )
 

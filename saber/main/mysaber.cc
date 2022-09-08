@@ -24,9 +24,7 @@ void MySaber::GetLine() {
   printf("2. Exists\n");
   printf("3. GetData\n");
   printf("4. SetData\n");
-  printf("5. GetACL\n");
-  printf("6. SetACL\n");
-  printf("7. GetChildren\n");
+  printf("5. GetChildren\n");
   printf("> ");
   std::string s;
   std::getline(std::cin, s);
@@ -63,14 +61,6 @@ bool MySaber::NewRequest(const std::string& s) {
     }
     case kSetData: {
       SetData();
-      break;
-    }
-    case kGetACL: {
-      GetACL();
-      break;
-    }
-    case kSetACL: {
-      SetACL();
       break;
     }
     case kGetChildren: {
@@ -258,78 +248,6 @@ void MySaber::SetData() {
 
 void MySaber::OnSetDataReply(const std::string& path, void* context,
                              const SetDataResponse& response) {
-  printf("%s\n", ToString(response).c_str());
-  loop_->RunInLoop([this]() { GetLine(); });
-}
-
-void MySaber::GetACL() {
-  printf("please enter: path\n");
-  printf("> ");
-  std::string s;
-  std::getline(std::cin, s);
-  GetACLRequest request;
-  request.set_path(s);
-  bool b = saber_.GetACL(request, nullptr,
-                         [this](const std::string& path, void* context,
-                                const GetACLResponse& response) {
-                           OnGetACLReply(path, context, response);
-                         });
-  if (!b) {
-    printf("Invalid root path!\n");
-    GetACL();
-  }
-}
-
-void MySaber::OnGetACLReply(const std::string& path, void* context,
-                            const GetACLResponse& response) {
-  printf("%s\n", ToString(response).c_str());
-  loop_->RunInLoop([this]() { GetLine(); });
-}
-
-void MySaber::SetACL() {
-  printf("please enter: path|perms:scheme:id,...|version\n");
-  printf("> ");
-  std::string s;
-  std::getline(std::cin, s);
-  std::vector<std::string> v;
-  voyager::SplitStringUsing(s, "|", &v);
-  if (v.size() != 3) {
-    SetACL();
-    return;
-  }
-  SetACLRequest request;
-  request.set_path(v[0]);
-  std::vector<std::string> acls;
-  voyager::SplitStringUsing(v[1], ",", &acls);
-  for (auto& i : acls) {
-    std::vector<std::string> acl;
-    voyager::SplitStringUsing(i, ":", &acl);
-    if (acl.size() != 3) {
-      SetACL();
-      return;
-    }
-    ACL one;
-    Id* id = new Id();
-    one.set_perms(atoi(v[0].c_str()));
-    id->set_scheme(v[1]);
-    id->set_id(v[2]);
-    one.set_allocated_id(id);
-    *(request.add_acl()) = one;
-  }
-  request.set_version(atoi(v[2].c_str()));
-  bool b = saber_.SetACL(request, nullptr,
-                         [this](const std::string& path, void* context,
-                                const SetACLResponse& response) {
-                           OnSetACLReply(path, context, response);
-                         });
-  if (!b) {
-    printf("Invalid root path!\n");
-    SetACL();
-  }
-}
-
-void MySaber::OnSetACLReply(const std::string& path, void* context,
-                            const SetACLResponse& response) {
   printf("%s\n", ToString(response).c_str());
   loop_->RunInLoop([this]() { GetLine(); });
 }

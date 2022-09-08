@@ -78,20 +78,11 @@ struct ServerOptions {
   // Default: 10
   uint32_t log_sync_interval;
 
-  // Default: 3
-  uint32_t keep_checkpoint_count;
-
-  // Default: 200000
-  uint32_t make_checkpoint_interval;
-
-  // Default: true
-  bool async_serialize_checkpoint_data;
-
   // Default: ""
   std::string log_storage_path;
 
-  // Default: ""
-  std::string checkpoint_storage_path;
+  // Default: 3
+  uint32_t keep_checkpoint_count;
 
   ServerMessage my_server_message;
   std::vector<ServerMessage> all_server_messages;

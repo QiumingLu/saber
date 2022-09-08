@@ -7,7 +7,7 @@ using namespace saber;
 
 int main() {
   RunLoop loop;
-  loop.RunEvery(10 * 1000 * 1000, []() {
+  loop.RunEvery(10 * 1000, []() {
     static int i = 0;
     cout << "test " << i++ << endl;
   });

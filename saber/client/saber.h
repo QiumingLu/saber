@@ -40,12 +40,6 @@ class Saber {
   bool SetData(const SetDataRequest& request, void* context,
                const SetDataCallback& cb);
 
-  bool GetACL(const GetACLRequest& request, void* context,
-              const GetACLCallback& cb);
-
-  bool SetACL(const SetACLRequest& request, void* context,
-              const SetACLCallback& cb);
-
   bool GetChildren(const GetChildrenRequest& request, Watcher* watcher,
                    void* context, const GetChildrenCallback& cb);
 

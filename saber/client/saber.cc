@@ -60,16 +60,6 @@ bool Saber::SetData(const SetDataRequest& request, void* context,
   return client_->SetData(request, context, cb);
 }
 
-bool Saber::GetACL(const GetACLRequest& request, void* context,
-                   const GetACLCallback& cb) {
-  return client_->GetACL(request, context, cb);
-}
-
-bool Saber::SetACL(const SetACLRequest& request, void* context,
-                   const SetACLCallback& cb) {
-  return client_->SetACL(request, context, cb);
-}
-
 bool Saber::GetChildren(const GetChildrenRequest& request, Watcher* watcher,
                         void* context, const GetChildrenCallback& cb) {
   return client_->GetChildren(request, watcher, context, cb);

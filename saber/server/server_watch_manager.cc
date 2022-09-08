@@ -13,7 +13,7 @@ ServerWatchManager::ServerWatchManager() {}
 ServerWatchManager::~ServerWatchManager() {}
 
 void ServerWatchManager::AddWatcher(const std::string& path, Watcher* watcher) {
-  std::unique_lock<std::mutex> lock(mutex_);
+  std::lock_guard<std::mutex> lock(mutex_);
   auto i = path_to_watches_.find(path);
   if (i != path_to_watches_.end()) {
     i->second->insert(watcher);
@@ -34,7 +34,7 @@ void ServerWatchManager::AddWatcher(const std::string& path, Watcher* watcher) {
 }
 
 void ServerWatchManager::RemoveWatcher(Watcher* watcher) {
-  std::unique_lock<std::mutex> lock(mutex_);
+  std::lock_guard<std::mutex> lock(mutex_);
   auto i = watch_to_paths_.find(watcher);
   if (i != watch_to_paths_.end()) {
     for (auto& j : *(i->second)) {
@@ -57,7 +57,7 @@ WatcherSetPtr ServerWatchManager::TriggerWatcher(const std::string& path,
                                                  EventType type,
                                                  WatcherSetPtr p) {
   WatcherSetPtr watches;
-  std::unique_lock<std::mutex> lock(mutex_);
+  std::lock_guard<std::mutex> lock(mutex_);
   auto i = path_to_watches_.find(path);
   if (i != path_to_watches_.end()) {
     WatchedEvent event;

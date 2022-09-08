@@ -21,8 +21,6 @@ std::string ToString(const DeleteResponse& response);
 std::string ToString(const ExistsResponse& response);
 std::string ToString(const GetDataResponse& response);
 std::string ToString(const SetDataResponse& response);
-std::string ToString(const GetACLResponse& response);
-std::string ToString(const SetACLResponse& response);
 std::string ToString(const GetChildrenResponse& response);
 
 }  // namespace saber

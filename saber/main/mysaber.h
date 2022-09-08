@@ -35,9 +35,7 @@ class MySaber {
     kExists = 2,
     kGetData = 3,
     kSetData = 4,
-    kGetACL = 5,
-    kSetACL = 6,
-    kGetChildren = 7,
+    kGetChildren = 5,
   };
 
   void GetLine();
@@ -57,12 +55,6 @@ class MySaber {
   void SetData();
   void OnSetDataReply(const std::string& path, void* context,
                       const SetDataResponse& response);
-  void GetACL();
-  void OnGetACLReply(const std::string& path, void* context,
-                     const GetACLResponse& response);
-  void SetACL();
-  void OnSetACLReply(const std::string& path, void* context,
-                     const SetACLResponse& response);
   void GetChildren();
   void OnGetChildrenReply(const std::string& path, void* context,
                           const GetChildrenResponse& response);

@@ -14,15 +14,13 @@ ServerOptions::ServerOptions()
       paxos_io_thread_size(2),
       paxos_callback_thread_size(1),
       paxos_group_size(10),
-      tick_time(3000000),
+      tick_time(3000),
       session_timeout(4 * tick_time),
       max_all_connections(60000),
       max_ip_connections(60),
       max_data_size(1024 * 1024),
       keep_log_count(1000000),
       log_sync_interval(10),
-      keep_checkpoint_count(3),
-      make_checkpoint_interval(200000),
-      async_serialize_checkpoint_data(true) {}
+      keep_checkpoint_count(3) {}
 
 }  // namespace saber

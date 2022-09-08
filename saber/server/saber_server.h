@@ -5,10 +5,10 @@
 #ifndef SABER_SERVER_SABER_SERVER_H_
 #define SABER_SERVER_SABER_SERVER_H_
 
-#include <map>
 #include <memory>
 #include <string>
 #include <utility>
+#include <unordered_map>
 #include <vector>
 
 #include <skywalker/node.h>
@@ -86,7 +86,7 @@ class SaberServer {
   // 每个EventLoop都有一个会话清理的循环队列。
   // Key表示每个EventLoop。
   // Value的first值表示循环队列，second值表示该队列最后一个元素，即最后一个桶。
-  std::map<voyager::EventLoop*, std::pair<BucketList, int>> buckets_;
+  std::unordered_map<voyager::EventLoop*, std::pair<BucketList, int>> buckets_;
 
   // FIXME Use a class to manage it?
   std::vector<std::mutex> mutexes_;

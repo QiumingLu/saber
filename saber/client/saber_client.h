@@ -47,12 +47,6 @@ class SaberClient : public std::enable_shared_from_this<SaberClient> {
   bool SetData(const SetDataRequest& request, void* context,
                const SetDataCallback& cb);
 
-  bool GetACL(const GetACLRequest& request, void* context,
-              const GetACLCallback& cb);
-
-  bool SetACL(const SetACLRequest& request, void* context,
-              const SetACLCallback& cb);
-
   bool GetChildren(const GetChildrenRequest& request, Watcher* watcher,
                    void* context, const GetChildrenCallback& cb);
 
@@ -77,20 +71,20 @@ class SaberClient : public std::enable_shared_from_this<SaberClient> {
   bool OnExists(SaberMessage* message);
   bool OnGetData(SaberMessage* message);
   bool OnSetData(SaberMessage* message);
-  bool OnGetACL(SaberMessage* message);
-  bool OnSetACL(SaberMessage* message);
   bool OnGetChildren(SaberMessage* message);
   void TriggerState();
   void TriggerWatchers(const WatchedEvent& event);
   void ClearMessage();
 
   const std::string kRoot;
+  static const uint64_t kMaxRetryTime = 1000;
 
   std::atomic<bool> has_started_;
   SessionState state_;
   bool can_send_;
   uint32_t message_id_;
   uint64_t session_id_;
+  uint64_t retry_time_;
 
   voyager::EventLoop* loop_;
   ServerManager* server_manager_;
@@ -105,8 +99,6 @@ class SaberClient : public std::enable_shared_from_this<SaberClient> {
   std::deque<std::unique_ptr<ExistsRequestT> > exists_queue_;
   std::deque<std::unique_ptr<GetDataRequestT> > get_data_queue_;
   std::deque<std::unique_ptr<SetDataRequestT> > set_data_queue_;
-  std::deque<std::unique_ptr<GetACLRequestT> > get_acl_queue_;
-  std::deque<std::unique_ptr<SetACLRequestT> > set_acl_queue_;
   std::deque<std::unique_ptr<GetChildrenRequestT> > children_queue_;
 
   std::deque<std::unique_ptr<SaberMessage> > outgoing_queue_;

@@ -29,8 +29,6 @@ typedef SaberRequest<DeleteCallback> DeleteRequestT;
 typedef SaberRequest<ExistsCallback> ExistsRequestT;
 typedef SaberRequest<GetDataCallback> GetDataRequestT;
 typedef SaberRequest<SetDataCallback> SetDataRequestT;
-typedef SaberRequest<GetACLCallback> GetACLRequestT;
-typedef SaberRequest<SetACLCallback> SetACLRequestT;
 typedef SaberRequest<GetChildrenCallback> GetChildrenRequestT;
 
 }  // namespace saber

@@ -24,21 +24,16 @@
 
 namespace saber {
 
-class SaberDB : public skywalker::StateMachine, public skywalker::Checkpoint {
+class SaberDB : public skywalker::StateMachine {
  public:
   SaberDB(RunLoop* loop, const ServerOptions& options);
   virtual ~SaberDB();
-
-  bool Recover();
 
   void Exists(uint32_t group_id, const ExistsRequest& request, Watcher* watcher,
               ExistsResponse* response) const;
 
   void GetData(uint32_t group_id, const GetDataRequest& request,
                Watcher* watcher, GetDataResponse* response) const;
-
-  void GetACL(uint32_t group_id, const GetACLRequest& request,
-              GetACLResponse* response) const;
 
   void GetChildren(uint32_t group_id, const GetChildrenRequest& request,
                    Watcher* watcher, GetChildrenResponse* response) const;
@@ -52,9 +47,6 @@ class SaberDB : public skywalker::StateMachine, public skywalker::Checkpoint {
   void CheckSetData(uint32_t group_id, const SetDataRequest& request,
                     SetDataResponse* response) const;
 
-  void CheckSetACL(uint32_t group_id, const SetACLRequest& request,
-                   SetACLResponse* response) const;
-
   void RemoveWatcher(uint32_t group_id, Watcher* watcher) const;
 
   bool FindSession(uint32_t group_id, uint64_t session_id,
@@ -63,28 +55,24 @@ class SaberDB : public skywalker::StateMachine, public skywalker::Checkpoint {
   bool FindSession(uint32_t group_id, uint64_t session_id,
                    uint64_t version) const;
 
-  std::unordered_map<uint64_t, uint64_t>* CopySessions(uint32_t group_id) const;
+  std::unordered_map<uint64_t, uint64_t> CopySessions(uint32_t group_id) const;
+
+  virtual bool Recover(uint32_t group_id, uint64_t instance_id,
+                       const std::string& dir);
 
   virtual bool Execute(uint32_t group_id, uint64_t instance_id,
-                       const std::string& value, void* context);
+                       const std::string& value, void* context = nullptr);
 
-  virtual uint64_t GetCheckpointInstanceId(uint32_t group_id);
+  virtual bool MakeCheckpoint(uint32_t group_id, uint64_t instance_id,
+                              const std::string& dir,
+                              const FinishCheckpointCallback& cb);
 
-  virtual bool LockCheckpoint(uint32_t group_id);
-
-  virtual bool UnLockCheckpoint(uint32_t group_id);
-
-  virtual bool GetCheckpoint(uint32_t group_id, uint32_t machine_id,
-                             std::string* dir, std::vector<std::string>* files);
-
-  virtual bool LoadCheckpoint(uint32_t group_id, uint64_t instance_id,
-                              uint32_t machine_id, const std::string& dir,
-                              const std::vector<std::string>& files);
-
+  virtual bool GetCheckpoint(uint32_t group_id, uint64_t instance_id,
+                             const std::string& dir,
+                             std::vector<std::string>* files);
  private:
-  bool Checksum(std::string* s) const;
-  std::string FileName(uint32_t group_id, uint64_t instance_id) const;
-  void DeleteFile(const std::string& fname) const;
+  static constexpr const char* kDataCheckpoint = "SABERDATA.db";
+  static constexpr const char* kSessionCheckpoint = "SABERSESSION.db";
 
   void Create(uint32_t group_id, const CreateRequest& request,
               const Transaction* txn, CreateResponse* response) const;
@@ -95,8 +83,6 @@ class SaberDB : public skywalker::StateMachine, public skywalker::Checkpoint {
   void SetData(uint32_t group_id, const SetDataRequest& request,
                const Transaction* txn, SetDataResponse* response) const;
 
-  void SetACL(uint32_t group_id, const SetACLRequest& request,
-              const Transaction* txn, SetACLResponse* response) const;
   bool CreateSession(uint32_t group_id, uint64_t session_id,
                      uint64_t new_version, uint64_t old_version) const;
   bool CloseSession(uint32_t group_id, uint64_t session_id,
@@ -104,32 +90,8 @@ class SaberDB : public skywalker::StateMachine, public skywalker::Checkpoint {
   void KillSession(uint32_t group_id, uint64_t session_id,
                    const Transaction* txn) const;
 
-  void MaybeMakeCheckpoint(uint32_t group_id, uint64_t instance_id);
-  void MakeCheckpoint(
-      uint32_t group_id, uint64_t instance_id,
-      std::unordered_map<std::string, DataNode>* nodes,
-      std::unordered_map<std::string, std::unordered_set<std::string>>*
-          childrens,
-      std::unordered_map<uint64_t, uint64_t>* sessions);
-  void MakeCheckpoint(uint32_t group_id, uint64_t instance_id,
-                      const std::string& s);
-  void CleanCheckpoint(uint32_t group_id);
-
-  const uint32_t kKeepCheckpointCount;
-  const uint32_t kMakeCheckpointInterval;
-  const bool kAsyncSerializeCheckpointData;
-
-  std::atomic<bool> lock_;
-  std::atomic<bool> doing_;
-
-  std::string checkpoint_storage_path_;
-  std::vector<uint64_t> checkpoint_id_;
-  std::vector<std::vector<uint64_t>> files_;
   std::vector<std::unique_ptr<DataTree>> trees_;
   std::vector<std::unique_ptr<SessionManager>> sessions_;
-  std::vector<uint32_t> next_interval_;
-  std::default_random_engine generator_;
-  std::uniform_int_distribution<uint32_t> distribution_;
 
   RunLoop* loop_;
 

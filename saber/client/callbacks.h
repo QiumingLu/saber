@@ -33,14 +33,6 @@ typedef std::function<void(const std::string& path, void* context,
     SetDataCallback;
 
 typedef std::function<void(const std::string& path, void* context,
-                           const GetACLResponse&)>
-    GetACLCallback;
-
-typedef std::function<void(const std::string& path, void* context,
-                           const SetACLResponse&)>
-    SetACLCallback;
-
-typedef std::function<void(const std::string& path, void* context,
                            const GetChildrenResponse&)>
     GetChildrenCallback;
 

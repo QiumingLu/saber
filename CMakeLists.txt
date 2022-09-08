@@ -49,8 +49,7 @@ set(CXX_FLAGS
   -Wwrite-strings
   -Wshadow
   -Wno-sign-conversion
-  -std=c++11
-  -fno-rtti
+  -std=c++14
   )
 
 string(REPLACE ";" " " CMAKE_CXX_FLAGS "${CXX_FLAGS}")

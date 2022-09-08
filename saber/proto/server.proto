@@ -13,5 +13,19 @@ message Transaction {
 message DataNode {
   Stat stat = 1;
   bytes data = 2;
-  repeated ACL acl = 3;
+  string path = 3;
+  repeated string children = 4;
+}
+
+message DataNodeList {
+  repeated DataNode nodes = 1;
+}
+
+message Session {
+  uint64 session_id = 1;
+  uint64 version = 2;
+}
+
+message SessionList {
+  repeated Session sessions = 1;
 }

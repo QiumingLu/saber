@@ -41,7 +41,7 @@ SaberSession::SaberSession(const std::string& root, uint32_t group_id,
 SaberSession::~SaberSession() { db_->RemoveWatcher(group_id_, this); }
 
 void SaberSession::OnConnect(const voyager::TcpConnectionPtr& p) {
-  std::unique_lock<std::mutex> lock(mutex_);
+  std::lock_guard<std::mutex> lock(mutex_);
   closed_ = false;
   conn_wp_ = p;
   pending_messages_.clear();
@@ -65,7 +65,7 @@ bool SaberSession::OnMessage(std::unique_ptr<SaberMessage> message) {
 
   bool next = false;
   {
-    std::unique_lock<std::mutex> lock(mutex_);
+    std::lock_guard<std::mutex> lock(mutex_);
     if (last_finished_) {
       next = true;
       last_finished_ = false;
@@ -86,14 +86,15 @@ void SaberSession::HandleMessage(std::unique_ptr<SaberMessage> message) {
   if (message->type() != MT_MASTER && node_->IsMaster(group_id_)) {
     DoIt(std::move(message));
   } else {
+    Master master;
     skywalker::Member i;
     uint64_t version;
-    node_->GetMaster(group_id_, &i, &version);
-    Master master;
-    master.set_host(i.host);
-    master.set_port(atoi(i.context.c_str()));
-    message->set_type(MT_MASTER);
-    message->set_data(master.SerializeAsString());
+    if (node_->GetMaster(group_id_, &i, &version)) {
+      master.set_host(i.host);
+      master.set_port(atoi(i.context.c_str()));
+      message->set_type(MT_MASTER);
+      master.SerializeToString(message->mutable_data());
+    }
     Done(std::move(message));
   }
 }
@@ -121,15 +122,6 @@ void SaberSession::DoIt(std::unique_ptr<SaberMessage> message) {
       assert(GetRoot(request.path()) == kRoot);
       Watcher* watcher = request.watch() ? this : nullptr;
       db_->GetData(group_id_, request, watcher, &response);
-      message->set_data(response.SerializeAsString());
-      break;
-    }
-    case MT_GETACL: {
-      GetACLRequest request;
-      GetACLResponse response;
-      request.ParseFromString(message->data());
-      assert(GetRoot(request.path()) == kRoot);
-      db_->GetACL(group_id_, request, &response);
       message->set_data(response.SerializeAsString());
       break;
     }
@@ -192,22 +184,6 @@ void SaberSession::DoIt(std::unique_ptr<SaberMessage> message) {
       }
       break;
     }
-    case MT_SETACL: {
-      SetACLRequest request;
-      SetACLResponse response;
-      request.ParseFromString(message->data());
-      if (GetRoot(request.path()) != kRoot) {
-        SetFailedState(message.get());
-        break;
-      }
-      db_->CheckSetACL(group_id_, request, &response);
-      if (response.code() != RC_OK) {
-        message->set_data(response.SerializeAsString());
-      } else {
-        done = false;
-      }
-      break;
-    }
     case MT_CLOSE: {
       done = false;
       break;
@@ -233,7 +209,7 @@ void SaberSession::Done(std::unique_ptr<SaberMessage> reply_message) {
 
   SaberMessage* next = nullptr;
   {
-    std::unique_lock<std::mutex> lock(mutex_);
+    std::lock_guard<std::mutex> lock(mutex_);
     if (p && reply_message->type() != MT_MASTER &&
         reply_message->type() != MT_CLOSE) {
       if (!pending_messages_.empty()) {
@@ -312,12 +288,6 @@ void SaberSession::SetFailedState(SaberMessage* reply_message) {
     }
     case MT_SETDATA: {
       SetDataResponse response;
-      response.set_code(RC_FAILED);
-      reply_message->set_data(response.SerializeAsString());
-      break;
-    }
-    case MT_SETACL: {
-      SetACLResponse response;
       response.set_code(RC_FAILED);
       reply_message->set_data(response.SerializeAsString());
       break;

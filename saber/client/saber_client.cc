@@ -37,6 +37,7 @@ SaberClient::SaberClient(voyager::EventLoop* loop, const ClientOptions& options)
       can_send_(false),
       message_id_(0),
       session_id_(0),
+      retry_time_(50),
       loop_(loop),
       server_manager_(options.server_manager),
       server_manager_impl_(nullptr),
@@ -99,6 +100,7 @@ void SaberClient::CloseInLoop() {
 bool SaberClient::Create(const CreateRequest& request, void* context,
                          const CreateCallback& cb) {
   if (GetRoot(request.path()) != kRoot) {
+    LOG_ERROR("error request path %s", request.path().c_str());
     return false;
   }
   SaberMessage* message = new SaberMessage();
@@ -198,46 +200,6 @@ bool SaberClient::SetData(const SetDataRequest& request, void* context,
   return true;
 }
 
-bool SaberClient::GetACL(const GetACLRequest& request, void* context,
-                         const GetACLCallback& cb) {
-  if (GetRoot(request.path()) != kRoot) {
-    return false;
-  }
-  SaberMessage* message = new SaberMessage();
-  message->set_type(MT_GETACL);
-  message->set_data(request.SerializeAsString());
-
-  GetACLRequestT* r = new GetACLRequestT(request.path(), nullptr, context, cb);
-
-  loop_->RunInLoop([this, message, r]() {
-    r->message_id = ++message_id_;
-    message->set_id(message_id_);
-    get_acl_queue_.push_back(std::unique_ptr<GetACLRequestT>(r));
-    TrySendInLoop(message);
-  });
-  return true;
-}
-
-bool SaberClient::SetACL(const SetACLRequest& request, void* context,
-                         const SetACLCallback& cb) {
-  if (GetRoot(request.path()) != kRoot) {
-    return false;
-  }
-  SaberMessage* message = new SaberMessage();
-  message->set_type(MT_SETACL);
-  message->set_data(request.SerializeAsString());
-
-  SetACLRequestT* r = new SetACLRequestT(request.path(), nullptr, context, cb);
-
-  loop_->RunInLoop([this, message, r]() {
-    r->message_id = ++message_id_;
-    message->set_id(message_id_);
-    set_acl_queue_.push_back(std::unique_ptr<SetACLRequestT>(r));
-    TrySendInLoop(message);
-  });
-  return true;
-}
-
 bool SaberClient::GetChildren(const GetChildrenRequest& request,
                               Watcher* watcher, void* context,
                               const GetChildrenCallback& cb) {
@@ -304,27 +266,35 @@ void SaberClient::OnConnection(const voyager::TcpConnectionPtr& p) {
 void SaberClient::OnFailue() {
   LOG_DEBUG("SaberClient::OnFailue - connect failed!");
   can_send_ = false;
-  master_.clear_host();
+  master_.Clear();
   if (state_ != SS_DISCONNECTED) {
     state_ = SS_DISCONNECTED;
     TriggerState();
   }
-  Connect(server_manager_->GetNext());
+  retry_time_ *= 2;
+  retry_time_ = retry_time_ < kMaxRetryTime ? retry_time_ : kMaxRetryTime;
+  loop_->RemoveTimer(delay_);
+  delay_ = loop_->RunAfter(
+      retry_time_, [this]() { Connect(server_manager_->GetNext()); });
 }
 
 void SaberClient::OnClose(const voyager::TcpConnectionPtr& p) {
-  LOG_DEBUG("SaberClient::OnClose - connect close!");
+  LOG_DEBUG("SaberClient::OnClose - connect close! master %s",
+            master_.ShortDebugString().c_str());
   can_send_ = false;
   loop_->RemoveTimer(timer_);
+  loop_->RemoveTimer(delay_);
   if (state_ != SS_DISCONNECTED) {
     state_ = SS_DISCONNECTED;
     TriggerState();
   }
-  if (master_.host().empty() == false) {
-    Connect(voyager::SockAddr(master_.host(), (uint16_t)master_.port()));
+  if (master_.host().empty()) {
+    retry_time_ *= 2;
+    retry_time_ = retry_time_ < kMaxRetryTime ? retry_time_ : kMaxRetryTime;
+    delay_ = loop_->RunAfter(
+        retry_time_, [this]() { Connect(server_manager_->GetNext()); });
   } else {
-    delay_ = loop_->RunAfter(100000,
-                             [this]() { Connect(server_manager_->GetNext()); });
+    Connect(voyager::SockAddr(master_.host(), (uint16_t)master_.port()));
   }
 }
 
@@ -353,17 +323,12 @@ bool SaberClient::OnMessage(const voyager::TcpConnectionPtr& p,
     case MT_SETDATA:
       result = OnSetData(message.get());
       break;
-    case MT_GETACL:
-      result = OnGetACL(message.get());
-      break;
-    case MT_SETACL:
-      result = OnSetACL(message.get());
-      break;
     case MT_GETCHILDREN:
       result = OnGetChildren(message.get());
       break;
     case MT_MASTER: {
       done = false;
+      master_.Clear();
       master_.ParseFromString(message->data());
       LOG_DEBUG("The master is %s:%d.", master_.host().c_str(), master_.port());
       client_->Close();
@@ -436,6 +401,7 @@ void SaberClient::OnConnect(SaberMessage* message) {
   ConnectResponse response;
   response.ParseFromString(message->data());
   if (response.code() == RC_OK || response.code() == RC_RECONNECT) {
+    retry_time_ = 50;
     // FIXME
     if (session_id_ != 0 && session_id_ != response.session_id()) {
       state_ = SS_EXPIRED;
@@ -449,21 +415,15 @@ void SaberClient::OnConnect(SaberMessage* message) {
     }
     can_send_ = true;
     uint64_t timeout = response.timeout();
-    timeout = (timeout < 12000000 ? (timeout * 4 / 5) : (timeout - 3000000));
+    timeout = (timeout < 12000 ? (timeout * 4 / 5) : (timeout - 3000));
     timer_ = loop_->RunEvery(timeout, std::bind(&SaberClient::OnTimer, this));
   } else {
-    if (response.code() == RC_NO_AUTH) {
-      state_ = SS_AUTHFAILED;
-      has_started_ = false;
-      client_->Close();  // FIXME
-    } else {
-      if (session_id_ != 0) {
-        state_ = SS_EXPIRED;
-        TriggerState();
-      }
-      session_id_ = 0;
-      OnConnection(client_->GetTcpConnectionPtr());
+    if (session_id_ != 0) {
+      state_ = SS_EXPIRED;
+      TriggerState();
     }
+    session_id_ = 0;
+    OnConnection(client_->GetTcpConnectionPtr());
   }
   session_id_ = response.session_id();
 }
@@ -603,56 +563,6 @@ bool SaberClient::OnSetData(SaberMessage* message) {
   return true;
 }
 
-bool SaberClient::OnGetACL(SaberMessage* message) {
-  if (get_acl_queue_.empty()) {
-    return false;
-  }
-  GetACLResponse response;
-  response.set_code(RC_UNKNOWN);
-  auto request = std::move(get_acl_queue_.front());
-  get_acl_queue_.pop_front();
-  assert(message->id() == request->message_id);
-  while (message->id() > request->message_id) {
-    request->callback(request->path, request->context, response);
-    if (get_acl_queue_.empty()) {
-      return false;
-    }
-    request = std::move(get_acl_queue_.front());
-    get_acl_queue_.pop_front();
-  }
-  if (message->id() != request->message_id) {
-    return false;
-  }
-  response.ParseFromString(message->data());
-  request->callback(request->path, request->context, response);
-  return true;
-}
-
-bool SaberClient::OnSetACL(SaberMessage* message) {
-  if (set_acl_queue_.empty()) {
-    return false;
-  }
-  SetACLResponse response;
-  response.set_code(RC_UNKNOWN);
-  auto request = std::move(set_acl_queue_.front());
-  set_acl_queue_.pop_front();
-  assert(message->id() == request->message_id);
-  while (message->id() > request->message_id) {
-    request->callback(request->path, request->context, response);
-    if (set_acl_queue_.empty()) {
-      return false;
-    }
-    request = std::move(set_acl_queue_.front());
-    set_acl_queue_.pop_front();
-  }
-  if (message->id() != request->message_id) {
-    return false;
-  }
-  response.ParseFromString(message->data());
-  request->callback(request->path, request->context, response);
-  return true;
-}
-
 bool SaberClient::OnGetChildren(SaberMessage* message) {
   if (children_queue_.empty()) {
     return false;
@@ -703,8 +613,6 @@ void SaberClient::ClearMessage() {
   exists_queue_.clear();
   get_data_queue_.clear();
   set_data_queue_.clear();
-  get_acl_queue_.clear();
-  set_acl_queue_.clear();
   children_queue_.clear();
   outgoing_queue_.clear();
 }

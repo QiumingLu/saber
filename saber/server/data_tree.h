@@ -14,7 +14,6 @@
 #include "saber/proto/saber.pb.h"
 #include "saber/proto/server.pb.h"
 #include "saber/server/server_watch_manager.h"
-#include "saber/service/acl.h"
 
 namespace saber {
 
@@ -23,7 +22,8 @@ class DataTree {
   DataTree();
   ~DataTree();
 
-  uint64_t Recover(const std::string& s, size_t index);
+  void Recover(const DataNodeList& node_list);
+  DataNodeList GetDataNodeList() const;
 
   void Create(const CreateRequest& request, const Transaction* txn,
               CreateResponse* response, bool only_check = false);
@@ -40,11 +40,6 @@ class DataTree {
   void SetData(const SetDataRequest& request, const Transaction* txn,
                SetDataResponse* response, bool only_check = false);
 
-  void GetACL(const GetACLRequest& request, GetACLResponse* response);
-
-  void SetACL(const SetACLRequest& request, const Transaction* txn,
-              SetACLResponse* response, bool only_check = false);
-
   void GetChildren(const GetChildrenRequest& request, Watcher* watcher,
                    GetChildrenResponse* response);
 
@@ -55,36 +50,7 @@ class DataTree {
   // No thread safe
   size_t NodeSize() const { return nodes_.size(); }
 
-  // Serialize all nodes, and append the result to the *s;
-  // No thread safe
-  void SerializeToString(std::string* s) const;
-
-  // Copy all the nodes
-  // No thread safe
-  // Caller should delete the return value when it's no longer needed.
-  std::unordered_map<std::string, DataNode>* CopyNodes() const;
-
-  // Copy all the childrens
-  // No thread safe
-  // Caller should delete the return value when it's no longer needed.
-  std::unordered_map<std::string, std::unordered_set<std::string>>*
-  CopyChildrens() const;
-
-  // Serialize all nodes, and append the result to the *s.
-  // Thread safe
-  static void SerializeToString(
-      const std::unordered_map<std::string, DataNode>& nodes,
-      const std::unordered_map<std::string, std::unordered_set<std::string>>&
-          childrens,
-      std::string* s);
-
  private:
-  // TODO
-  bool CheckACL(const DataNode& node, Permissions perm,
-                const std::vector<Id>* ids);
-
-  static const bool kSkipACL = true;
-
   std::mutex mutex_;
   std::unordered_map<std::string, DataNode> nodes_;
   std::unordered_map<std::string, std::unordered_set<std::string>> childrens_;

@@ -25,7 +25,6 @@ int main(int argc, char** argv) {
 
   saber::ServerOptions server_options;
   server_options.log_storage_path = std::string(path) + "/log";
-  server_options.checkpoint_storage_path = std::string(path) + "/checkpoint";
 
   std::vector<std::string> server;
   std::vector<std::string> servers;
@@ -68,7 +67,7 @@ int main(int argc, char** argv) {
   saber::SaberServer saber_server(&loop, server_options);
 
   voyager::SetLogLevel(voyager::LOGLEVEL_ERROR);
-  skywalker::SetLogLevel(skywalker::LOGLEVEL_WARN);
+  skywalker::SetLogLevel(skywalker::LOGLEVEL_INFO);
   saber::SetLogLevel(saber::LOGLEVEL_INFO);
 
   bool res = saber_server.Start();

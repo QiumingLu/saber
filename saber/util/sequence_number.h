@@ -14,7 +14,7 @@ class SequenceNumber {
  public:
   SequenceNumber(T max) : max_(max), num_(0) {}
   T GetNext() {
-    std::unique_lock<std::mutex> lock(mutex_);
+    std::lock_guard<std::mutex> lock(mutex_);
     if (num_ >= max_) {
       num_ = 0;
     }

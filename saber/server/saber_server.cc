@@ -61,14 +61,7 @@ SaberServer::~SaberServer() {}
 bool SaberServer::Start() {
   loop_ = thread_.Loop();
   db_.reset(new SaberDB(loop_, options_));
-  db_->set_machine_id(10);
-  bool res = db_->Recover();
-  if (res) {
-    LOG_INFO("Saber database recover successful!");
-  } else {
-    LOG_ERROR("Saber database recover failed!");
-    return false;
-  }
+  db_->set_machine_id(1001);
 
   skywalker::GroupOptions group_options;
   group_options.use_master = true;
@@ -76,6 +69,7 @@ bool SaberServer::Start() {
   group_options.sync_interval = options_.log_sync_interval;
   group_options.keep_log_count = options_.keep_log_count;
   group_options.log_storage_path = options_.log_storage_path;
+  group_options.keep_checkpoint_count = options_.keep_checkpoint_count;
 
   skywalker::Member member;
   for (auto& server_message : options_.all_server_messages) {
@@ -86,7 +80,6 @@ bool SaberServer::Start() {
     group_options.membership.push_back(member);
   }
 
-  group_options.checkpoint = db_.get();
   group_options.machines.push_back(db_.get());
 
   skywalker::Options skywalker_options;
@@ -105,7 +98,7 @@ bool SaberServer::Start() {
   };
 
   skywalker::Node* node;
-  res = skywalker::Node::Start(skywalker_options, &node);
+  bool res = skywalker::Node::Start(skywalker_options, &node);
   if (res) {
     LOG_INFO("Skywalker start successful!");
     node_.reset(node);
@@ -214,12 +207,13 @@ bool SaberServer::HandleMessage(const EntryPtr& entry,
   if (node_->IsMaster(group_id)) {
     return OnConnectRequest(root, group_id, entry, std::move(message));
   } else {
+    Master master;
     skywalker::Member i;
     uint64_t version;
-    node_->GetMaster(group_id, &i, &version);
-    Master master;
-    master.set_host(i.host);
-    master.set_port(atoi(i.context.c_str()));
+    if (node_->GetMaster(group_id, &i, &version)) {
+      master.set_host(i.host);
+      master.set_port(atoi(i.context.c_str()));
+    }
     message->set_type(MT_MASTER);
     message->set_data(master.SerializeAsString());
     codec_.SendMessage(entry->conn_wp.lock(), *message);
@@ -245,7 +239,7 @@ bool SaberServer::OnConnectRequest(const std::string& root, uint32_t group_id,
   if (session_id != 0) {
     // Check whether the session still exists or has been moved.
     {
-      std::unique_lock<std::mutex> lock(mutexes_[group_id]);
+      std::lock_guard<std::mutex> lock(mutexes_[group_id]);
       auto it = sessions_[group_id].find(session_id);
       if (it != sessions_[group_id].end()) {
         std::shared_ptr<SaberSession> session = it->second.lock();
@@ -277,14 +271,15 @@ bool SaberServer::OnConnectRequest(const std::string& root, uint32_t group_id,
 
   request.set_session_id(session_id);
   message->set_data(request.SerializeAsString());
-  std::string value(message->SerializeAsString());
+  std::string value;
+  message->SerializeToString(&value);
 
   SaberMessage* reply = message.release();
   response.set_code(RC_FAILED);
   reply->set_data(response.SerializeAsString());
 
   bool b = node_->Propose(
-      group_id, db_->machine_id(), value, reply,
+      group_id, db_->machine_id(), value = std::move(value), reply,
       [this, root, group_id, session_id, entry](
           uint64_t instance_id, const skywalker::Status& s, void* context) {
         SaberMessage* r = reinterpret_cast<SaberMessage*>(context);
@@ -333,7 +328,7 @@ bool SaberServer::CreateSession(const std::string& root, uint32_t group_id,
                                 uint64_t session_id, uint64_t version,
                                 const EntryPtr& entry) {
   bool b = true;
-  std::unique_lock<std::mutex> lock(mutexes_[group_id]);
+  std::lock_guard<std::mutex> lock(mutexes_[group_id]);
   auto it = sessions_[group_id].find(session_id);
   if (it != sessions_[group_id].end()) {
     entry->session = it->second.lock();
@@ -353,7 +348,7 @@ bool SaberServer::CreateSession(const std::string& root, uint32_t group_id,
 void SaberServer::CloseSession(const std::shared_ptr<SaberSession>& session) {
   bool need_kill = false;
   {
-    std::unique_lock<std::mutex> lock(mutexes_[session->group_id()]);
+    std::lock_guard<std::mutex> lock(mutexes_[session->group_id()]);
     if (session.unique()) {
       sessions_[session->group_id()].erase(session->session_id());
       need_kill = true;
@@ -375,7 +370,7 @@ void SaberServer::CleanSessions(uint32_t group_id) {
     return;
   }
   if (!node_->IsMaster(group_id)) {
-    std::unique_lock<std::mutex> lock(mutexes_[group_id]);
+    std::lock_guard<std::mutex> lock(mutexes_[group_id]);
     for (auto& it : sessions_[group_id]) {
       auto session = it.second.lock();
       if (session) {
@@ -388,15 +383,14 @@ void SaberServer::CleanSessions(uint32_t group_id) {
     return;
   }
   auto sessions = db_->CopySessions(group_id);
-  if (sessions->empty()) {
-    delete sessions;
+  if (sessions.empty()) {
     return;
   }
-  loop_->RunAfter(8000000, [this, group_id, sessions]() {
+  loop_->RunAfter(8000, [this, group_id, sessions = std::move(sessions)]() {
     CloseRequest request;
     {
-      std::unique_lock<std::mutex> lock(mutexes_[group_id]);
-      for (auto& it : *sessions) {
+      std::lock_guard<std::mutex> lock(mutexes_[group_id]);
+      for (auto& it : sessions) {
         if (sessions_[group_id].find(it.first) == sessions_[group_id].end()) {
           request.add_session_id(it.first);
           request.add_version(it.second);
@@ -406,7 +400,6 @@ void SaberServer::CleanSessions(uint32_t group_id) {
     if (request.session_id_size() > 0) {
       OnCloseRequest(group_id, request);
     }
-    delete sessions;
   });
 }
 
@@ -419,7 +412,6 @@ void SaberServer::NewServers(uint32_t group_id) {
   node_->GetMembership(group_id, &members, &version);
 
   std::string s;
-  s.reserve(24 * members.size());
   for (auto& i : members) {
     s.append(i.host);
     s.append(":");
@@ -433,7 +425,7 @@ void SaberServer::NewServers(uint32_t group_id) {
   message.set_data(std::move(s));
   message.set_extra_data(std::to_string(version));
 
-  std::unique_lock<std::mutex> lock(mutexes_[group_id]);
+  std::lock_guard<std::mutex> lock(mutexes_[group_id]);
   for (auto& it : sessions_[group_id]) {
     auto session = it.second.lock();
     if (session) {

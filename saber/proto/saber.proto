@@ -6,7 +6,6 @@ enum SessionState {
   SS_CONNECTED = 1;
   SS_DISCONNECTED = 2;
   SS_EXPIRED = 3;
-  SS_AUTHFAILED = 4;
 }
 
 enum EventType {
@@ -20,7 +19,7 @@ enum EventType {
 message WatchedEvent {
   SessionState state = 1;
   EventType type = 2;
-  bytes path = 3;
+  string path = 3;
 }
 
 enum NodeType {
@@ -38,9 +37,8 @@ enum ResponseCode {
   RC_NODE_EXISTS = 4;
   RC_CHILDREN_EXISTS = 5;
   RC_BAD_VERSION = 6;
-  RC_NO_AUTH = 7;
-  RC_UNKNOWN = 8;
-  RC_RECONNECT = 9;
+  RC_UNKNOWN = 7;
+  RC_RECONNECT = 8;
 }
 
 message Stat {
@@ -51,21 +49,10 @@ message Stat {
   uint64 modified_time = 5;
   int32 version = 6;
   int32 children_version = 7;
-  int32 acl_version = 8;
-  uint32 data_len = 9;
-  uint32 children_num = 10;
-  uint64 children_id = 11;
-  uint64 ephemeral_id = 12;
-}
-
-message Id {
-  bytes scheme = 1;
-  bytes id = 2;
-}
-
-message ACL {
-  int32 perms = 1;
-  Id id = 2;
+  uint32 data_len = 8;
+  uint32 children_num = 9;
+  uint64 children_id = 10;
+  uint64 ephemeral_id = 11;
 }
 
 message ConnectRequest {
@@ -87,26 +74,25 @@ message CloseRequest {
 message CloseResponse { ResponseCode code = 1; }
 
 message CreateRequest {
-  bytes path = 1;
+  string path = 1;
   bytes data = 2;
-  repeated ACL acl = 3;
-  NodeType type = 4;
+  NodeType type = 3;
 }
 
 message CreateResponse {
   ResponseCode code = 1;
-  bytes path = 2;
+  string path = 2;
 }
 
 message DeleteRequest {
-  bytes path = 1;
+  string path = 1;
   int32 version = 2;
 }
 
 message DeleteResponse { ResponseCode code = 1; }
 
 message ExistsRequest {
-  bytes path = 1;
+  string path = 1;
   bool watch = 2;
 }
 
@@ -116,7 +102,7 @@ message ExistsResponse {
 }
 
 message GetDataRequest {
-  bytes path = 1;
+  string path = 1;
   bool watch = 2;
 }
 
@@ -127,7 +113,7 @@ message GetDataResponse {
 }
 
 message SetDataRequest {
-  bytes path = 1;
+  string path = 1;
   bytes data = 2;
   int32 version = 3;
 }
@@ -137,38 +123,19 @@ message SetDataResponse {
   Stat stat = 2;
 }
 
-message GetACLRequest { bytes path = 1; }
-
-message GetACLResponse {
-  ResponseCode code = 1;
-  repeated ACL acl = 2;
-  Stat stat = 3;
-}
-
-message SetACLRequest {
-  bytes path = 1;
-  repeated ACL acl = 2;
-  int32 version = 3;
-}
-
-message SetACLResponse {
-  ResponseCode code = 1;
-  Stat stat = 2;
-}
-
 message GetChildrenRequest {
-  bytes path = 1;
+  string path = 1;
   bool watch = 2;
 }
 
 message GetChildrenResponse {
   ResponseCode code = 1;
   Stat stat = 2;
-  repeated bytes children = 3;
+  repeated string children = 3;
 }
 
 message Master {
-  bytes host = 1;
+  string host = 1;
   int32 port = 2;
 }
 
@@ -179,14 +146,12 @@ enum MessageType {
   MT_EXISTS = 3;
   MT_GETDATA = 4;
   MT_SETDATA = 5;
-  MT_GETACL = 6;
-  MT_SETACL = 7;
-  MT_GETCHILDREN = 8;
-  MT_MASTER = 9;
-  MT_PING = 10;
-  MT_CONNECT = 11;
-  MT_CLOSE = 12;
-  MT_SERVERS = 13;
+  MT_GETCHILDREN = 6;
+  MT_MASTER = 7;
+  MT_PING = 8;
+  MT_CONNECT = 9;
+  MT_CLOSE = 10;
+  MT_SERVERS = 11;
 }
 
 message SaberMessage {

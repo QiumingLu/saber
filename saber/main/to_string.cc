@@ -21,9 +21,6 @@ std::string ToString(SessionState state) {
     case SS_EXPIRED:
       s = "Expired";
       break;
-    case SS_AUTHFAILED:
-      s = "AuthFailed";
-      break;
     default:
       s = "Unknown";
       assert(false);
@@ -95,9 +92,6 @@ std::string ToString(ResponseCode code) {
     case RC_BAD_VERSION:
       s = "BadVersion";
       break;
-    case RC_NO_AUTH:
-      s = "NoAuth";
-      break;
     case RC_UNKNOWN:
       s = "UnKnown";
       break;
@@ -132,9 +126,6 @@ std::string ToString(const Stat& stat) {
   s += "\n";
   s += "children_version: ";
   s += std::to_string(stat.children_version());
-  s += "\n";
-  s += "acl_version: ";
-  s += std::to_string(stat.acl_version());
   s += "\n";
   s += "data_len: ";
   s += std::to_string(stat.data_len());
@@ -189,39 +180,6 @@ std::string ToString(const GetDataResponse& response) {
 }
 
 std::string ToString(const SetDataResponse& response) {
-  std::string s = ToString(response.code());
-  if (response.code() != RC_OK) {
-    return s;
-  }
-  s += "stat:\n";
-  s += ToString(response.stat());
-  return s;
-}
-
-std::string ToString(const GetACLResponse& response) {
-  std::string s = ToString(response.code());
-  if (response.code() != RC_OK) {
-    return s;
-  }
-  s += "acl:\n";
-  for (int i = 0; i < response.acl_size(); ++i) {
-    const ACL& acl = response.acl(i);
-    s += std::to_string(i + 1);
-    s += ":";
-    s += " perms:";
-    s += std::to_string(acl.perms());
-    s += " scheme:";
-    s += acl.id().scheme();
-    s += " id:";
-    s += acl.id().id();
-    s += "\n";
-  }
-  s += "stat:\n";
-  s += ToString(response.stat());
-  return s;
-}
-
-std::string ToString(const SetACLResponse& response) {
   std::string s = ToString(response.code());
   if (response.code() != RC_OK) {
     return s;

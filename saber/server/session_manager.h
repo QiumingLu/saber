@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include <vector>
 #include <mutex>
+#include "saber/proto/server.pb.h"
 
 namespace saber {
 
@@ -17,7 +18,8 @@ class SessionManager {
   SessionManager() {}
   ~SessionManager() {}
 
-  uint64_t Recover(const std::string& s, size_t index);
+  void Recover(const SessionList& session_list);
+  SessionList GetSessionList() const;
 
   bool FindSession(uint64_t session_id, uint64_t* version) const;
 
@@ -31,19 +33,8 @@ class SessionManager {
   // No thread safe
   size_t SessionSize() const { return sessions_.size(); }
 
-  // Serialize all sessions, and append the result to the *s;
   // No thread safe
-  void SerializeToString(std::string* s) const;
-
-  // Copy all the sessions
-  // No thread safe
-  // Caller should delete the return value when it's no longer needed.
-  std::unordered_map<uint64_t, uint64_t>* CopySessions() const;
-
-  // Serialize all sessions, and append the result to the *s;
-  // Thread safe
-  static void SerializeToString(
-      const std::unordered_map<uint64_t, uint64_t>& sessions, std::string* s);
+  std::unordered_map<uint64_t, uint64_t> CopySessions() const;
 
  private:
   mutable std::mutex mutex_;

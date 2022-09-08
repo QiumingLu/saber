@@ -20,7 +20,6 @@ int main(int argc, char** argv) {
   saber::ServerOptions server_options;
   server_options.paxos_group_size = 1;
   server_options.log_storage_path = std::string(path) + "/log";
-  server_options.checkpoint_storage_path = std::string(path) + "/checkpoint";
 
   std::vector<std::string> server;
 

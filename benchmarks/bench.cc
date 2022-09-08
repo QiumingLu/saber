@@ -32,9 +32,6 @@ class ClientWatcher : public Watcher {
         case SS_EXPIRED:
           s = "Expired";
           break;
-        case SS_AUTHFAILED:
-          s = "AuthFailed";
-          break;
         default:
           s = "Unknown";
           assert(false);

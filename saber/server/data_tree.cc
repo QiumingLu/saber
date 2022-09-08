@@ -12,53 +12,40 @@
 
 namespace saber {
 
-static inline void AppendToString(std::string* s, size_t value) {
-  PutFixed32(s, static_cast<uint32_t>(value));
-}
-
 DataTree::DataTree() { nodes_.insert(std::make_pair("", DataNode())); }
 
 DataTree::~DataTree() {}
 
-uint64_t DataTree::Recover(const std::string& s, size_t index) {
-  const char* base = s.c_str();
-  const char* p = base + index;
+void DataTree::Recover(const DataNodeList& node_list) {
+  for (const auto& node : node_list.nodes()) {
+    auto& new_node = nodes_[node.path()];
+    new_node.mutable_stat()->CopyFrom(node.stat());
+    new_node.set_data(node.data());
 
-  uint32_t size = DecodeFixed32(p);
-  p += 4;
-
-  for (uint32_t i = 0; i < size; ++i) {
-    uint32_t len = DecodeFixed32(p);
-    p += 4;
-    std::string name(p, len);
-    p += len;
-
-    DataNode& node = nodes_[name];
-
-    len = DecodeFixed32(p);
-    p += 4;
-    node.ParseFromArray(p, len);
-    p += len;
-
-    len = DecodeFixed32(p);
-    p += 4;
-
-    if (len > 0) {
-      std::unordered_set<std::string>& children = childrens_[name];
-      for (uint32_t idx = 0; idx < len; ++idx) {
-        uint32_t temp = DecodeFixed32(p);
-        p += 4;
-        children.insert(std::string(p, temp));
-        p += temp;
-      }
+    for (const auto& child : node.children()) {
+      childrens_[node.path()].insert(child);
     }
 
-    if (node.stat().ephemeral_id() != 0) {
-      ephemerals_[node.stat().ephemeral_id()].insert(name);
+    if (node.stat().ephemeral_id() > 0) {
+      ephemerals_[node.stat().ephemeral_id()].insert(node.path());
     }
   }
+}
 
-  return (p - base);
+DataNodeList DataTree::GetDataNodeList() const {
+  DataNodeList node_list;
+  for (const auto& it : nodes_) {
+    auto node = node_list.add_nodes();
+    node->CopyFrom(it.second);
+    node->set_path(it.first);
+    auto iter = childrens_.find(it.first);
+    if (iter != childrens_.end()) {
+      for (const auto& child : iter->second) {
+        node->add_children(child);
+      }
+    }
+  }
+  return node_list;
 }
 
 void DataTree::Create(const CreateRequest& request, const Transaction* txn,
@@ -68,25 +55,14 @@ void DataTree::Create(const CreateRequest& request, const Transaction* txn,
   std::string parent = path.substr(0, found);
   std::string child = path.substr(found + 1);
 
-  if (parent == "" && (request.type() == NT_PERSISTENT_SEQUENTIAL ||
-                       request.type() == NT_EPHEMERAL_SEQUENTIAL)) {
-    response->set_code(RC_NO_PARENT);
-    return;
-  }
-
   {
-    std::unique_lock<std::mutex> lock(mutex_);
+    std::lock_guard<std::mutex> lock(mutex_);
     auto it = nodes_.find(parent);
     if (it == nodes_.end()) {
       response->set_code(RC_NO_PARENT);
       return;
     }
 
-    // TODO
-    if (!CheckACL(it->second, kCreate, nullptr)) {
-      response->set_code(RC_NO_AUTH);
-      return;
-    }
     bool b = false;
     if (request.type() == NT_PERSISTENT_SEQUENTIAL ||
         request.type() == NT_EPHEMERAL_SEQUENTIAL) {
@@ -119,12 +95,10 @@ void DataTree::Create(const CreateRequest& request, const Transaction* txn,
       stat->set_modified_time(txn->time());
       stat->set_version(0);
       stat->set_children_version(0);
-      stat->set_acl_version(0);
       stat->set_data_len(static_cast<uint32_t>(request.data().size()));
       stat->set_children_num(0);
       stat->set_children_id(txn->instance_id());
       node.set_data(request.data());
-      *(node.mutable_acl()) = request.acl();
       if (request.type() == NT_EPHEMERAL ||
           request.type() == NT_EPHEMERAL_SEQUENTIAL) {
         stat->set_ephemeral_id(txn->session_id());
@@ -149,7 +123,7 @@ void DataTree::Delete(const DeleteRequest& request, const Transaction* txn,
   std::string child = path.substr(found + 1);
 
   {
-    std::unique_lock<std::mutex> lock(mutex_);
+    std::lock_guard<std::mutex> lock(mutex_);
     auto it = nodes_.find(path);
     if (it == nodes_.end()) {
       response->set_code(RC_NO_NODE);
@@ -162,11 +136,6 @@ void DataTree::Delete(const DeleteRequest& request, const Transaction* txn,
     }
 
     auto p_it = nodes_.find(parent);
-    // TODO
-    if (p_it != nodes_.end() && !CheckACL(p_it->second, kDelete, nullptr)) {
-      response->set_code(RC_NO_AUTH);
-      return;
-    }
     if (only_check) {
       response->set_code(RC_OK);
       return;
@@ -214,7 +183,7 @@ void DataTree::Exists(const ExistsRequest& request, Watcher* watcher,
     data_watches_.AddWatcher(path, watcher);
   }
 
-  std::unique_lock<std::mutex> lock(mutex_);
+  std::lock_guard<std::mutex> lock(mutex_);
   auto it = nodes_.find(path);
   if (it != nodes_.end()) {
     response->set_code(RC_OK);
@@ -229,17 +198,12 @@ void DataTree::GetData(const GetDataRequest& request, Watcher* watcher,
   const std::string& path = request.path();
 
   {
-    std::unique_lock<std::mutex> lock(mutex_);
+    std::lock_guard<std::mutex> lock(mutex_);
     auto it = nodes_.find(path);
     if (it != nodes_.end()) {
-      // TODO
-      if (CheckACL(it->second, kRead, nullptr)) {
-        response->set_code(RC_OK);
-        response->set_data(it->second.data());
-        *(response->mutable_stat()) = it->second.stat();
-      } else {
-        response->set_code(RC_NO_AUTH);
-      }
+      response->set_code(RC_OK);
+      response->set_data(it->second.data());
+      *(response->mutable_stat()) = it->second.stat();
     } else {
       response->set_code(RC_NO_NODE);
     }
@@ -258,14 +222,12 @@ void DataTree::SetData(const SetDataRequest& request, const Transaction* txn,
   const std::string& data = request.data();
 
   {
-    std::unique_lock<std::mutex> lock(mutex_);
+    std::lock_guard<std::mutex> lock(mutex_);
     auto it = nodes_.find(path);
     if (it != nodes_.end()) {
       int version = it->second.stat().version();
       if (request.version() != -1 && request.version() != version) {
         response->set_code(RC_BAD_VERSION);
-      } else if (!CheckACL(it->second, kWrite, nullptr)) {
-        response->set_code(RC_NO_AUTH);
       } else if (only_check) {
         response->set_code(RC_OK);
       } else {
@@ -288,64 +250,21 @@ void DataTree::SetData(const SetDataRequest& request, const Transaction* txn,
   }
 }
 
-void DataTree::GetACL(const GetACLRequest& request, GetACLResponse* response) {
-  const std::string& path = request.path();
-  std::unique_lock<std::mutex> lock(mutex_);
-  auto it = nodes_.find(path);
-  if (it != nodes_.end()) {
-    response->set_code(RC_OK);
-    *(response->mutable_stat()) = it->second.stat();
-    *(response->mutable_acl()) = it->second.acl();
-  } else {
-    response->set_code(RC_NO_NODE);
-  }
-}
-
-void DataTree::SetACL(const SetACLRequest& request, const Transaction* txn,
-                      SetACLResponse* response, bool only_check) {
-  const std::string& path = request.path();
-
-  std::unique_lock<std::mutex> lock(mutex_);
-  auto it = nodes_.find(path);
-  if (it != nodes_.end()) {
-    int version = it->second.stat().acl_version();
-    if (request.version() != -1 && request.version() != version) {
-      response->set_code(RC_BAD_VERSION);
-    } else if (!CheckACL(it->second, kAdmin, nullptr)) {
-      response->set_code(RC_NO_AUTH);
-    } else if (only_check) {
-      response->set_code(RC_OK);
-    } else {
-      *(it->second.mutable_acl()) = request.acl();
-      it->second.mutable_stat()->set_acl_version(version + 1);
-      response->set_code(RC_OK);
-      *(response->mutable_stat()) = it->second.stat();
-    }
-  } else {
-    response->set_code(RC_NO_NODE);
-  }
-}
-
 void DataTree::GetChildren(const GetChildrenRequest& request, Watcher* watcher,
                            GetChildrenResponse* response) {
   const std::string& path = request.path();
 
   {
-    std::unique_lock<std::mutex> lock(mutex_);
+    std::lock_guard<std::mutex> lock(mutex_);
     auto it = nodes_.find(path);
     if (it != nodes_.end()) {
-      // TODO
-      if (CheckACL(it->second, kRead, nullptr)) {
-        response->set_code(RC_OK);
-        *(response->mutable_stat()) = it->second.stat();
-        if (childrens_.find(path) != childrens_.end()) {
-          const std::unordered_set<std::string>& children = childrens_[path];
-          for (auto& i : children) {
-            response->add_children(i);
-          }
+      response->set_code(RC_OK);
+      *(response->mutable_stat()) = it->second.stat();
+      if (childrens_.find(path) != childrens_.end()) {
+        const std::unordered_set<std::string>& children = childrens_[path];
+        for (auto& i : children) {
+          response->add_children(i);
         }
-      } else {
-        response->set_code(RC_NO_AUTH);
       }
     } else {
       response->set_code(RC_NO_NODE);
@@ -357,31 +276,6 @@ void DataTree::GetChildren(const GetChildrenRequest& request, Watcher* watcher,
       child_watches_.AddWatcher(path, watcher);
     }
   }
-}
-
-// TODO
-bool DataTree::CheckACL(const DataNode& node, Permissions perm,
-                        const std::vector<Id>* ids) {
-  if (kSkipACL) {
-    return true;
-  }
-  if (node.acl_size() == 0) {
-    return true;
-  }
-  for (auto& id : *ids) {
-    if (id.scheme() == "super") {
-      return true;
-    }
-  }
-  for (int i = 0; i < node.acl_size(); ++i) {
-    const ACL& a = node.acl(i);
-    if ((a.perms() & perm) != 0) {
-      if (a.id().scheme() == "world" && a.id().id() == "anyone") {
-        return true;
-      }
-    }
-  }
-  return false;
 }
 
 void DataTree::RemoveWatcher(Watcher* watcher) {
@@ -407,45 +301,6 @@ void DataTree::KillSession(uint64_t session_id, const Transaction* txn) {
             "for dead session %llu.",
             p.c_str(), (unsigned long long)session_id);
       }
-    }
-  }
-}
-
-void DataTree::SerializeToString(std::string* s) const {
-  SerializeToString(nodes_, childrens_, s);
-}
-
-std::unordered_map<std::string, DataNode>* DataTree::CopyNodes() const {
-  return new std::unordered_map<std::string, DataNode>(nodes_);
-}
-
-std::unordered_map<std::string, std::unordered_set<std::string>>*
-DataTree::CopyChildrens() const {
-  return new std::unordered_map<std::string, std::unordered_set<std::string>>(
-      childrens_);
-}
-
-void DataTree::SerializeToString(
-    const std::unordered_map<std::string, DataNode>& nodes,
-    const std::unordered_map<std::string, std::unordered_set<std::string>>&
-        childrens,
-    std::string* s) {
-  AppendToString(s, nodes.size());
-  for (auto& it : nodes) {
-    AppendToString(s, it.first.size());
-    s->append(it.first);
-    AppendToString(s, it.second.ByteSizeLong());
-    it.second.AppendToString(s);
-    auto iter = childrens.find(it.first);
-    if (iter != childrens.end()) {
-      const std::unordered_set<std::string>& children = iter->second;
-      AppendToString(s, children.size());
-      for (auto& child : children) {
-        AppendToString(s, child.size());
-        s->append(child);
-      }
-    } else {
-      AppendToString(s, 0);
     }
   }
 }
