@@ -120,9 +120,9 @@ void DataTree::Create(const CreateRequest& request, const Transaction* txn,
       stat->set_children_num(0);
       stat->set_children_id(txn->instance_id());
       node.set_data(request.data());
-      node.set_type(request.type());
-      if (request.type() == NT_EPHEMERAL ||
-          request.type() == NT_EPHEMERAL_SEQUENTIAL) {
+      node.set_type(request.node_type());
+      if (request.node_type() == NT_EPHEMERAL ||
+          request.node_type() == NT_EPHEMERAL_SEQUENTIAL) {
         stat->set_ephemeral_id(txn->session_id());
         ephemerals_[stat->ephemeral_id()].insert(path);
       }

@@ -90,7 +90,7 @@ void MySaber::Create() {
   request.set_path(v[0]);
   request.set_data(v[1]);
   int node_type = atoi(v[2].c_str());
-  request.set_type(static_cast<NodeType>(node_type));
+  request.set_node_type(static_cast<NodeType>(node_type));
   bool b = saber_.Create(request, nullptr,
                          [this](const std::string& path, void* context,
                                 const CreateResponse& response) {

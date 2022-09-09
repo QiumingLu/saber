@@ -77,7 +77,7 @@ message CloseRequest {
 message CloseResponse { ResponseCode code = 1; }
 
 message CreateRequest {
-  NodeType type = 1;
+  NodeType node_type = 1;
   string path = 2;
   bytes data = 3;
 }
