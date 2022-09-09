@@ -11,10 +11,11 @@ message Transaction {
 }
 
 message DataNode {
-  Stat stat = 1;
-  bytes data = 2;
-  string path = 3;
-  repeated string children = 4;
+  NodeType type = 1;
+  string path = 2;
+  Stat stat = 3;
+  bytes data = 4;
+  repeated string children = 5;
 }
 
 message DataNodeList {

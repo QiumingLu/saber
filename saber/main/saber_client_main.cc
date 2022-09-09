@@ -16,7 +16,7 @@ int main(int argc, char** argv) {
     return -1;
   }
 
-  // saber::SetLogHandler(nullptr);
+  saber::SetLogHandler(nullptr);
   saber::DefaultWatcher watcher;
   saber::ClientOptions options;
   options.root = "/ls";

@@ -18,6 +18,7 @@ DataTree::~DataTree() {}
 void DataTree::Recover(const DataNodeList& node_list) {
   for (const auto& node : node_list.nodes()) {
     auto& new_node = nodes_[node.path()];
+    new_node.set_type(node.type());
     new_node.mutable_stat()->CopyFrom(node.stat());
     new_node.set_data(node.data());
 
@@ -47,12 +48,30 @@ DataNodeList DataTree::GetDataNodeList() const {
   return node_list;
 }
 
+ResponseCode DataTree::ParsePath(const std::string& path,
+                                 std::string* parent, std::string* child) const {
+  size_t found = path.find_last_of('/');
+  if (found == std::string::npos) {
+    return RC_NO_PARENT;
+  }
+  *parent = path.substr(0, found);
+  *child = path.substr(found + 1);
+  if (child->empty()) {
+    return RC_FAILED;
+  }
+  return RC_OK;
+}
+
 void DataTree::Create(const CreateRequest& request, const Transaction* txn,
                       CreateResponse* response, bool only_check) {
   std::string path = request.path();
-  size_t found = path.find_last_of('/');
-  std::string parent = path.substr(0, found);
-  std::string child = path.substr(found + 1);
+  std::string parent;
+  std::string child;
+  ResponseCode retcode = ParsePath(path, &parent, &child);
+  if (retcode != RC_OK) {
+    response->set_code(retcode);
+    return;
+  }
 
   {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -61,11 +80,14 @@ void DataTree::Create(const CreateRequest& request, const Transaction* txn,
       response->set_code(RC_NO_PARENT);
       return;
     }
+    if (it->second.type() == NT_EPHEMERAL ||
+        it->second.type() == NT_EPHEMERAL_SEQUENTIAL) {
+      response->set_code(RC_PARENT_EPHEMERAL);
+      return;
+    }
 
-    bool b = false;
-    if (request.type() == NT_PERSISTENT_SEQUENTIAL ||
-        request.type() == NT_EPHEMERAL_SEQUENTIAL) {
-      b = true;
+    if (it->second.type() == NT_PERSISTENT_SEQUENTIAL ||
+        it->second.type() == NT_EPHEMERAL_SEQUENTIAL) {
       if (!only_check) {
         char seq[16];
         snprintf(seq, sizeof(seq), "_%010d",
@@ -75,7 +97,7 @@ void DataTree::Create(const CreateRequest& request, const Transaction* txn,
       }
     }
     std::unordered_set<std::string>& children = childrens_[parent];
-    if (!b && children.find(child) != children.end()) {
+    if (children.find(child) != children.end()) {
       response->set_code(RC_NODE_EXISTS);
     } else if (only_check) {
       response->set_code(RC_OK);
@@ -98,6 +120,7 @@ void DataTree::Create(const CreateRequest& request, const Transaction* txn,
       stat->set_children_num(0);
       stat->set_children_id(txn->instance_id());
       node.set_data(request.data());
+      node.set_type(request.type());
       if (request.type() == NT_EPHEMERAL ||
           request.type() == NT_EPHEMERAL_SEQUENTIAL) {
         stat->set_ephemeral_id(txn->session_id());
@@ -109,17 +132,22 @@ void DataTree::Create(const CreateRequest& request, const Transaction* txn,
   }
   if (!only_check && response->code() == RC_OK) {
     data_watches_.TriggerWatcher(path, ET_NODE_CREATED);
-    child_watches_.TriggerWatcher(parent.empty() ? "/" : parent,
-                                  ET_NODE_CHILDREN_CHANGED);
+    if (!parent.empty()) {
+      child_watches_.TriggerWatcher(parent, ET_NODE_CHILDREN_CHANGED);
+    }
   }
 }
 
 void DataTree::Delete(const DeleteRequest& request, const Transaction* txn,
                       DeleteResponse* response, bool only_check) {
   const std::string& path = request.path();
-  size_t found = path.find_last_of('/');
-  std::string parent = path.substr(0, found);
-  std::string child = path.substr(found + 1);
+  std::string parent;
+  std::string child;
+  ResponseCode retcode = ParsePath(path, &parent, &child);
+  if (retcode != RC_OK) {
+    response->set_code(retcode);
+    return;
+  }
 
   {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -133,8 +161,11 @@ void DataTree::Delete(const DeleteRequest& request, const Transaction* txn,
       response->set_code(RC_BAD_VERSION);
       return;
     }
+    if (childrens_.find(path) != childrens_.end()) {
+      response->set_code(RC_CHILDREN_EXISTS);
+      return;
+    }
 
-    auto p_it = nodes_.find(parent);
     if (only_check) {
       response->set_code(RC_OK);
       return;
@@ -150,6 +181,7 @@ void DataTree::Delete(const DeleteRequest& request, const Transaction* txn,
       }
     }
     nodes_.erase(it);
+    auto p_it = nodes_.find(parent);
     if (p_it != nodes_.end()) {
       if (childrens_.find(parent) != childrens_.end()) {
         std::unordered_set<std::string>& children = childrens_[parent];
@@ -169,15 +201,22 @@ void DataTree::Delete(const DeleteRequest& request, const Transaction* txn,
     }
   }
 
-  WatcherSetPtr p = data_watches_.TriggerWatcher(path, ET_NODE_DELETED);
-  child_watches_.TriggerWatcher(path, ET_NODE_DELETED, std::move(p));
-  child_watches_.TriggerWatcher(parent.empty() ? "/" : parent,
-                                ET_NODE_CHILDREN_CHANGED);
+  data_watches_.TriggerWatcher(path, ET_NODE_DELETED);
+  if (!parent.empty()) {
+    child_watches_.TriggerWatcher(parent, ET_NODE_CHILDREN_CHANGED);
+  }
 }
 
 void DataTree::Exists(const ExistsRequest& request, Watcher* watcher,
                       ExistsResponse* response) {
   const std::string& path = request.path();
+  std::string parent;
+  std::string child;
+  ResponseCode code = ParsePath(path, &parent, &child);
+  if (code != RC_OK) {
+    response->set_code(code);
+    return;
+  }
   if (watcher) {
     data_watches_.AddWatcher(path, watcher);
   }
@@ -186,6 +225,7 @@ void DataTree::Exists(const ExistsRequest& request, Watcher* watcher,
   auto it = nodes_.find(path);
   if (it != nodes_.end()) {
     response->set_code(RC_OK);
+    response->set_node_type(it->second.type());
     *(response->mutable_stat()) = it->second.stat();
   } else {
     response->set_code(RC_NO_NODE);
@@ -195,12 +235,20 @@ void DataTree::Exists(const ExistsRequest& request, Watcher* watcher,
 void DataTree::GetData(const GetDataRequest& request, Watcher* watcher,
                        GetDataResponse* response) {
   const std::string& path = request.path();
+  std::string parent;
+  std::string child;
+  ResponseCode code = ParsePath(path, &parent, &child);
+  if (code != RC_OK) {
+    response->set_code(code);
+    return;
+  }
 
   {
     std::lock_guard<std::mutex> lock(mutex_);
     auto it = nodes_.find(path);
     if (it != nodes_.end()) {
       response->set_code(RC_OK);
+      response->set_node_type(it->second.type());
       response->set_data(it->second.data());
       *(response->mutable_stat()) = it->second.stat();
     } else {
@@ -218,7 +266,13 @@ void DataTree::GetData(const GetDataRequest& request, Watcher* watcher,
 void DataTree::SetData(const SetDataRequest& request, const Transaction* txn,
                        SetDataResponse* response, bool only_check) {
   const std::string& path = request.path();
-  const std::string& data = request.data();
+  std::string parent;
+  std::string child;
+  ResponseCode retcode = ParsePath(path, &parent, &child);
+  if (retcode != RC_OK) {
+    response->set_code(retcode);
+    return;
+  }
 
   {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -234,10 +288,10 @@ void DataTree::SetData(const SetDataRequest& request, const Transaction* txn,
         stat->set_modified_id(txn->instance_id());
         stat->set_modified_time(txn->time());
         stat->set_version(version + 1);
-        stat->set_data_len(static_cast<int>(data.size()));
-        it->second.set_data(data);
+        stat->set_data_len(static_cast<int>(request.data().size()));
+        it->second.set_data(request.data());
         response->set_code(RC_OK);
-        *(response->mutable_stat()) = *stat;
+        response->mutable_stat()->CopyFrom(*stat);
       }
     } else {
       response->set_code(RC_NO_NODE);
@@ -252,6 +306,13 @@ void DataTree::SetData(const SetDataRequest& request, const Transaction* txn,
 void DataTree::GetChildren(const GetChildrenRequest& request, Watcher* watcher,
                            GetChildrenResponse* response) {
   const std::string& path = request.path();
+  std::string parent;
+  std::string child;
+  ResponseCode code = ParsePath(path, &parent, &child);
+  if (code != RC_OK) {
+    response->set_code(code);
+    return;
+  }
 
   {
     std::lock_guard<std::mutex> lock(mutex_);

@@ -47,10 +47,11 @@ class DataTree {
   void KillSession(uint64_t session_id, const Transaction* txn);
 
  private:
+  ResponseCode ParsePath(const std::string& path,
+                         std::string* parent, std::string* child) const;
   std::mutex mutex_;
   std::unordered_map<std::string, DataNode> nodes_;
   std::unordered_map<std::string, std::unordered_set<std::string>> childrens_;
-
   std::unordered_map<uint64_t, std::unordered_set<std::string>> ephemerals_;
 
   ServerWatchManager data_watches_;

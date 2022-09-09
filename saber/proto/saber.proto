@@ -22,6 +22,8 @@ message WatchedEvent {
   string path = 3;
 }
 
+// 所有的临时节点(EPHEMERAL类型)都不能拥有子节点
+// 父节点为SEQUENTIAL类型，其子节点的路径为child path + number
 enum NodeType {
   NT_PERSISTENT = 0;
   NT_PERSISTENT_SEQUENTIAL = 1;
@@ -34,11 +36,12 @@ enum ResponseCode {
   RC_FAILED = 1;
   RC_NO_NODE = 2;
   RC_NO_PARENT = 3;
-  RC_NODE_EXISTS = 4;
-  RC_CHILDREN_EXISTS = 5;
-  RC_BAD_VERSION = 6;
-  RC_UNKNOWN = 7;
-  RC_RECONNECT = 8;
+  RC_PARENT_EPHEMERAL = 4;
+  RC_NODE_EXISTS = 5;
+  RC_CHILDREN_EXISTS = 6;
+  RC_BAD_VERSION = 7;
+  RC_UNKNOWN = 8;
+  RC_RECONNECT = 9;
 }
 
 message Stat {
@@ -74,9 +77,9 @@ message CloseRequest {
 message CloseResponse { ResponseCode code = 1; }
 
 message CreateRequest {
-  string path = 1;
-  bytes data = 2;
-  NodeType type = 3;
+  NodeType type = 1;
+  string path = 2;
+  bytes data = 3;
 }
 
 message CreateResponse {
@@ -98,7 +101,8 @@ message ExistsRequest {
 
 message ExistsResponse {
   ResponseCode code = 1;
-  Stat stat = 2;
+  NodeType node_type = 2;
+  Stat stat = 3;
 }
 
 message GetDataRequest {
@@ -108,8 +112,9 @@ message GetDataRequest {
 
 message GetDataResponse {
   ResponseCode code = 1;
-  bytes data = 2;
+  NodeType node_type = 2;
   Stat stat = 3;
+  bytes data = 4;
 }
 
 message SetDataRequest {

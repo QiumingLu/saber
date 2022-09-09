@@ -13,7 +13,7 @@
 
 namespace saber {
 
-SaberDB::SaberDB(RunLoop* loop, const ServerOptions& options) {
+SaberDB::SaberDB(RunLoop* loop, const ServerOptions& options) : loop_(loop) {
   for (uint32_t i = 0; i < options.paxos_group_size; ++i) {
     trees_.push_back(std::unique_ptr<DataTree>(new DataTree()));
     sessions_.push_back(std::unique_ptr<SessionManager>(new SessionManager()));

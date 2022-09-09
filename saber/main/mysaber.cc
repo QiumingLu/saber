@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include "saber/main/mysaber.h"
-#include "saber/main/to_string.h"
 
 namespace saber {
 
@@ -105,7 +104,7 @@ void MySaber::Create() {
 
 void MySaber::OnCreateReply(const std::string& path, void* context,
                             const CreateResponse& response) {
-  printf("%s\n", ToString(response).c_str());
+  printf("%s\n", response.ShortDebugString().c_str());
   loop_->RunInLoop([this]() { GetLine(); });
 }
 
@@ -136,7 +135,7 @@ void MySaber::Delete() {
 
 void MySaber::OnDeleteReply(const std::string& path, void* context,
                             const DeleteResponse& response) {
-  printf("%s\n", ToString(response).c_str());
+  printf("%s\n", response.ShortDebugString().c_str());
   loop_->RunInLoop([this]() { GetLine(); });
 }
 
@@ -176,7 +175,7 @@ void MySaber::Exists() {
 
 void MySaber::OnExistsReply(const std::string& path, void* context,
                             const ExistsResponse& response) {
-  printf("%s\n", ToString(response).c_str());
+  printf("%s\n", response.ShortDebugString().c_str());
   loop_->RunInLoop([this]() { GetLine(); });
 }
 
@@ -216,7 +215,7 @@ void MySaber::GetData() {
 
 void MySaber::OnGetDataReply(const std::string& path, void* context,
                              const GetDataResponse& response) {
-  printf("%s\n", ToString(response).c_str());
+  printf("%s\n", response.ShortDebugString().c_str());
   loop_->RunInLoop([this]() { GetLine(); });
 }
 
@@ -248,7 +247,7 @@ void MySaber::SetData() {
 
 void MySaber::OnSetDataReply(const std::string& path, void* context,
                              const SetDataResponse& response) {
-  printf("%s\n", ToString(response).c_str());
+  printf("%s\n", response.ShortDebugString().c_str());
   loop_->RunInLoop([this]() { GetLine(); });
 }
 
@@ -288,7 +287,7 @@ void MySaber::GetChildren() {
 
 void MySaber::OnGetChildrenReply(const std::string& path, void* context,
                                  const GetChildrenResponse& response) {
-  printf("%s\n", ToString(response).c_str());
+  printf("%s\n", response.ShortDebugString().c_str());
   loop_->RunInLoop([this]() { GetLine(); });
 }
 

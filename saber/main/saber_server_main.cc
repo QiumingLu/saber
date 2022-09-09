@@ -25,6 +25,7 @@ int main(int argc, char** argv) {
 
   saber::ServerOptions server_options;
   server_options.log_storage_path = std::string(path) + "/log";
+  server_options.keep_log_count = 100;
 
   std::vector<std::string> server;
   std::vector<std::string> servers;
@@ -41,10 +42,6 @@ int main(int argc, char** argv) {
   server_options.my_server_message.paxos_port = atoi(server[3].data());
 
   // Just for test
-  // server_options.keep_log_count = 20;
-  // server_options.keep_checkpoint_count = 3;
-  // server_options.make_checkpoint_interval = 5;
-
   voyager::SplitStringUsing(std::string(argv[2]), ",", &servers);
   for (auto& s : servers) {
     server.clear();
@@ -67,7 +64,7 @@ int main(int argc, char** argv) {
   saber::SaberServer saber_server(&loop, server_options);
 
   voyager::SetLogLevel(voyager::LOGLEVEL_ERROR);
-  skywalker::SetLogLevel(skywalker::LOGLEVEL_INFO);
+  skywalker::SetLogLevel(skywalker::LOGLEVEL_WARN);
   saber::SetLogLevel(saber::LOGLEVEL_INFO);
 
   bool res = saber_server.Start();

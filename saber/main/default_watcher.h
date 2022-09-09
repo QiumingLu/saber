@@ -7,8 +7,6 @@
 
 #include <saber/service/watcher.h>
 
-#include "saber/main/to_string.h"
-
 namespace saber {
 
 class DefaultWatcher : public saber::Watcher {
@@ -17,7 +15,7 @@ class DefaultWatcher : public saber::Watcher {
 
   virtual void Process(const saber::WatchedEvent& event) {
     printf("\n------------------------------------------------------------\n");
-    printf("%s", ToString(event).c_str());
+    printf("%s", event.ShortDebugString().c_str());
     printf("\n------------------------------------------------------------\n");
   }
 };

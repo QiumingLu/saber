@@ -508,7 +508,7 @@ bool SaberClient::OnExists(SaberMessage* message) {
   if (request->watcher) {
     if (response.code() == RC_OK) {
       watch_manager_.AddDataWatch(request->path, request->watcher);
-    } else {
+    } else if (response.code() == RC_NO_NODE) {
       watch_manager_.AddExistsWatch(request->path, request->watcher);
     }
   }

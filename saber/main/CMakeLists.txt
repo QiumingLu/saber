@@ -1,5 +1,5 @@
 if (BUILD_CLIENT_LIBS)
-  add_executable(saber_client_main saber_client_main.cc mysaber.cc to_string.cc)
+  add_executable(saber_client_main saber_client_main.cc mysaber.cc)
   target_link_libraries(saber_client_main ${Saber_LINKER_LIBS} ${Saber_LINK} ${SaberClient_LINK})
 endif()
 
