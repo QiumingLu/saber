@@ -5,7 +5,6 @@
 #ifndef SABER_SERVER_DATA_TREE_H_
 #define SABER_SERVER_DATA_TREE_H_
 
-#include <memory>
 #include <mutex>
 #include <string>
 #include <unordered_map>
@@ -46,9 +45,6 @@ class DataTree {
   void RemoveWatcher(Watcher* watcher);
 
   void KillSession(uint64_t session_id, const Transaction* txn);
-
-  // No thread safe
-  size_t NodeSize() const { return nodes_.size(); }
 
  private:
   std::mutex mutex_;

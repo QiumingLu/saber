@@ -7,7 +7,6 @@
 #include <utility>
 #include <vector>
 
-#include "saber/util/coding.h"
 #include "saber/util/logging.h"
 
 namespace saber {

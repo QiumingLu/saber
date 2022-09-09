@@ -5,9 +5,7 @@
 #ifndef SABER_SERVER_SESSION_MANAGER_H_
 #define SABER_SERVER_SESSION_MANAGER_H_
 
-#include <string>
 #include <unordered_map>
-#include <vector>
 #include <mutex>
 #include "saber/proto/server.pb.h"
 
@@ -30,10 +28,6 @@ class SessionManager {
 
   bool CloseSession(uint64_t session_id, uint64_t version);
 
-  // No thread safe
-  size_t SessionSize() const { return sessions_.size(); }
-
-  // No thread safe
   std::unordered_map<uint64_t, uint64_t> CopySessions() const;
 
  private:

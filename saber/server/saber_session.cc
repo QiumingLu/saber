@@ -92,9 +92,9 @@ void SaberSession::HandleMessage(std::unique_ptr<SaberMessage> message) {
     if (node_->GetMaster(group_id_, &i, &version)) {
       master.set_host(i.host);
       master.set_port(atoi(i.context.c_str()));
-      message->set_type(MT_MASTER);
-      master.SerializeToString(message->mutable_data());
     }
+    message->set_type(MT_MASTER);
+    master.SerializeToString(message->mutable_data());
     Done(std::move(message));
   }
 }

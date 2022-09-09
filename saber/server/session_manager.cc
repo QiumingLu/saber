@@ -4,10 +4,6 @@
 
 #include "saber/server/session_manager.h"
 
-#include <assert.h>
-
-#include "saber/util/coding.h"
-
 namespace saber {
 
 void SessionManager::Recover(const SessionList& session_list) {
@@ -77,6 +73,7 @@ bool SessionManager::CloseSession(uint64_t session_id, uint64_t version) {
 }
 
 std::unordered_map<uint64_t, uint64_t> SessionManager::CopySessions() const {
+  std::lock_guard<std::mutex> lock(mutex_);
   return std::unordered_map<uint64_t, uint64_t>(sessions_);
 }
 

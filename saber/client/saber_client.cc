@@ -121,6 +121,7 @@ bool SaberClient::Create(const CreateRequest& request, void* context,
 bool SaberClient::Delete(const DeleteRequest& request, void* context,
                          const DeleteCallback& cb) {
   if (GetRoot(request.path()) != kRoot) {
+    LOG_ERROR("error request path %s", request.path().c_str());
     return false;
   }
   SaberMessage* message = new SaberMessage();
@@ -141,6 +142,7 @@ bool SaberClient::Delete(const DeleteRequest& request, void* context,
 bool SaberClient::Exists(const ExistsRequest& request, Watcher* watcher,
                          void* context, const ExistsCallback& cb) {
   if (GetRoot(request.path()) != kRoot) {
+    LOG_ERROR("error request path %s", request.path().c_str());
     return false;
   }
   SaberMessage* message = new SaberMessage();
@@ -161,6 +163,7 @@ bool SaberClient::Exists(const ExistsRequest& request, Watcher* watcher,
 bool SaberClient::GetData(const GetDataRequest& request, Watcher* watcher,
                           void* context, const GetDataCallback& cb) {
   if (GetRoot(request.path()) != kRoot) {
+    LOG_ERROR("error request path %s", request.path().c_str());
     return false;
   }
   SaberMessage* message = new SaberMessage();
@@ -182,6 +185,7 @@ bool SaberClient::GetData(const GetDataRequest& request, Watcher* watcher,
 bool SaberClient::SetData(const SetDataRequest& request, void* context,
                           const SetDataCallback& cb) {
   if (GetRoot(request.path()) != kRoot) {
+    LOG_ERROR("error request path %s", request.path().c_str());
     return false;
   }
   SaberMessage* message = new SaberMessage();
@@ -204,6 +208,7 @@ bool SaberClient::GetChildren(const GetChildrenRequest& request,
                               Watcher* watcher, void* context,
                               const GetChildrenCallback& cb) {
   if (GetRoot(request.path()) != kRoot) {
+    LOG_ERROR("error request path %s", request.path().c_str());
     return false;
   }
   SaberMessage* message = new SaberMessage();
@@ -330,7 +335,7 @@ bool SaberClient::OnMessage(const voyager::TcpConnectionPtr& p,
       done = false;
       master_.Clear();
       master_.ParseFromString(message->data());
-      LOG_DEBUG("The master is %s:%d.", master_.host().c_str(), master_.port());
+      LOG_DEBUG("The master is %s.", master_.ShortDebugString().c_str());
       client_->Close();
       break;
     }

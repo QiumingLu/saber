@@ -4,7 +4,6 @@ set(Saber_SRCS ${Saber_SRCS} PARENT_SCOPE)
 
 set(
   Saber_UTIL_HEADERS
-  coding.h
   logging.h
   macros.h
   runloop.h

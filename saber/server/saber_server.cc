@@ -279,7 +279,7 @@ bool SaberServer::OnConnectRequest(const std::string& root, uint32_t group_id,
   reply->set_data(response.SerializeAsString());
 
   bool b = node_->Propose(
-      group_id, db_->machine_id(), value = std::move(value), reply,
+      group_id, db_->machine_id(), std::move(value), reply,
       [this, root, group_id, session_id, entry](
           uint64_t instance_id, const skywalker::Status& s, void* context) {
         SaberMessage* r = reinterpret_cast<SaberMessage*>(context);
