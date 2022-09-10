@@ -399,7 +399,7 @@ void SaberClient::OnTimer() {
 void SaberClient::OnNotification(SaberMessage* message) {
   WatchedEvent event;
   event.ParseFromString(message->data());
-  TriggerWatchers(event);
+  watch_manager_.TriggerWatcher(event);
 }
 
 void SaberClient::OnConnect(SaberMessage* message) {
@@ -507,7 +507,7 @@ bool SaberClient::OnExists(SaberMessage* message) {
   request->callback(request->path, request->context, response);
   if (request->watcher &&
       (response.code() == RC_OK || response.code() == RC_NO_NODE)) {
-    watch_manager_.AddDataWatch(request->path, request->watcher);
+    watch_manager_.AddDataWatcher(request->path, request->watcher);
   }
   return true;
 }
@@ -534,7 +534,7 @@ bool SaberClient::OnGetData(SaberMessage* message) {
   }
   response.ParseFromString(message->data());
   if (request->watcher && response.code() == RC_OK) {
-    watch_manager_.AddDataWatch(request->path, request->watcher);
+    watch_manager_.AddDataWatcher(request->path, request->watcher);
   }
   request->callback(request->path, request->context, response);
   return true;
@@ -587,7 +587,7 @@ bool SaberClient::OnGetChildren(SaberMessage* message) {
   }
   response.ParseFromString(message->data());
   if (request->watcher && response.code() == RC_OK) {
-    watch_manager_.AddChildWatch(request->path, request->watcher);
+    watch_manager_.AddChildWatcher(request->path, request->watcher);
   }
   request->callback(request->path, request->context, response);
   return true;
@@ -597,14 +597,7 @@ void SaberClient::TriggerState() {
   WatchedEvent event;
   event.set_type(ET_NONE);
   event.set_state(state_);
-  TriggerWatchers(event);
-}
-
-void SaberClient::TriggerWatchers(const WatchedEvent& event) {
-  auto watchers = watch_manager_.Trigger(event);
-  for (auto& it : watchers) {
-    it->Process(event);
-  }
+  watch_manager_.TriggerWatcher(event);
 }
 
 void SaberClient::ClearMessage() {

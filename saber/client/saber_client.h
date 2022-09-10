@@ -73,7 +73,6 @@ class SaberClient : public std::enable_shared_from_this<SaberClient> {
   bool OnSetData(SaberMessage* message);
   bool OnGetChildren(SaberMessage* message);
   void TriggerState();
-  void TriggerWatchers(const WatchedEvent& event);
   void ClearMessage();
 
   const std::string kRoot;

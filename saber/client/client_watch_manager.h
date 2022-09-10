@@ -18,10 +18,10 @@ class ClientWatchManager {
   explicit ClientWatchManager(Watcher* watcher = nullptr);
   ~ClientWatchManager();
 
-  void AddDataWatch(const std::string& path, Watcher* watcher);
-  void AddChildWatch(const std::string& path, Watcher* watcher);
+  void AddDataWatcher(const std::string& path, Watcher* watcher);
+  void AddChildWatcher(const std::string& path, Watcher* watcher);
 
-  std::unordered_set<Watcher*> Trigger(const WatchedEvent& event);
+  void TriggerWatcher(const WatchedEvent& event);
 
  private:
   Watcher* watcher_;

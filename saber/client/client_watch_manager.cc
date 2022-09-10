@@ -12,28 +12,28 @@ ClientWatchManager::ClientWatchManager(Watcher* watcher) : watcher_(watcher) {}
 
 ClientWatchManager::~ClientWatchManager() {}
 
-void ClientWatchManager::AddDataWatch(const std::string& path,
+void ClientWatchManager::AddDataWatcher(const std::string& path,
                                       Watcher* watcher) {
   data_watches_[path].insert(watcher);
 }
 
-void ClientWatchManager::AddChildWatch(const std::string& path,
+void ClientWatchManager::AddChildWatcher(const std::string& path,
                                        Watcher* watcher) {
   child_watches_[path].insert(watcher);
 }
 
-std::unordered_set<Watcher*> ClientWatchManager::Trigger(const WatchedEvent& event) {
-  std::unordered_set<Watcher*> result;
+void ClientWatchManager::TriggerWatcher(const WatchedEvent& event) {
+  std::unordered_set<Watcher*> watchers;
   switch (event.type()) {
     case ET_NONE: {
       if (watcher_) {
-        result.insert(watcher_);
+        watchers.insert(watcher_);
       }
       for (auto& i : data_watches_) {
-        result.insert(i.second.begin(), i.second.end());
+        watchers.insert(i.second.begin(), i.second.end());
       }
       for (auto& i : child_watches_) {
-        result.insert(i.second.begin(), i.second.end());
+        watchers.insert(i.second.begin(), i.second.end());
       }
       // FIXME Maybe auto reset watch will be better when state is connected?
       data_watches_.clear();
@@ -45,7 +45,7 @@ std::unordered_set<Watcher*> ClientWatchManager::Trigger(const WatchedEvent& eve
     case ET_NODE_DATA_CHANGED: {
       auto it = data_watches_.find(event.path());
       if (it != data_watches_.end()) {
-        result.swap(it->second);
+        watchers.swap(it->second);
         data_watches_.erase(it);
       }
       break;
@@ -53,7 +53,7 @@ std::unordered_set<Watcher*> ClientWatchManager::Trigger(const WatchedEvent& eve
     case ET_NODE_CHILDREN_CHANGED: {
       auto it = child_watches_.find(event.path());
       if (it != child_watches_.end()) {
-        result.swap(it->second);
+        watchers.swap(it->second);
         child_watches_.erase(it);
       }
       break;
@@ -64,7 +64,9 @@ std::unordered_set<Watcher*> ClientWatchManager::Trigger(const WatchedEvent& eve
       break;
     }
   }
-  return result;
+  for (auto& it : watchers) {
+    it->Process(event);
+  }
 }
 
 }  // namespace saber
