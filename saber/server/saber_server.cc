@@ -89,6 +89,7 @@ bool SaberServer::Start() {
   skywalker_options.my.host = options_.my_server_message.host;
   skywalker_options.my.port = options_.my_server_message.paxos_port;
   skywalker_options.groups.resize(options_.paxos_group_size, group_options);
+  skywalker_options.cluster = options_.cluster;
 
   skywalker_options.master_cb = [this](uint32_t group_id) {
     loop_->QueueInLoop(std::bind(&SaberServer::CleanSessions, this, group_id));

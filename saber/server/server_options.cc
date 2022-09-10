@@ -21,6 +21,7 @@ ServerOptions::ServerOptions()
       max_data_size(1024 * 1024),
       keep_log_count(1000000),
       log_sync_interval(10),
-      keep_checkpoint_count(3) {}
+      keep_checkpoint_count(3),
+      cluster(nullptr) {}
 
 }  // namespace saber

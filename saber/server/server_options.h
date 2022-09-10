@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <string>
 #include <vector>
+#include <skywalker/cluster.h>
 
 namespace saber {
 
@@ -86,6 +87,8 @@ struct ServerOptions {
 
   ServerMessage my_server_message;
   std::vector<ServerMessage> all_server_messages;
+
+  skywalker::Cluster* cluster;
 
   ServerOptions();
 };

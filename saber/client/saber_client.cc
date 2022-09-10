@@ -505,12 +505,9 @@ bool SaberClient::OnExists(SaberMessage* message) {
   }
   response.ParseFromString(message->data());
   request->callback(request->path, request->context, response);
-  if (request->watcher) {
-    if (response.code() == RC_OK) {
-      watch_manager_.AddDataWatch(request->path, request->watcher);
-    } else if (response.code() == RC_NO_NODE) {
-      watch_manager_.AddExistsWatch(request->path, request->watcher);
-    }
+  if (request->watcher &&
+      (response.code() == RC_OK || response.code() == RC_NO_NODE)) {
+    watch_manager_.AddDataWatch(request->path, request->watcher);
   }
   return true;
 }
@@ -604,11 +601,9 @@ void SaberClient::TriggerState() {
 }
 
 void SaberClient::TriggerWatchers(const WatchedEvent& event) {
-  WatcherSetPtr watchers = watch_manager_.Trigger(event);
-  if (watchers) {
-    for (auto& it : *(watchers.get())) {
-      it->Process(event);
-    }
+  auto watchers = watch_manager_.Trigger(event);
+  for (auto& it : watchers) {
+    it->Process(event);
   }
 }
 

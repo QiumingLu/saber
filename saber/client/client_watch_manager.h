@@ -7,6 +7,7 @@
 
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 
 #include "saber/service/watcher.h"
 
@@ -18,16 +19,14 @@ class ClientWatchManager {
   ~ClientWatchManager();
 
   void AddDataWatch(const std::string& path, Watcher* watcher);
-  void AddExistsWatch(const std::string& path, Watcher* watcher);
   void AddChildWatch(const std::string& path, Watcher* watcher);
 
-  WatcherSetPtr Trigger(const WatchedEvent& event);
+  std::unordered_set<Watcher*> Trigger(const WatchedEvent& event);
 
  private:
   Watcher* watcher_;
-  std::unordered_map<std::string, WatcherSetPtr> data_watches_;
-  std::unordered_map<std::string, WatcherSetPtr> exists_watches_;
-  std::unordered_map<std::string, WatcherSetPtr> child_watches_;
+  std::unordered_map<std::string, std::unordered_set<Watcher*>> data_watches_;
+  std::unordered_map<std::string, std::unordered_set<Watcher*>> child_watches_;
 
   // No copying allowed
   ClientWatchManager(const ClientWatchManager&);

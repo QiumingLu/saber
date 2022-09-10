@@ -42,6 +42,7 @@ enum ResponseCode {
   RC_BAD_VERSION = 7;
   RC_UNKNOWN = 8;
   RC_RECONNECT = 9;
+  RC_ERRPATH = 10;
 }
 
 message Stat {

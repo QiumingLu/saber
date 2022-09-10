@@ -52,12 +52,12 @@ ResponseCode DataTree::ParsePath(const std::string& path,
                                  std::string* parent, std::string* child) const {
   size_t found = path.find_last_of('/');
   if (found == std::string::npos) {
-    return RC_NO_PARENT;
+    return RC_ERRPATH;
   }
   *parent = path.substr(0, found);
   *child = path.substr(found + 1);
   if (child->empty()) {
-    return RC_FAILED;
+    return RC_ERRPATH;
   }
   return RC_OK;
 }
@@ -314,25 +314,24 @@ void DataTree::GetChildren(const GetChildrenRequest& request, Watcher* watcher,
     return;
   }
 
-  {
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto it = nodes_.find(path);
-    if (it != nodes_.end()) {
-      response->set_code(RC_OK);
-      *(response->mutable_stat()) = it->second.stat();
-      if (childrens_.find(path) != childrens_.end()) {
-        const std::unordered_set<std::string>& children = childrens_[path];
-        for (auto& i : children) {
-          response->add_children(i);
-        }
+  std::lock_guard<std::mutex> lock(mutex_);
+  auto it = nodes_.find(path);
+  if (it != nodes_.end()) {
+    response->set_code(RC_OK);
+    *(response->mutable_stat()) = it->second.stat();
+    if (childrens_.find(path) != childrens_.end()) {
+      const std::unordered_set<std::string>& children = childrens_[path];
+      for (auto& i : children) {
+        response->add_children(i);
       }
-    } else {
-      response->set_code(RC_NO_NODE);
     }
+  } else {
+    response->set_code(RC_NO_NODE);
   }
 
-  if (response->code() == RC_OK) {
-    if (watcher) {
+  if (watcher && response->code() == RC_OK) {
+    if (it->second.type() != NT_EPHEMERAL &&
+        it->second.type() != NT_EPHEMERAL_SEQUENTIAL) {
       child_watches_.AddWatcher(path, watcher);
     }
   }

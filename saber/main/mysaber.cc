@@ -17,7 +17,7 @@ void MySaber::Start() {
 }
 
 void MySaber::GetLine() {
-  printf("please select:\n");
+  printf("\nplease select:\n");
   printf("0. Create\n");
   printf("1. Delete\n");
   printf("2. Exists\n");
