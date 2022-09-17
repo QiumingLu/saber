@@ -60,6 +60,8 @@ SaberClient::~SaberClient() {
     LOG_FATAL("Don't forget to call the Close() function.");
   }
   delete server_manager_impl_;
+  loop_->RemoveTimer(timer_);
+  loop_->RemoveTimer(delay_);
 }
 
 void SaberClient::Connect() {
@@ -103,17 +105,19 @@ bool SaberClient::Create(const CreateRequest& request, void* context,
     LOG_ERROR("error request path %s", request.path().c_str());
     return false;
   }
-  SaberMessage* message = new SaberMessage();
-  message->set_type(MT_CREATE);
-  message->set_data(request.SerializeAsString());
-
-  CreateRequestT* r = new CreateRequestT(request.path(), nullptr, context, cb);
-
-  loop_->RunInLoop([this, message, r]() {
-    r->message_id = ++message_id_;
+  std::string data;
+  request.SerializeToString(&data);
+  loop_->RunInLoop(
+      [this, path = request.path(), data = std::move(data), context, cb]() {
+    ++message_id_;
+    auto message = std::make_unique<SaberMessage>();
+    message->set_type(MT_CREATE);
+    message->set_data(std::move(data));
     message->set_id(message_id_);
-    create_queue_.push_back(std::unique_ptr<CreateRequestT>(r));
-    TrySendInLoop(message);
+
+    create_queue_.push_back(
+        std::make_unique<CreateRequestT>(message_id_, path, nullptr, context, cb));
+    TrySendInLoop(std::move(message));
   });
   return true;
 }
@@ -124,17 +128,20 @@ bool SaberClient::Delete(const DeleteRequest& request, void* context,
     LOG_ERROR("error request path %s", request.path().c_str());
     return false;
   }
-  SaberMessage* message = new SaberMessage();
-  message->set_type(MT_DELETE);
-  message->set_data(request.SerializeAsString());
 
-  DeleteRequestT* r = new DeleteRequestT(request.path(), nullptr, context, cb);
-
-  loop_->RunInLoop([this, message, r]() {
-    r->message_id = ++message_id_;
+  std::string data;
+  request.SerializeToString(&data);
+  loop_->RunInLoop(
+      [this, path = request.path(), data = std::move(data), context, cb]() {
+    ++message_id_;
+    auto message = std::make_unique<SaberMessage>();
+    message->set_type(MT_DELETE);
+    message->set_data(std::move(data));
     message->set_id(message_id_);
-    delete_queue_.push_back(std::unique_ptr<DeleteRequestT>(r));
-    TrySendInLoop(message);
+
+    delete_queue_.push_back(
+        std::make_unique<DeleteRequestT>(message_id_, path, nullptr, context, cb));
+    TrySendInLoop(std::move(message));
   });
   return true;
 }
@@ -145,17 +152,20 @@ bool SaberClient::Exists(const ExistsRequest& request, Watcher* watcher,
     LOG_ERROR("error request path %s", request.path().c_str());
     return false;
   }
-  SaberMessage* message = new SaberMessage();
-  message->set_type(MT_EXISTS);
-  message->set_data(request.SerializeAsString());
 
-  ExistsRequestT* r = new ExistsRequestT(request.path(), watcher, context, cb);
-
-  loop_->RunInLoop([this, message, r]() {
-    r->message_id = ++message_id_;
+  std::string data;
+  request.SerializeToString(&data);
+  loop_->RunInLoop(
+      [this, path = request.path(), data = std::move(data), context, watcher, cb]() {
+    ++message_id_;
+    auto message = std::make_unique<SaberMessage>();
+    message->set_type(MT_EXISTS);
+    message->set_data(std::move(data));
     message->set_id(message_id_);
-    exists_queue_.push_back(std::unique_ptr<ExistsRequestT>(r));
-    TrySendInLoop(message);
+
+    exists_queue_.push_back(
+        std::make_unique<ExistsRequestT>(message_id_, path, watcher, context, cb));
+    TrySendInLoop(std::move(message));
   });
   return true;
 }
@@ -166,18 +176,20 @@ bool SaberClient::GetData(const GetDataRequest& request, Watcher* watcher,
     LOG_ERROR("error request path %s", request.path().c_str());
     return false;
   }
-  SaberMessage* message = new SaberMessage();
-  message->set_type(MT_GETDATA);
-  message->set_data(request.SerializeAsString());
 
-  GetDataRequestT* r =
-      new GetDataRequestT(request.path(), watcher, context, cb);
-
-  loop_->RunInLoop([this, message, r]() {
-    r->message_id = ++message_id_;
+  std::string data;
+  request.SerializeToString(&data);
+  loop_->RunInLoop(
+      [this, path = request.path(), data = std::move(data), context, watcher, cb]() {
+    ++message_id_;
+    auto message = std::make_unique<SaberMessage>();
+    message->set_type(MT_GETDATA);
+    message->set_data(std::move(data));
     message->set_id(message_id_);
-    get_data_queue_.push_back(std::unique_ptr<GetDataRequestT>(r));
-    TrySendInLoop(message);
+
+    get_data_queue_.push_back(
+        std::make_unique<GetDataRequestT>(message_id_, path, watcher, context, cb));
+    TrySendInLoop(std::move(message));
   });
   return true;
 }
@@ -188,18 +200,20 @@ bool SaberClient::SetData(const SetDataRequest& request, void* context,
     LOG_ERROR("error request path %s", request.path().c_str());
     return false;
   }
-  SaberMessage* message = new SaberMessage();
-  message->set_type(MT_SETDATA);
-  message->set_data(request.SerializeAsString());
 
-  SetDataRequestT* r =
-      new SetDataRequestT(request.path(), nullptr, context, cb);
-
-  loop_->RunInLoop([this, message, r]() {
-    r->message_id = ++message_id_;
+  std::string data;
+  request.SerializeToString(&data);
+  loop_->RunInLoop(
+      [this, path = request.path(), data = std::move(data), context, cb]() {
+    ++message_id_;
+    auto message = std::make_unique<SaberMessage>();
+    message->set_type(MT_SETDATA);
+    message->set_data(std::move(data));
     message->set_id(message_id_);
-    set_data_queue_.push_back(std::unique_ptr<SetDataRequestT>(r));
-    TrySendInLoop(message);
+
+    set_data_queue_.push_back(
+        std::make_unique<SetDataRequestT>(message_id_, path, nullptr, context, cb));
+    TrySendInLoop(std::move(message));
   });
   return true;
 }
@@ -211,18 +225,20 @@ bool SaberClient::GetChildren(const GetChildrenRequest& request,
     LOG_ERROR("error request path %s", request.path().c_str());
     return false;
   }
-  SaberMessage* message = new SaberMessage();
-  message->set_type(MT_GETCHILDREN);
-  message->set_data(request.SerializeAsString());
 
-  GetChildrenRequestT* r =
-      new GetChildrenRequestT(request.path(), watcher, context, cb);
-
-  loop_->RunInLoop([this, message, r]() {
-    r->message_id = ++message_id_;
+  std::string data;
+  request.SerializeToString(&data);
+  loop_->RunInLoop(
+      [this, path = request.path(), data = std::move(data), context, watcher, cb]() {
+    ++message_id_;
+    auto message = std::make_unique<SaberMessage>();
+    message->set_type(MT_GETCHILDREN);
+    message->set_data(std::move(data));
     message->set_id(message_id_);
-    children_queue_.push_back(std::unique_ptr<GetChildrenRequestT>(r));
-    TrySendInLoop(message);
+
+    children_queue_.push_back(
+        std::make_unique<GetChildrenRequestT>(message_id_, path, watcher, context, cb));
+    TrySendInLoop(std::move(message));
   });
   return true;
 }
@@ -244,10 +260,11 @@ void SaberClient::Connect(const voyager::SockAddr& addr) {
   client_->Connect(false);
 }
 
-void SaberClient::TrySendInLoop(SaberMessage* message) {
-  outgoing_queue_.push_back(std::unique_ptr<SaberMessage>(message));
+void SaberClient::TrySendInLoop(std::unique_ptr<SaberMessage> message) {
+  outgoing_queue_.push_back(std::move(message));
   if (can_send_) {
-    codec_.SendMessage(client_->GetTcpConnectionPtr(), *message);
+    codec_.SendMessage(client_->GetTcpConnectionPtr(),
+                       *(outgoing_queue_.back()));
   }
 }
 

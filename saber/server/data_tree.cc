@@ -3,10 +3,6 @@
 // found in the LICENSE file.
 
 #include "saber/server/data_tree.h"
-
-#include <utility>
-#include <vector>
-
 #include "saber/util/logging.h"
 
 namespace saber {

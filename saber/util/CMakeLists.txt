@@ -5,7 +5,6 @@ set(Saber_SRCS ${Saber_SRCS} PARENT_SCOPE)
 set(
   Saber_UTIL_HEADERS
   logging.h
-  macros.h
   runloop.h
   runloop_thread.h
   timeops.h

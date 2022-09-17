@@ -58,7 +58,7 @@ struct ServerOptions {
   // Default: 10
   uint32_t paxos_group_size;
 
-  // Default: 3 * 1000 * 1000 microseconds
+  // Default: 3000ms
   uint32_t tick_time;
 
   // Default: 4 * tick_time

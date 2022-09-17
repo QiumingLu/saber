@@ -55,7 +55,7 @@ class SaberClient : public std::enable_shared_from_this<SaberClient> {
                            const voyager::TcpConnectionPtr& p);
   void CloseInLoop();
   void Connect(const voyager::SockAddr& addr);
-  void TrySendInLoop(SaberMessage* message);
+  void TrySendInLoop(std::unique_ptr<SaberMessage> message);
   void OnConnection(const voyager::TcpConnectionPtr& p);
   void OnFailue();
   void OnClose(const voyager::TcpConnectionPtr& p);

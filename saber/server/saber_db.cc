@@ -3,13 +3,7 @@
 // found in the LICENSE file.
 
 #include "saber/server/saber_db.h"
-
-#include <stdlib.h>
-
-#include <algorithm>
-
 #include "saber/util/logging.h"
-#include "saber/util/timeops.h"
 
 namespace saber {
 
